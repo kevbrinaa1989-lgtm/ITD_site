@@ -1,0 +1,12 @@
+{
+  "name": "itd-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test server.test.mjs"
+  },
+  "engines": {
+    "node": ">=24.13.0 <25"
+  }
+}
