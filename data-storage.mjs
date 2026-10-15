@@ -1,9 +1,9 @@
 import { DatabaseSync, backup } from "node:sqlite";
 import { existsSync, lstatSync, realpathSync, readFileSync, writeFileSync, mkdirSync,
-  mkdtempSync, readdirSync, copyFileSync, constants } from "node:fs";
+  mkdtempSync, readdirSync, copyFileSync, renameSync, constants } from "node:fs";
 import { join, dirname, resolve, isAbsolute, relative, sep } from "node:path";
 import { homedir } from "node:os";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 export const defaultSettingsFile = () => join(homedir(), ".itd-studio", "storage.json");
 const settingsPath = (options) => options.settingsFile || defaultSettingsFile();
@@ -48,7 +48,7 @@ export function inspectData(folder) {
 
 export function configuredData(options = {}) {
   const file = settingsPath(options);
-  if (!existsSync(file)) throw problem("Папка данных ещё не подключена. Откройте ПОДКЛЮЧИТЬ-ДАННЫЕ.cmd. Новая база не создана.");
+  if (!existsSync(file)) throw problem("Данные ещё не настроены. Для новой базы откройте ПЕРВЫЙ-ЗАПУСК.cmd. Новая база при обычном запуске не создаётся.");
   let config;
   try { config = JSON.parse(readFileSync(file, "utf8")); }
   catch { throw problem(`Не удалось прочитать настройки: ${file}. Новая база не создана.`); }
@@ -148,17 +148,45 @@ export async function bindData(folder, options = {}) {
   const { dataDir, counts } = inspectData(folder);
   if (!counts.users) throw problem("В выбранной базе нет аккаунтов. Выберите прежнюю папку .itd-data.");
   const configFile = settingsPath(options);
+  mkdirSync(dirname(configFile), { recursive: true, mode: 0o700 });
+  const releaseSettings = lockData(dirname(configFile));
+  try {
   if (existsSync(configFile)) {
-    if (configuredData(options) !== dataDir) throw problem("Уже подключена другая папка. Настройки не изменены.");
-    return { dataDir, counts, alreadyConnected: true };
+    regular(configFile);
+    if (options.newSetup) assertFreshSetupAllowed(options);
+    else {
+      if (configuredData(options) !== dataDir) throw problem("Уже подключена другая папка. Настройки не изменены.");
+      return { dataDir, counts, alreadyConnected: true };
+    }
   }
   const release = lockData(dataDir);
   try {
     const backupDir = await snapshot(dataDir, options.backupDestination);
-    mkdirSync(dirname(configFile), { recursive: true, mode: 0o700 });
-    writeFileSync(configFile, JSON.stringify({ version: 1, dataDir }, null, 2), { flag: "wx", mode: 0o600, flush: true });
-    return { dataDir, counts, backupDir };
+    const config = JSON.stringify({ version: 1, dataDir, ...(options.newSetup ? { freshSetup: true } : {}) }, null, 2);
+    let previousSettings;
+    if (options.newSetup) {
+      // Preserve the previous pointer without opening, searching or validating its data.
+      if (existsSync(configFile)) {
+        previousSettings = `${configFile}.previous-${randomUUID()}.json`;
+        copyFileSync(configFile, previousSettings, constants.COPYFILE_EXCL);
+      }
+      const staging = `${configFile}.pending-${randomUUID()}`;
+      writeFileSync(staging, config, { flag: "wx", mode: 0o600, flush: true });
+      renameSync(staging, configFile);
+    } else writeFileSync(configFile, config, { flag: "wx", mode: 0o600, flush: true });
+    return { dataDir, counts, backupDir, ...(previousSettings ? { previousSettings } : {}) };
   } finally { release(); }
+  } finally { releaseSettings(); }
+}
+
+export function assertFreshSetupAllowed(options = {}) {
+  const file = settingsPath(options);
+  if (!existsSync(file)) return;
+  regular(file);
+  let config;
+  try { config = JSON.parse(readFileSync(file, "utf8")); } catch { return; }
+  if (config?.freshSetup === true)
+    throw problem("Первичная настройка уже выполнена. Откройте ЗАПУСТИТЬ.cmd. Повторное создание базы отменено.");
 }
 
 export async function backupData(options = {}) {

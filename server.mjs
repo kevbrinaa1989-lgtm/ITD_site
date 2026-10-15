@@ -27,7 +27,7 @@ const fail = (status, message) => {
   throw Object.assign(new Error(message), { status });
 };
 export function createApp(options = {}) {
-  // An explicit dataDir is for isolated development/test fixtures only.
+  // An explicit dataDir is for first-time setup and isolated development/test fixtures.
   // Normal startup requires the saved, validated existing database.
   const store = options.dataDir ? null : openConfiguredData(options.storageOptions);
   const dataDir = store?.dataDir || resolve(options.dataDir);
@@ -45,8 +45,8 @@ export function createApp(options = {}) {
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   const text = (v, max = 200) =>
     typeof v === "string" && v.trim().length > 0 && v.length <= max;
-  const adminEmail = options.adminEmail ?? process.env.ITD_ADMIN_EMAIL,
-    adminPassword = options.adminPassword ?? process.env.ITD_ADMIN_PASSWORD;
+  const adminEmail = options.adminEmail ?? (store ? undefined : process.env.ITD_ADMIN_EMAIL),
+    adminPassword = options.adminPassword ?? (store ? undefined : process.env.ITD_ADMIN_PASSWORD);
   if (adminEmail || adminPassword) {
     if (
       !email(adminEmail) ||

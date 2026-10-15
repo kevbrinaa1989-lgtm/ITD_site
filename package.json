@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test *.test.mjs",
+    "data:init": "node storage-cli.mjs init",
     "data:connect": "node storage-cli.mjs bind",
     "data:status": "node storage-cli.mjs status",
     "backup": "node storage-cli.mjs backup",
