@@ -500,11 +500,6 @@
     margin: 10px 0 0;
   }
 
-  #itd .thanks{
-    display: none;
-    text-align: center;
-    padding: 24px 0;
-  }
 
 
   /* ============================================================
@@ -1369,11 +1364,11 @@
     font-family: inherit;
   }
 
-  /* Stage 2: states for real form submission */
-  #itd .itd-hp{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important}
-  #itd .form-error{display:none;margin:12px 0 0;font-size:13px;line-height:1.4;color:#a3342d}
-  #itd .form-error.is-visible{display:block}
-  #itd button[disabled]{cursor:wait;opacity:.72}
+  /* Недоступная отправка формы */
+
+
+
+  #itd button[disabled]{cursor:not-allowed;opacity:.72}
 
 </style>
 <!-- Помечает страницу как «с включённым JavaScript» -->
@@ -1430,12 +1425,12 @@
       </div>
       <aside class="card" id="calc">
         <form id="f">
-          <div class="itd-hp" aria-hidden="true"><label>Не заполняйте это поле<input autocomplete="off" name="website" tabindex="-1" type="text"/></label></div>
+
           <input id="form-package" name="calculator_package" type="hidden" value=""/>
           <input id="form-estimate" name="calculator_estimate" type="hidden" value=""/>
           <input id="form-supervision" name="calculator_supervision" type="hidden" value=""/>
           <h2>Получить расчёт</h2>
-          <p class="lead">Оставьте контакты, и мы подберём пакет и назовём стоимость.</p>
+          <p class="lead">Отправка через сайт временно недоступна. Для расчёта стоимости <a href="https://t.me/Kevbrina_Diana">напишите в Telegram студии</a>.</p>
           <label for="n">Имя</label>
           <input autocomplete="name" id="n" name="name" placeholder="Как к вам обращаться" type="text"/>
           <label for="p">Телефон</label>
@@ -1449,13 +1444,9 @@
             <label><input name="contact_method" type="radio" value="call"/> Звонок</label>
           </div>
           <label class="consent"><input id="c" name="consent" required="" type="checkbox" value="yes"/><span>Согласен на обработку персональных данных в соответствии с <a href="https://itdstudio.ru/policy">политикой</a></span></label>
-          <button class="btn primary" id="go" type="submit">Получить расчёт</button>
-          <p class="form-error" id="form-error" role="alert"></p>
+          <button class="btn primary" id="go" type="submit" disabled>Отправка недоступна</button>
+
         </form>
-        <div class="thanks" id="ok">
-          <h2>Спасибо!</h2>
-          <p class="lead">Мы свяжемся с вами в ближайшее время.</p>
-        </div>
       </aside>
     </main>
   </section>
@@ -1886,100 +1877,12 @@
     })();
 
 
-    /* ---------- 4. Форма заявки в главном экране ----------
-       Укажите endpoint один раз перед публикацией:
-       window.ITD_FORM_ENDPOINT = 'https://hook.eu1.make.com/p0b9e1xj0bq2321likp2lvnh62wqgxiw';
-       Для Make.com укажите URL Custom Webhook. JSON отправляется как text/plain, чтобы избежать CORS-preflight; endpoint должен отвечать HTTP 2xx. */
-    window.ITD_FORM_ENDPOINT = 'https://hook.eu1.make.com/p0b9e1xj0bq2321likp2lvnh62wqgxiw';
-
+    /* Отправка форм отключена. Заполненные данные остаются на странице. */
     (function () {
       var form = itd.querySelector('#f');
-      var errorBox = itd.querySelector('#form-error');
       if (!form) return;
-
-      function endpoint() {
-        return (window.ITD_FORM_ENDPOINT || '').trim();
-      }
-
-      function formToObject(formEl) {
-        var obj = {};
-        new FormData(formEl).forEach(function (value, key) {
-          if (key === 'website') return;
-          if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            obj[key] = Array.isArray(obj[key]) ? obj[key].concat(value) : [obj[key], value];
-          } else {
-            obj[key] = value;
-          }
-        });
-        return obj;
-      }
-
-      function tracking() {
-        var params = new URLSearchParams(window.location.search);
-        var data = {};
-        ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach(function (key) {
-          if (params.get(key)) data[key] = params.get(key);
-        });
-        return data;
-      }
-
-      function setError(message) {
-        errorBox.textContent = message || '';
-        errorBox.classList.toggle('is-visible', !!message);
-      }
-
-      form.addEventListener('submit', async function (event) {
+      form.addEventListener('submit', function (event) {
         event.preventDefault();
-        setError('');
-
-        var honeypot = form.elements.website;
-        if (honeypot && honeypot.value) {
-          form.style.display = 'none';
-          itd.querySelector('#ok').style.display = 'block';
-          return;
-        }
-
-        var url = endpoint();
-        if (!url) {
-          setError('Отправка ещё не подключена: укажите ITD_FORM_ENDPOINT.');
-          return;
-        }
-
-        var button = form.querySelector('button[type=submit]');
-        var originalText = button.textContent;
-        button.disabled = true;
-        button.textContent = 'Отправляем…';
-
-        var payload = formToObject(form);
-        payload.form_type = 'calculation_request';
-        payload.page_url = window.location.href;
-        payload.referrer = document.referrer || '';
-        payload.submitted_at = new Date().toISOString();
-        payload.tracking = tracking();
-
-        var controller = new AbortController();
-        var timer = setTimeout(function () { controller.abort(); }, 12000);
-
-        try {
-          var response = await fetch(url, {
-            method: 'POST',
-            headers: {'Content-Type': 'text/plain;charset=UTF-8'},
-            body: JSON.stringify(payload),
-            signal: controller.signal
-          });
-          if (!response.ok) throw new Error('HTTP ' + response.status);
-
-          form.reset();
-          form.style.display = 'none';
-          itd.querySelector('#ok').style.display = 'block';
-        } catch (err) {
-          console.error('ITD form submit failed:', err);
-          setError('Не удалось отправить заявку. Попробуйте ещё раз или свяжитесь с нами другим способом.');
-        } finally {
-          clearTimeout(timer);
-          button.disabled = false;
-          button.textContent = originalText;
-        }
       });
     })();
 
