@@ -1,0 +1,753 @@
+<meta charset="utf-8">
+<!--
+  ITD Studio — страница анкеты для вставки в Tilda (блок T123, «HTML-код»).
+  Вставьте весь файл в один блок T123. Адрес страницы в Tilda: anketa.
+-->
+<style>
+  /* ============================================================
+     Цвета и базовые стили
+        Основные цвета сайта заданы переменными в :root. Меняйте их здесь.
+     ============================================================ */
+
+  :root{
+    box-sizing: border-box;
+    --bg: #1d1a17;
+    --ink: #f6f1ea;
+    --muted: #cfc6ba;
+    --accent: #d9a066;
+    --accent-ink: #1d1a17;
+    --card: #faf6f0;
+    --card-ink: #26211c;
+    --card-muted: #6f665c;
+    --line: #ddd3c6;
+    --field: #fff;
+    padding-top: env(safe-area-inset-top,0px);
+    padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]){
+      --card: #2a2520;
+      --card-ink: #f3ede4;
+      --card-muted: #b3a89a;
+      --line: #453d34;
+      --field: #1d1a17;
+    }
+  }
+
+  :root[data-theme="dark"]{
+    --card: #2a2520;
+    --card-ink: #f3ede4;
+    --card-muted: #b3a89a;
+    --line: #453d34;
+    --field: #1d1a17;
+  }
+
+  #itd {
+    box-sizing: border-box;
+  }
+
+  #itd *, #itd *::before, #itd *::after{
+    box-sizing: inherit;
+  }
+
+  html{
+    scroll-padding-top: calc(env(safe-area-inset-top,0px) + var(--hh,70px));
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html{
+      scroll-behavior: auto;
+    }
+  }
+
+  body{
+    margin: 0;
+    color: var(--ink);
+    font-family: "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+    background: radial-gradient(900px 500px at 85% 0%,#5e4630 0%,transparent 60%),linear-gradient(135deg,#3a2f25,#241d17 55%,#1d1a17) fixed,#1d1a17;
+  }
+
+
+  /* ============================================================
+     Шапка и логотип
+     ============================================================ */
+
+  #itd header{
+    position: fixed;
+    top: env(safe-area-inset-top,0px);
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px clamp(16px,5vw,64px);
+    flex-wrap: wrap;
+    background: rgba(18,15,13,.78);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(246,241,234,.08);
+  }
+
+  #itd .hdsp{
+    height: var(--hh,70px);
+  }
+
+  #itd .logo{
+    font-weight: 800;
+    letter-spacing: .14em;
+    font-size: 20px;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  #itd .logo span{
+    color: var(--accent);
+  }
+
+  #itd .contacts{
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    font-size: 15px;
+    flex-wrap: wrap;
+  }
+
+  #itd .contacts a{
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  #itd .contacts .tg{
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 6px 12px;
+    border-radius: 999px;
+  }
+
+  #itd .logo svg{
+    display: block;
+    height: 40px;
+    width: auto;
+  }
+
+  @media (max-width: 640px) {
+    #itd .logo svg{
+      height: 34px;
+    }
+  }
+
+  #itd .itdd{
+    fill: #C0643A;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  #itd .itdd1{
+    animation: itdGrow .6s ease-out both,itdPulse 3s ease-in-out 1.6s infinite;
+  }
+
+  #itd .itdd2{
+    animation: itdGrow .6s ease-out .15s both,itdPulse 3s ease-in-out 1.85s infinite;
+  }
+
+  #itd .itdd3{
+    animation: itdGrow .6s ease-out .3s both,itdPulse 3s ease-in-out 2.1s infinite;
+  }
+
+  @keyframes itdGrow {
+    from {
+      transform: scale(0);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes itdPulse {
+    0%,
+    16%,
+    100% {
+      transform: scale(1);
+    }
+    8% {
+      transform: scale(1.22);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #itd .itdd{
+      animation: none;
+    }
+  }
+
+
+  /* ============================================================
+     Заголовок и вступление
+     ============================================================ */
+
+  #itd .wrap{
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 12px clamp(16px,5vw,32px) 64px;
+  }
+
+  #itd .eyebrow{
+    color: var(--accent);
+    font-size: 13px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin: 0 0 12px;
+  }
+
+  #itd h1{
+    font-size: clamp(28px,4.2vw,44px);
+    line-height: 1.12;
+    margin: 0 0 14px;
+    font-weight: 800;
+    letter-spacing: -.01em;
+  }
+
+  #itd .intro{
+    color: var(--muted);
+    font-size: clamp(16px,1.6vw,18px);
+    margin: 0 0 28px;
+    max-width: 34em;
+  }
+
+
+  /* ============================================================
+     Разделы анкеты и поля
+     ============================================================ */
+
+  #itd .sec{
+    background: var(--card);
+    color: var(--card-ink);
+    border-radius: 18px;
+    padding: 24px clamp(18px,3vw,28px);
+    margin-bottom: 18px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.3);
+  }
+
+  #itd .sec h2{
+    margin: 0 0 16px;
+    font-size: 20px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  #itd .sec h2 em{
+    font-style: normal;
+    background: var(--accent);
+    color: var(--accent-ink);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: inline-grid;
+    place-items: center;
+    font-size: 15px;
+    font-weight: 800;
+    flex: none;
+  }
+
+  #itd .grid{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 16px;
+  }
+
+  #itd .full{
+    grid-column: 1/-1;
+  }
+
+  #itd label.l, #itd .q{
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 6px;
+    color: var(--card-ink);
+  }
+
+  #itd .q{
+    margin-top: 4px;
+  }
+
+  #itd .req{
+    color: var(--accent);
+  }
+
+  #itd input[type=text], #itd input[type=tel], #itd input[type=email], #itd input[type=number], #itd select, #itd textarea{
+    width: 100%;
+    padding: 13px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--field);
+    color: var(--card-ink);
+    font-size: 16px;
+    margin-bottom: 14px;
+    font-family: inherit;
+  }
+
+  #itd textarea{
+    min-height: 92px;
+    resize: vertical;
+  }
+
+  #itd input:focus, #itd select:focus, #itd textarea:focus{
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  #itd .chips{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  #itd .chip{
+    position: relative;
+    display: block;
+  }
+
+  #itd .chip input{
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  #itd .chip span{
+    display: block;
+    padding: 9px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    background: var(--field);
+    font-size: 15px;
+  }
+
+  #itd .chip:hover span{
+    border-color: var(--accent);
+  }
+
+  #itd .chip input:checked+span{
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+
+  #itd .chip input:focus-visible+span{
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  #itd .consent{
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    font-size: 13px;
+    color: var(--card-muted);
+    margin: 4px 0 18px;
+  }
+
+  #itd .consent input{
+    margin-top: 3px;
+    accent-color: var(--accent);
+  }
+
+  #itd .consent a{
+    color: inherit;
+  }
+
+  #itd .hint{
+    font-size: 13px;
+    color: var(--card-muted);
+    text-align: center;
+    margin: 10px 0 0;
+  }
+
+  @media (max-width: 640px) {
+    #itd .grid{
+      grid-template-columns: 1fr;
+    }
+  }
+
+
+  /* ============================================================
+     Кнопки
+     ============================================================ */
+
+  #itd .btn{
+    display: block;
+    width: 100%;
+    padding: 16px 26px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 17px;
+    border: 2px solid var(--accent);
+    background: var(--accent);
+    color: var(--accent-ink);
+    cursor: pointer;
+    font-family: inherit;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  #itd .btn:hover{
+    filter: brightness(1.08);
+  }
+
+
+  /* ============================================================
+     Сообщение после отправки
+     ============================================================ */
+
+  #itd .thanks{
+    display: none;
+    text-align: center;
+    padding: 48px 24px;
+  }
+
+  #itd .thanks h2{
+    display: block;
+    font-size: 28px;
+  }
+
+  #itd .thanks .btn{
+    display: inline-block;
+    width: auto;
+    margin-top: 16px;
+  }
+
+  /* Tilda: убираем её фон и подставляем шрифты, чтобы фото было видно */
+  #allrecords, #allrecords .t-records, .t-body{
+    background: transparent !important;
+  }
+
+  #itd{
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  }
+
+  #itd input, #itd button, #itd select, #itd textarea{
+    font-family: inherit;
+  }
+
+  /* Stage 2: states for real form submission */
+  #itd .itd-hp{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important}
+  #itd .form-error{display:none;margin:12px 0 0;font-size:13px;line-height:1.4;color:#a3342d}
+  #itd .form-error.is-visible{display:block}
+  #itd button[disabled]{cursor:wait;opacity:.72}
+
+</style>
+<div id="itd">
+
+  <!-- ===== Шапка: логотип, меню, контакты. Закреплена сверху ===== -->
+  <header>
+    <a class="logo" href="/">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170.7 32" role="img" aria-label="ITD Studio">
+        <title>ITD Studio</title>
+        <circle class="itdd itdd1" cx="4" cy="16" r="3"></circle>
+        <circle class="itdd itdd2" cx="17" cy="16" r="5"></circle>
+        <circle class="itdd itdd3" cx="34.5" cy="16" r="7.5"></circle>
+        <path d="M55.97 8.4V23H53.58V8.4ZM70.05 8.4V10.36H66.16V23H63.77V10.36H59.86V8.4ZM86.48 15.75Q86.48 17.98 85.52 19.62Q84.57 21.26 82.81 22.13Q81.06 23 78.73 23H73.96V8.4H78.73Q81.06 8.4 82.81 9.3Q84.57 10.19 85.52 11.86Q86.48 13.53 86.48 15.75ZM84.02 15.75Q84.02 13.21 82.66 11.79Q81.29 10.36 78.73 10.36H76.36V21.05H78.73Q81.29 21.05 82.66 19.66Q84.02 18.27 84.02 15.75ZM96.96 18.97H99.52Q99.6 19.91 100.26 20.52Q100.92 21.13 102.12 21.13Q103.36 21.13 104.05 20.53Q104.75 19.93 104.75 18.99Q104.75 18.25 104.32 17.79Q103.89 17.33 103.24 17.08Q102.6 16.83 101.47 16.53Q100.04 16.15 99.15 15.77Q98.26 15.38 97.63 14.56Q97 13.74 97 12.37Q97 11.11 97.63 10.17Q98.26 9.22 99.39 8.72Q100.53 8.22 102.02 8.22Q104.14 8.22 105.49 9.28Q106.85 10.34 106.99 12.18H104.35Q104.28 11.39 103.59 10.82Q102.9 10.25 101.76 10.25Q100.74 10.25 100.08 10.78Q99.43 11.3 99.43 12.29Q99.43 12.96 99.84 13.39Q100.25 13.82 100.88 14.07Q101.51 14.33 102.6 14.62Q104.05 15.02 104.97 15.42Q105.88 15.82 106.52 16.65Q107.16 17.48 107.16 18.86Q107.16 19.98 106.56 20.96Q105.96 21.95 104.82 22.55Q103.68 23.15 102.12 23.15Q100.65 23.15 99.48 22.63Q98.3 22.12 97.63 21.17Q96.96 20.23 96.96 18.97ZM114.29 13.38V19.79Q114.29 20.44 114.59 20.72Q114.9 21 115.63 21H117.1V23H115.21Q113.6 23 112.74 22.24Q111.87 21.49 111.87 19.79V13.38H110.51V11.43H111.87V8.55H114.29V11.43H117.1V13.38ZM131.29 11.43V23H128.89V21.64Q128.33 22.35 127.41 22.76Q126.5 23.17 125.47 23.17Q124.11 23.17 123.02 22.6Q121.94 22.03 121.32 20.92Q120.7 19.81 120.7 18.23V11.43H123.08V17.88Q123.08 19.43 123.85 20.26Q124.63 21.09 125.97 21.09Q127.32 21.09 128.11 20.26Q128.89 19.43 128.89 17.88V11.43ZM140.62 11.24Q141.75 11.24 142.86 11.73Q143.96 12.23 144.61 13.05V7.46H147.03V23H144.61V21.26Q144.02 22.1 142.98 22.64Q141.94 23.19 140.6 23.19Q139.09 23.19 137.84 22.42Q136.59 21.66 135.86 20.28Q135.14 18.91 135.14 17.16Q135.14 15.42 135.86 14.07Q136.59 12.73 137.84 11.99Q139.09 11.24 140.62 11.24ZM141.1 13.32Q140.18 13.32 139.38 13.77Q138.58 14.22 138.09 15.09Q137.6 15.96 137.6 17.16Q137.6 18.36 138.09 19.26Q138.58 20.16 139.39 20.64Q140.2 21.11 141.1 21.11Q142.03 21.11 142.82 20.65Q143.62 20.19 144.12 19.29Q144.61 18.4 144.61 17.2Q144.61 16.01 144.12 15.12Q143.62 14.24 142.82 13.78Q142.03 13.32 141.1 13.32ZM151.36 8.36Q151.36 7.71 151.8 7.27Q152.24 6.83 152.89 6.83Q153.52 6.83 153.96 7.27Q154.41 7.71 154.41 8.36Q154.41 9.01 153.96 9.45Q153.52 9.9 152.89 9.9Q152.24 9.9 151.8 9.45Q151.36 9.01 151.36 8.36ZM154.07 11.43V23H151.67V11.43ZM157.94 17.2Q157.94 15.44 158.72 14.07Q159.5 12.71 160.84 11.97Q162.18 11.24 163.84 11.24Q165.5 11.24 166.85 11.97Q168.19 12.71 168.97 14.07Q169.74 15.44 169.74 17.2Q169.74 18.97 168.95 20.33Q168.15 21.7 166.77 22.44Q165.4 23.19 163.74 23.19Q162.1 23.19 160.78 22.44Q159.45 21.7 158.7 20.34Q157.94 18.99 157.94 17.2ZM167.29 17.2Q167.29 15.94 166.8 15.07Q166.32 14.2 165.52 13.76Q164.72 13.32 163.8 13.32Q162.88 13.32 162.09 13.76Q161.3 14.2 160.84 15.07Q160.38 15.94 160.38 17.2Q160.38 19.07 161.33 20.09Q162.29 21.11 163.74 21.11Q164.66 21.11 165.47 20.67Q166.28 20.23 166.78 19.35Q167.29 18.46 167.29 17.2Z" fill="#FFFFFF"></path>
+      </svg>
+    </a>
+    <div class="contacts">
+      <a href="/">На главную</a>
+      <a href="tel:+79166068310">+7 916 606-83-10</a>
+      <a class="tg" href="https://t.me/Kevbrina_Diana">Telegram</a>
+    </div>
+  </header>
+  <div class="hdsp"></div>
+  <div class="wrap">
+    <p class="eyebrow">Анкета</p>
+    <h1>Расскажите о вашем объекте</h1>
+    <p class="intro">Ответьте на несколько вопросов, и мы подготовим предложение по дизайн-проекту: от планировки до фурнитуры и т.д. Это займёт около пяти минут. Если на какой-то вопрос пока нет ответа, пропустите его.</p>
+    <form id="f">
+      <div class="itd-hp" aria-hidden="true"><label>Не заполняйте это поле<input autocomplete="off" name="website" tabindex="-1" type="text"/></label></div>
+      <section class="sec">
+        <h2><em>1</em>Контакты</h2>
+        <div class="grid">
+          <div>
+            <label class="l" for="n">Имя <span class="req">*</span></label>
+            <input autocomplete="name" id="n" name="name" required="" type="text"/>
+          </div>
+          <div>
+            <label class="l" for="p">Телефон <span class="req">*</span></label>
+            <input autocomplete="tel" id="p" name="phone" placeholder="+7 ___ ___-__-__" required="" type="tel"/>
+          </div>
+          <div class="full">
+            <label class="l" for="e">Email</label>
+            <input autocomplete="email" id="e" name="email" type="email"/>
+          </div>
+        </div>
+        <span class="q">Как удобнее связаться</span>
+        <div class="chips">
+          <label class="chip"><input checked="" name="contact" type="radio" value="telegram"/><span>Telegram</span></label>
+          <label class="chip"><input name="contact" type="radio" value="whatsapp"/><span>WhatsApp</span></label>
+          <label class="chip"><input name="contact" type="radio" value="call"/><span>Звонок</span></label>
+          <label class="chip"><input name="contact" type="radio" value="email"/><span>Email</span></label>
+        </div>
+      </section>
+      <section class="sec">
+        <h2><em>2</em>Об объекте</h2>
+        <span class="q">Тип объекта</span>
+        <div class="chips">
+          <label class="chip"><input name="type" type="radio" value="new_build"/><span>Квартира в новостройке</span></label>
+          <label class="chip"><input name="type" type="radio" value="secondary"/><span>Квартира во вторичке</span></label>
+          <label class="chip"><input name="type" type="radio" value="house"/><span>Дом</span></label>
+          <label class="chip"><input name="type" type="radio" value="commercial"/><span>Коммерческое помещение</span></label>
+        </div>
+        <div class="grid">
+          <div class="full">
+            <label class="l" for="addr">Адрес или название ЖК</label>
+            <input id="addr" name="address" type="text"/>
+          </div>
+          <div>
+            <label class="l" for="area">Площадь, м² <span class="req">*</span></label>
+            <input id="area" min="1" name="area" required="" type="number"/>
+          </div>
+          <div>
+            <label class="l" for="rooms">Комнат / санузлов</label>
+            <input id="rooms" name="rooms" placeholder="Например, 3 комнаты, 2 санузла" type="text"/>
+          </div>
+        </div>
+        <span class="q">Стадия</span>
+        <div class="chips">
+          <label class="chip"><input name="stage" type="radio" value="no_finish"/><span>Без отделки</span></label>
+          <label class="chip"><input name="stage" type="radio" value="rough_finish"/><span>Черновая отделка</span></label>
+          <label class="chip"><input name="stage" type="radio" value="renovation_in_progress"/><span>Ремонт идёт</span></label>
+          <label class="chip"><input name="stage" type="radio" value="new_renovation"/><span>Нужен новый ремонт</span></label>
+        </div>
+        <span class="q">Есть ли документы на объект (планировка, БТИ, обмеры)</span>
+        <div class="chips">
+          <label class="chip"><input name="docs" type="radio" value="yes"/><span>Есть</span></label>
+          <label class="chip"><input name="docs" type="radio" value="no"/><span>Нет</span></label>
+          <label class="chip"><input name="docs" type="radio" value="measurements_needed"/><span>Нужны обмеры</span></label>
+        </div>
+      </section>
+      <section class="sec">
+        <h2><em>3</em>Кто будет жить</h2>
+        <div class="grid">
+          <div>
+            <label class="l" for="ppl">Сколько человек</label>
+            <input id="ppl" name="residents" placeholder="Например, 2 взрослых и ребёнок" type="text"/>
+          </div>
+          <div>
+            <label class="l" for="pets">Есть ли животные</label>
+            <input id="pets" name="pets" placeholder="Кошка, собака и т. д." type="text"/>
+          </div>
+          <div class="full">
+            <label class="l" for="needs">Что важно в планировке</label>
+            <textarea id="needs" name="planning_needs" placeholder="Рабочее место, гардеробная, большая кухня, детская, хранение и т. д."></textarea>
+          </div>
+        </div>
+      </section>
+      <section class="sec">
+        <h2><em>4</em>Пожелания к интерьеру</h2>
+        <span class="q">Стиль (можно несколько)</span>
+        <div class="chips">
+          <label class="chip"><input name="styles" type="checkbox" value="modern"/><span>Современный</span></label>
+          <label class="chip"><input name="styles" type="checkbox" value="minimalism"/><span>Минимализм</span></label>
+          <label class="chip"><input name="styles" type="checkbox" value="scandinavian"/><span>Скандинавский</span></label>
+          <label class="chip"><input name="styles" type="checkbox" value="neoclassic"/><span>Неоклассика</span></label>
+          <label class="chip"><input name="styles" type="checkbox" value="loft"/><span>Лофт</span></label>
+          <label class="chip"><input name="styles" type="checkbox" value="unknown"/><span>Пока не знаю</span></label>
+        </div>
+        <label class="l" for="likes">Что нравится и что не нравится</label>
+        <textarea id="likes" name="likes_dislikes" placeholder="Цвета, материалы, примеры интерьеров. Можно вставить ссылки на референсы."></textarea>
+        <span class="q">Нужна ли перепланировка</span>
+        <div class="chips">
+          <label class="chip"><input name="redev" type="radio" value="yes"/><span>Да</span></label>
+          <label class="chip"><input name="redev" type="radio" value="no"/><span>Нет</span></label>
+          <label class="chip"><input name="redev" type="radio" value="unknown"/><span>Пока не знаю</span></label>
+        </div>
+      </section>
+      <section class="sec">
+        <h2><em>5</em>Услуги и сроки</h2>
+        <span class="q">Что вам нужно</span>
+        <div class="chips">
+          <label class="chip"><input name="services" type="checkbox" value="design_project"/><span>Дизайн-проект</span></label>
+          <label class="chip"><input name="services" type="checkbox" value="planning_only"/><span>Только планировка</span></label>
+          <label class="chip"><input name="services" type="checkbox" value="supervision"/><span>Авторский надзор</span></label>
+          <label class="chip"><input name="services" type="checkbox" value="turnkey"/><span>Ремонт под ключ</span></label>
+        </div>
+        <div class="grid">
+          <div>
+            <label class="l" for="budget">Бюджет на ремонт и мебель</label>
+            <select id="budget" name="budget">
+              <option value="">Выберите</option>
+              <option>до 3 млн ₽</option>
+              <option>3–6 млн ₽</option>
+              <option>6–10 млн ₽</option>
+              <option>более 10 млн ₽</option>
+              <option>Пока не определился</option>
+            </select>
+          </div>
+          <div>
+            <label class="l" for="when">Когда планируете начать</label>
+            <select id="when" name="start_time">
+              <option value="">Выберите</option>
+              <option>В ближайший месяц</option>
+              <option>Через 1–3 месяца</option>
+              <option>Через 3–6 месяцев</option>
+              <option>Позже или пока не знаю</option>
+            </select>
+          </div>
+          <div class="full">
+            <label class="l" for="more">Дополнительные пожелания</label>
+            <textarea id="more" name="additional"></textarea>
+          </div>
+        </div>
+        <label class="consent"><input name="consent" required="" type="checkbox" value="yes"/><span>Согласен на обработку персональных данных в соответствии с <a href="https://itdstudio.ru/policy">политикой</a></span></label>
+        <button class="btn" type="submit">Отправить анкету</button>
+        <p class="form-error" id="form-error" role="alert"></p>
+        <p class="hint">Свяжемся с вами в ближайшее время</p>
+      </section>
+    </form>
+
+    <!-- ===== Сообщение после отправки анкеты ===== -->
+    <section class="sec thanks" id="ok">
+      <h2>Спасибо!</h2>
+      <p>Анкета получена, скоро мы с вами свяжемся.</p>
+      <a class="btn" href="/">На главную</a>
+    </section>
+  </div>
+
+  <script>
+    var itd = document.getElementById('itd');
+    if (!itd) { throw new Error('ITD root not found'); }
+
+
+    /* ============================================================
+       ITD Studio — скрипты страницы анкеты
+       ============================================================ */
+
+
+    /* ---------- 1. Высота закреплённой шапки ----------
+       Шапка закреплена (position: fixed), поэтому под неё нужен отступ.
+       Скрипт измеряет её высоту и записывает в переменную --hh. */
+    (function () {
+      var header = itd.querySelector('header');
+      if (!header) return;
+
+      function updateHeaderHeight() {
+        document.documentElement.style.setProperty('--hh', header.offsetHeight + 'px');
+      }
+
+      updateHeaderHeight();
+      window.addEventListener('resize', updateHeaderHeight);
+      window.addEventListener('load', updateHeaderHeight);
+    })();
+
+
+    /* ---------- 2. Отправка анкеты ----------
+       Укажите endpoint один раз перед публикацией:
+       window.ITD_FORM_ENDPOINT = 'https://hook.eu1.make.com/p0b9e1xj0bq2321likp2lvnh62wqgxiw';
+       Для Make.com укажите URL Custom Webhook. JSON отправляется как text/plain, чтобы избежать CORS-preflight; endpoint должен отвечать HTTP 2xx. */
+    window.ITD_FORM_ENDPOINT = 'https://hook.eu1.make.com/p0b9e1xj0bq2321likp2lvnh62wqgxiw';
+
+    (function () {
+      var form = itd.querySelector('#f');
+      var errorBox = itd.querySelector('#form-error');
+      if (!form) return;
+
+      function endpoint() {
+        return (window.ITD_FORM_ENDPOINT || '').trim();
+      }
+
+      function formToObject(formEl) {
+        var obj = {};
+        new FormData(formEl).forEach(function (value, key) {
+          if (key === 'website') return;
+          if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            obj[key] = Array.isArray(obj[key]) ? obj[key].concat(value) : [obj[key], value];
+          } else {
+            obj[key] = value;
+          }
+        });
+        return obj;
+      }
+
+      function tracking() {
+        var params = new URLSearchParams(window.location.search);
+        var data = {};
+        ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach(function (key) {
+          if (params.get(key)) data[key] = params.get(key);
+        });
+        return data;
+      }
+
+      function setError(message) {
+        errorBox.textContent = message || '';
+        errorBox.classList.toggle('is-visible', !!message);
+      }
+
+      form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        setError('');
+
+        var honeypot = form.elements.website;
+        if (honeypot && honeypot.value) {
+          form.style.display = 'none';
+          itd.querySelector('#ok').style.display = 'block';
+          window.scrollTo(0, 0);
+          return;
+        }
+
+        var url = endpoint();
+        if (!url) {
+          setError('Отправка ещё не подключена: укажите ITD_FORM_ENDPOINT.');
+          return;
+        }
+
+        var button = form.querySelector('button[type=submit]');
+        var originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Отправляем…';
+
+        var payload = formToObject(form);
+        payload.form_type = 'design_questionnaire';
+        payload.page_url = window.location.href;
+        payload.referrer = document.referrer || '';
+        payload.submitted_at = new Date().toISOString();
+        payload.tracking = tracking();
+
+        var controller = new AbortController();
+        var timer = setTimeout(function () { controller.abort(); }, 12000);
+
+        try {
+          var response = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'text/plain;charset=UTF-8'},
+            body: JSON.stringify(payload),
+            signal: controller.signal
+          });
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+
+          form.reset();
+          form.style.display = 'none';
+          itd.querySelector('#ok').style.display = 'block';
+          window.scrollTo({top: 0, behavior: 'smooth'});
+        } catch (err) {
+          console.error('ITD questionnaire submit failed:', err);
+          setError('Не удалось отправить анкету. Попробуйте ещё раз или свяжитесь с нами другим способом.');
+        } finally {
+          clearTimeout(timer);
+          button.disabled = false;
+          button.textContent = originalText;
+        }
+      });
+    })();
+
+  </script>
+</div>
