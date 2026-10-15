@@ -1,98 +1,489 @@
 <!doctype html>
 <html lang="ru">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex,nofollow">
-  <title>Личный кабинет — ITD Studio</title>
-  <link rel="stylesheet" href="/cabinet.css">
-  <script src="/cabinet.js" defer></script>
-</head>
-<body>
-  <a class="skip-link" href="#main">К содержимому</a>
-  <header class="site-header">
-    <a class="brand" href="/" aria-label="ITD Studio — на главную">ITD<span>STUDIO</span></a>
-    <a class="back-link" href="/">На сайт <span aria-hidden="true">↗</span></a>
-  </header>
-  <main id="main">
-    <section id="login-view" class="login-layout" aria-labelledby="login-heading">
-      <div class="intro">
-        <p class="eyebrow">Ваш интерьер. Всё по порядку.</p>
-        <h1 id="login-heading">Личный<br>кабинет</h1>
-        <p class="intro-copy">Этапы проекта, результаты работы и документы — в одном месте.</p>
-      </div>
-      <div class="panel login-panel">
-        <div class="auth-tabs" aria-label="Доступ в кабинет"><button id="show-login" type="button" class="auth-tab" aria-pressed="true">Вход</button><button id="show-register" type="button" class="auth-tab" aria-pressed="false">Регистрация</button></div>
-        <h2 id="auth-heading">Вход в проект</h2>
-        <p class="muted">Войдите или создайте аккаунт. Студия предоставит доступ к вашему проекту.</p>
-        <form id="login-form">
-          <label for="login-email">Email</label>
-          <input id="login-email" name="email" type="email" autocomplete="username" required maxlength="254">
-          <label for="login-password">Пароль</label>
-          <input id="login-password" name="password" type="password" autocomplete="current-password" required maxlength="256">
-          <p id="login-error" class="error" role="alert"></p>
-          <button type="submit" class="primary">Войти</button>
-        </form>
-        <form id="register-form" hidden>
-          <label for="register-name">Ваше имя</label><input id="register-name" name="name" autocomplete="name" required maxlength="120">
-          <label for="register-email">Email</label><input id="register-email" name="email" type="email" autocomplete="username" required maxlength="254">
-          <label for="register-password">Пароль</label><input id="register-password" name="password" type="password" autocomplete="new-password" required minlength="12" maxlength="256" aria-describedby="register-password-help"><small id="register-password-help">Не менее 12 символов.</small>
-          <p id="register-error" class="error" role="alert"></p>
-          <button type="submit" class="primary">Зарегистрироваться</button>
-        </form>
-        <p class="login-help">Не получается войти? <a href="https://t.me/Kevbrina_Diana">Напишите в студию</a>.</p>
-      </div>
-    </section>
-    <section id="app-view" class="workspace" hidden aria-label="Ваши проекты">
-      <div class="account-bar">
-        <div><p class="eyebrow">Личный кабинет</p><strong id="user-name"></strong> <span id="user-role" class="muted"></span></div>
-        <div class="account-actions"><button id="refresh-button" type="button" class="secondary">Обновить</button><button id="logout-button" type="button" class="secondary">Выйти</button></div>
-      </div>
-      <div class="workspace-grid">
-        <aside class="project-sidebar" aria-labelledby="projects-heading">
-          <h2 id="projects-heading">Проекты</h2>
-          <div id="project-list" class="project-list"></div>
-        </aside>
-        <div class="project-area">
-          <div id="empty-state" class="panel empty-state"><h2>Выберите проект</h2><p class="muted">Здесь появятся этапы работы и материалы вашего проекта.</p></div>
-          <article id="project-content" hidden>
-            <div class="project-heading"><div><p class="eyebrow">Проект</p><h1 id="project-title"></h1><p id="project-client" class="muted"></p></div><span id="project-status" class="badge"></span></div>
-            <section class="panel" aria-labelledby="stages-heading"><h2 id="stages-heading">Этапы работы</h2><div id="stage-list" class="stage-list"></div></section>
-            <section class="panel" aria-labelledby="results-heading"><h2 id="results-heading">Результаты</h2><div id="result-list" class="file-list"></div></section>
-            <section class="panel" aria-labelledby="documents-heading"><h2 id="documents-heading">Документы</h2><div id="document-list" class="file-list"></div></section>
-          </article>
-          <section id="admin-panel" class="admin-panel" hidden aria-labelledby="admin-heading">
-            <div class="section-heading"><p class="eyebrow">Студия</p><h2 id="admin-heading">Управление проектами</h2></div>
-            <details class="panel" open><summary>Создать проект и назначить клиента</summary>
-              <form id="create-project-form" class="admin-form">
-                <label for="create-title">Название проекта</label><input id="create-title" name="title" required maxlength="200">
-                <label for="create-client">Клиент</label><select id="create-client" name="clientId" required><option value="">Выберите зарегистрированного клиента</option></select>
-                <button type="submit" class="primary">Создать проект</button>
-              </form>
-            </details>
-            <details class="panel"><summary>Добавить этап в выбранный проект</summary>
-              <form id="add-stage-form" class="admin-form">
-                <label for="stage-title">Название этапа</label><input id="stage-title" name="title" required maxlength="200">
-                <label for="stage-status">Статус</label><select id="stage-status" name="status"><option value="planned">Запланирован</option><option value="in_progress">В работе</option><option value="completed">Завершён</option></select>
-                <label for="stage-description">Описание</label><textarea id="stage-description" name="description" rows="4" maxlength="5000"></textarea>
-                <button type="submit" class="primary">Добавить этап</button>
-              </form>
-            </details>
-            <details class="panel"><summary>Загрузить материал в выбранный проект</summary>
-              <form id="upload-file-form" class="admin-form" enctype="multipart/form-data">
-                <label for="upload-file">Файл</label><input id="upload-file" name="file" type="file" required>
-                <label for="upload-category">Раздел</label><select id="upload-category" name="category"><option value="result">Результаты</option><option value="document">Документы</option></select>
-                <label for="upload-stage">Этап</label><select id="upload-stage" name="stageId"><option value="">Без привязки к этапу</option></select>
-                <button type="submit" class="primary">Загрузить файл</button>
-              </form>
-            </details>
-          </section>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Личный кабинет — ITD Studio</title>
+    <link rel="stylesheet" href="/cabinet.css" />
+    <script src="/cabinet.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">К содержимому</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="ITD Studio — на главную"
+        >ITD<span>STUDIO</span></a
+      >
+      <a class="back-link" href="/"
+        >На сайт <span aria-hidden="true">→</span></a
+      >
+    </header>
+    <main id="main">
+      <section
+        id="login-view"
+        class="login-layout"
+        aria-labelledby="login-heading"
+      >
+        <div class="intro">
+          <div class="interior-art" aria-hidden="true">
+            <div class="art-arch"></div>
+            <div class="art-sun"></div>
+            <div class="art-plinth"></div>
+            <div class="art-line"></div>
+            <span>ITD / ПРОСТРАНСТВО ДЛЯ ЖИЗНИ</span>
+          </div>
+          <p class="eyebrow">Ваш интерьер. Всё по порядку.</p>
+          <h1 id="login-heading">Ваш проект.<br /><em>В деталях.</em></h1>
+          <p class="intro-copy">
+            Этапы проекта, результаты работы и документы — в одном месте.
+          </p>
         </div>
-      </div>
-    </section>
-    <p id="status-message" class="status-message" role="status" aria-live="polite"></p>
-    <noscript><p class="panel">Для работы личного кабинета включите JavaScript в браузере.</p></noscript>
-  </main>
-  <footer>ITD Studio <span>Интерьер, продуманный до мелочей.</span></footer>
-</body>
+        <div class="panel login-panel">
+          <div class="auth-tabs" aria-label="Доступ в кабинет">
+            <button
+              id="show-login"
+              type="button"
+              class="auth-tab"
+              aria-pressed="true"
+            >
+              Вход</button
+            ><button
+              id="show-register"
+              type="button"
+              class="auth-tab"
+              aria-pressed="false"
+            >
+              Регистрация
+            </button>
+          </div>
+          <h2 id="auth-heading">Вход в проект</h2>
+          <p class="muted">
+            Войдите или создайте аккаунт. Студия предоставит доступ к вашему
+            проекту.
+          </p>
+          <form id="login-form">
+            <label for="login-email">Email</label>
+            <input
+              id="login-email"
+              name="email"
+              type="email"
+              autocomplete="username"
+              required
+              maxlength="254"
+            />
+            <label for="login-password">Пароль</label>
+            <input
+              id="login-password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              maxlength="256"
+            />
+            <p id="login-error" class="error" role="alert"></p>
+            <button type="submit" class="primary">Войти</button>
+          </form>
+          <form id="register-form" hidden>
+            <label for="register-name">Ваше имя</label
+            ><input
+              id="register-name"
+              name="name"
+              autocomplete="name"
+              required
+              maxlength="120"
+            />
+            <label for="register-email">Email</label
+            ><input
+              id="register-email"
+              name="email"
+              type="email"
+              autocomplete="username"
+              required
+              maxlength="254"
+            />
+            <label for="register-password">Пароль</label
+            ><input
+              id="register-password"
+              name="password"
+              type="password"
+              autocomplete="new-password"
+              required
+              minlength="12"
+              maxlength="256"
+              aria-describedby="register-password-help"
+            /><small id="register-password-help">Не менее 12 символов.</small>
+            <p id="register-error" class="error" role="alert"></p>
+            <button type="submit" class="primary">Зарегистрироваться</button>
+          </form>
+          <p class="login-help">
+            Не получается войти?
+            <a href="https://t.me/Kevbrina_Diana">Напишите в студию</a>.
+          </p>
+        </div>
+      </section>
+      <section id="app-view" class="workspace" hidden aria-label="Ваши проекты">
+        <aside class="project-sidebar" aria-label="Навигация кабинета">
+          <a
+            class="brand sidebar-brand"
+            href="/"
+            aria-label="ITD Studio — на главную"
+            >ITD<span>STUDIO</span></a
+          >
+          <p class="sidebar-caption">ПРОСТРАНСТВО КЛИЕНТА</p>
+          <div class="project-switcher">
+            <h2 id="projects-heading">
+              Ваши проекты <span id="project-count"></span>
+            </h2>
+            <div
+              id="project-list"
+              class="project-list"
+              aria-labelledby="projects-heading"
+            ></div>
+          </div>
+          <nav
+            class="workspace-nav"
+            role="tablist"
+            aria-orientation="vertical"
+            aria-label="Разделы проекта"
+          >
+            <button
+              id="tab-overview"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="panel-overview"
+              data-tab="overview"
+            >
+              <span aria-hidden="true">◫</span>Обзор
+            </button>
+            <button
+              id="tab-stages"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="panel-stages"
+              data-tab="stages"
+            >
+              <span aria-hidden="true">≡</span>Этапы проекта
+            </button>
+            <button
+              id="tab-results"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="panel-results"
+              data-tab="results"
+            >
+              <span aria-hidden="true">▧</span>Результаты
+            </button>
+            <button
+              id="tab-documents"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="panel-documents"
+              data-tab="documents"
+            >
+              <span aria-hidden="true">▤</span>Документы
+            </button>
+            <button
+              id="tab-management"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="admin-panel"
+              data-tab="management"
+              hidden
+            >
+              <span aria-hidden="true">⊞</span>Управление
+            </button>
+          </nav>
+          <div class="sidebar-bottom">
+            <a class="studio-contact" href="https://t.me/Kevbrina_Diana"
+              >Связаться со студией <span aria-hidden="true">→</span></a
+            >
+            <div class="account-bar">
+              <div id="user-avatar" class="account-avatar" aria-hidden="true">
+                ITD
+              </div>
+              <div class="account-person">
+                <strong id="user-name"></strong><span id="user-role"></span>
+              </div>
+              <button
+                id="logout-button"
+                type="button"
+                aria-label="Выйти из кабинета"
+                title="Выйти"
+              >
+                Выйти
+              </button>
+            </div>
+          </div>
+        </aside>
+        <div class="workspace-body">
+          <div class="workspace-topbar">
+            <span
+              >ITD Studio <span class="topbar-divider">/</span> Личный
+              кабинет</span
+            >
+            <div class="topbar-actions">
+              <button id="refresh-button" type="button" class="text-button">
+                <span aria-hidden="true">↻</span> Обновить</button
+              ><a href="/">На сайт →</a>
+            </div>
+          </div>
+          <div class="project-area">
+            <div id="empty-state" class="empty-state panel">
+              <span class="empty-symbol" aria-hidden="true">◫</span>
+              <p class="eyebrow">Всё начинается с идеи</p>
+              <h1>Ваше пространство<br />для будущего проекта</h1>
+              <p class="muted">
+                После назначения проекта здесь появятся этапы работы,<br />материалы
+                и документы. Если проект уже в работе,<br />свяжитесь со
+                студией.
+              </p>
+              <a class="primary button-link" href="https://t.me/Kevbrina_Diana"
+                >Связаться со студией →</a
+              >
+            </div>
+            <article id="project-content" hidden>
+              <div class="project-heading">
+                <div>
+                  <p class="eyebrow">Дизайн, продуманный до мелочей</p>
+                  <h1 id="project-title"></h1>
+                  <p id="project-client" class="muted"></p>
+                </div>
+                <span id="project-status" class="badge"></span>
+              </div>
+              <section
+                id="panel-overview"
+                data-tab-panel="overview"
+                role="tabpanel"
+                tabindex="0"
+                aria-labelledby="tab-overview"
+              >
+                <div class="overview-grid">
+                  <section class="panel progress-card">
+                    <div class="section-topline">
+                      <span class="eyebrow">Движение проекта</span
+                      ><span class="small-label">Этап за этапом</span>
+                    </div>
+                    <h2>От идеи к вашему интерьеру</h2>
+                    <div class="progress-label">
+                      <span>Прогресс по этапам</span
+                      ><strong id="overview-progress-text">—</strong>
+                    </div>
+                    <progress
+                      id="project-progress"
+                      max="100"
+                      value="0"
+                      aria-label="Прогресс по этапам"
+                    ></progress>
+                    <p id="overview-next-stage" class="muted"></p>
+                  </section>
+                  <section class="panel materials-card">
+                    <p class="eyebrow">Всё под рукой</p>
+                    <div class="metric">
+                      <strong id="overview-stage-count">—</strong
+                      ><span>этапов завершено</span>
+                    </div>
+                    <div class="metric">
+                      <strong id="overview-file-count">—</strong
+                      ><span>файлов и документов</span>
+                    </div>
+                  </section>
+                </div>
+                <div class="section-title">
+                  <h2>План работы</h2>
+                  <button
+                    type="button"
+                    class="text-button"
+                    data-open-tab="stages"
+                  >
+                    Все этапы <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+                <div id="overview-stage-preview" class="overview-preview"></div>
+                <p id="overview-next-action" class="muted"></p>
+                <div class="section-title recent-materials-heading">
+                  <h2>Последние материалы</h2>
+                  <button
+                    type="button"
+                    class="text-button"
+                    data-open-tab="results"
+                  >
+                    Все результаты <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+                <div
+                  id="overview-recent-files"
+                  class="file-list overview-recent-files"
+                ></div>
+                <div class="studio-note">
+                  <div class="note-monogram" aria-hidden="true">И т.д.</div>
+                  <div>
+                    <h3>Важна каждая деталь</h3>
+                    <p>
+                      Результаты работы и документы вашего проекта собраны
+                      здесь. Если остались вопросы, мы всегда на связи.
+                    </p>
+                  </div>
+                  <a href="https://t.me/Kevbrina_Diana">Написать студии →</a>
+                </div>
+              </section>
+              <section
+                id="panel-stages"
+                data-tab-panel="stages"
+                role="tabpanel"
+                tabindex="0"
+                aria-labelledby="tab-stages"
+                hidden
+              >
+                <div class="section-title">
+                  <div>
+                    <h2>Этапы проекта</h2>
+                    <p class="muted">
+                      План работы и текущий статус каждого этапа.
+                    </p>
+                  </div>
+                </div>
+                <div id="stage-list" class="stage-list"></div>
+              </section>
+              <section
+                id="panel-results"
+                data-tab-panel="results"
+                role="tabpanel"
+                tabindex="0"
+                aria-labelledby="tab-results"
+                hidden
+              >
+                <div class="section-title">
+                  <div>
+                    <h2>Результаты работы</h2>
+                    <p class="muted">
+                      Чертежи, визуализации и другие материалы проекта.
+                    </p>
+                  </div>
+                </div>
+                <div id="result-list" class="file-list"></div>
+              </section>
+              <section
+                id="panel-documents"
+                data-tab-panel="documents"
+                role="tabpanel"
+                tabindex="0"
+                aria-labelledby="tab-documents"
+                hidden
+              >
+                <div class="section-title">
+                  <div>
+                    <h2>Документы</h2>
+                    <p class="muted">
+                      Скачайте нужный документ в удобное время.
+                    </p>
+                  </div>
+                </div>
+                <div id="document-list" class="file-list"></div>
+              </section>
+            </article>
+            <section
+              id="admin-panel"
+              class="admin-panel"
+              data-tab-panel="management"
+              role="tabpanel"
+              tabindex="0"
+              hidden
+              aria-labelledby="tab-management"
+            >
+              <div class="section-heading">
+                <p class="eyebrow">Студия</p>
+                <h2 id="admin-heading">Управление проектами</h2>
+              </div>
+              <details class="panel admin-details" open>
+                <summary>Создать проект и назначить клиента</summary>
+                <form id="create-project-form" class="admin-form">
+                  <label for="create-title">Название проекта</label
+                  ><input
+                    id="create-title"
+                    name="title"
+                    required
+                    maxlength="200"
+                  />
+                  <label for="create-client">Клиент</label
+                  ><select id="create-client" name="clientId" required>
+                    <option value="">
+                      Выберите зарегистрированного клиента
+                    </option>
+                  </select>
+                  <button type="submit" class="primary">Создать проект</button>
+                </form>
+              </details>
+              <details class="panel admin-details">
+                <summary>Добавить этап в выбранный проект</summary>
+                <form id="add-stage-form" class="admin-form">
+                  <label for="stage-title">Название этапа</label
+                  ><input
+                    id="stage-title"
+                    name="title"
+                    required
+                    maxlength="200"
+                  />
+                  <label for="stage-status">Статус</label
+                  ><select id="stage-status" name="status">
+                    <option value="planned">Запланирован</option>
+                    <option value="in_progress">В работе</option>
+                    <option value="completed">Завершён</option>
+                  </select>
+                  <label for="stage-description">Описание</label
+                  ><textarea
+                    id="stage-description"
+                    name="description"
+                    rows="4"
+                    maxlength="5000"
+                  ></textarea>
+                  <button type="submit" class="primary">Добавить этап</button>
+                </form>
+              </details>
+              <details class="panel admin-details">
+                <summary>Загрузить материал в выбранный проект</summary>
+                <form
+                  id="upload-file-form"
+                  class="admin-form"
+                  enctype="multipart/form-data"
+                >
+                  <label for="upload-file">Файл</label
+                  ><input id="upload-file" name="file" type="file" required />
+                  <label for="upload-category">Раздел</label
+                  ><select id="upload-category" name="category">
+                    <option value="result">Результаты</option>
+                    <option value="document">Документы</option>
+                  </select>
+                  <label for="upload-stage">Этап</label
+                  ><select id="upload-stage" name="stageId">
+                    <option value="">Без привязки к этапу</option>
+                  </select>
+                  <button type="submit" class="primary">Загрузить файл</button>
+                </form>
+              </details>
+            </section>
+          </div>
+          <div class="workspace-footer">
+            ITD Studio <span>Интерьер, продуманный до мелочей.</span>
+          </div>
+        </div>
+      </section>
+      <p
+        id="status-message"
+        class="status-message"
+        role="status"
+        aria-live="polite"
+      ></p>
+      <noscript
+        ><p class="panel">
+          Для работы личного кабинета включите JavaScript в браузере.
+        </p></noscript
+      >
+    </main>
+    <footer>ITD Studio <span>Интерьер, продуманный до мелочей.</span></footer>
+  </body>
 </html>
