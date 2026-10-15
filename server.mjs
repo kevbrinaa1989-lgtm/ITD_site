@@ -9,6 +9,7 @@ import {
 import { mkdirSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { resolve, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { openConfiguredData } from "./data-storage.mjs";
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const passwordHash = (password) => {
@@ -26,12 +27,16 @@ const fail = (status, message) => {
   throw Object.assign(new Error(message), { status });
 };
 export function createApp(options = {}) {
-  const dataDir = resolve(
-    options.dataDir || process.env.ITD_DATA_DIR || "/workspace/.itd-data",
-  );
-  mkdirSync(join(dataDir, "files"), { recursive: true, mode: 0o700 });
-  const db = new DatabaseSync(join(dataDir, "itd.sqlite"));
-  db.exec(
+  // An explicit dataDir is for isolated development/test fixtures only.
+  // Normal startup requires the saved, validated existing database.
+  const store = options.dataDir ? null : openConfiguredData(options.storageOptions);
+  const dataDir = store?.dataDir || resolve(options.dataDir);
+  let db;
+  try {
+  if (!store) mkdirSync(join(dataDir, "files"), { recursive: true, mode: 0o700 });
+  db = new DatabaseSync(join(dataDir, "itd.sqlite"));
+  db.exec("PRAGMA foreign_keys=ON");
+  if (!store) db.exec(
     `PRAGMA foreign_keys=ON; CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT NOT NULL,role TEXT NOT NULL,password TEXT NOT NULL); CREATE TABLE IF NOT EXISTS projects(id INTEGER PRIMARY KEY,title TEXT NOT NULL,clientId INTEGER NOT NULL REFERENCES users(id),status TEXT NOT NULL DEFAULT 'В работе'); CREATE TABLE IF NOT EXISTS stages(id INTEGER PRIMARY KEY,projectId INTEGER NOT NULL REFERENCES projects(id),title TEXT NOT NULL,status TEXT NOT NULL,description TEXT NOT NULL); CREATE TABLE IF NOT EXISTS files(id INTEGER PRIMARY KEY,projectId INTEGER NOT NULL REFERENCES projects(id),stageId INTEGER REFERENCES stages(id),name TEXT NOT NULL,contentType TEXT NOT NULL,category TEXT NOT NULL,path TEXT NOT NULL,size INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,userId INTEGER NOT NULL REFERENCES users(id),expires INTEGER NOT NULL);`,
   );
   const email = (v) =>
@@ -513,32 +518,49 @@ export function createApp(options = {}) {
   server.headersTimeout = 15000;
   return {
     server,
+    dataDir,
     close: () =>
       new Promise((resolveClose, reject) => {
         if (!server.listening) {
           db.close();
+          store?.release();
           return resolveClose();
         }
         server.close((error) => {
           db.close();
+          store?.release();
           error ? reject(error) : resolveClose();
         });
         server.closeIdleConnections();
       }),
   };
+  } catch (error) {
+    db?.close();
+    store?.release();
+    throw error;
+  }
 }
 if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
+  try {
   const app = createApp({
     secureCookies: process.env.ITD_SECURE_COOKIES === "1",
   });
   app.server.listen(
     Number(process.env.PORT || 8000),
     process.env.HOST || "127.0.0.1",
-    () => console.log("ITD server listening"),
+    () => console.log(`Приложение запущено. Данные: ${app.dataDir}\nКабинет: http://127.0.0.1:${app.server.address().port}/cabinet`),
   );
+  app.server.once("error", (error) => {
+    console.error(`Не удалось запустить приложение: ${error.message}`);
+    app.close().finally(() => { process.exitCode = 1; });
+  });
   for (const signal of ["SIGINT", "SIGTERM"])
     process.on(signal, () => app.close().then(() => process.exit(0)));
+  } catch (error) {
+    console.error(`Запуск остановлен: ${error.message}`);
+    process.exitCode = 1;
+  }
 }

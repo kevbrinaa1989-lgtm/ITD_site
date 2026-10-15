@@ -8,3 +8,5 @@ node_modules/
 *.sqlite-wal
 playwright-report/
 test-results/
+ITD-backups/
+.itd-studio/

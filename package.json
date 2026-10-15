@@ -4,7 +4,12 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
-    "test": "node --test server.test.mjs"
+    "test": "node --test *.test.mjs",
+    "data:connect": "node storage-cli.mjs bind",
+    "data:status": "node storage-cli.mjs status",
+    "backup": "node storage-cli.mjs backup",
+    "backup:verify": "node storage-cli.mjs verify",
+    "backup:restore": "node storage-cli.mjs restore"
   },
   "engines": {
     "node": ">=24.13.0 <25"
