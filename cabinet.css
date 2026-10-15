@@ -1437,9 +1437,29 @@ body > footer {
   margin: -10px 0 28px;
 }
 
-.account-bar #logout-button {
-  font-size: 10px;
-  padding: 8px 0 8px 5px;
+.topbar-actions #logout-button {
+  background: var(--dark);
+  color: #fff;
+  border: 1px solid var(--dark);
+  padding: 8px 14px;
+  min-height: 40px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.workspace-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--ivory);
+}
+@media (max-width: 760px) {
+  .workspace-topbar > span {
+    display: none;
+  }
+  .topbar-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 .recent-materials-heading {
   margin-top: 30px;
