@@ -30,6 +30,7 @@
       }, 5000);
   };
   const showAuth = () => {
+    clearRecovery();
     window.ITDViewer?.invalidate();
     clearTimeout(messageTimer);
     user = null;
@@ -141,12 +142,14 @@
     list.replaceChildren(node("p", text, "empty-note"));
   }
   function selectTab(tab) {
-    if (tab === "management" && user?.role !== "admin") tab = "overview";
+    const hasProject = projects.some((project) => project.id === selectedId);
+    if (["management", "recovery"].includes(tab) && user?.role !== "admin")
+      tab = "overview";
     activeTab = tab;
     if (selectedId !== null) projectTabs.set(selectedId, tab);
     document.querySelectorAll("[data-tab]").forEach((button) => {
-      const adminOnly = button.dataset.tab === "management";
-      button.hidden = adminOnly && user?.role !== "admin";
+      const adminOnly = ["management", "recovery"].includes(button.dataset.tab);
+      button.hidden = adminOnly ? user?.role !== "admin" : !hasProject;
       const selected = button.dataset.tab === tab;
       button.setAttribute("aria-selected", String(selected));
       button.tabIndex = selected ? 0 : -1;
@@ -155,9 +158,12 @@
     document.querySelectorAll("[data-tab-panel]").forEach((panel) => {
       panel.hidden =
         panel.dataset.tabPanel !== tab ||
-        (tab === "management" && user?.role !== "admin");
+        (["management", "recovery"].includes(tab) && user?.role !== "admin");
     });
     $("admin-panel").hidden = tab !== "management" || user?.role !== "admin";
+    if (tab === "recovery" && user?.role === "admin") refreshRecovery();
+    $("project-content").hidden = !hasProject || tab === "recovery";
+    $("empty-state").hidden = hasProject || user?.role === "admin";
   }
   function download(file, label = "Скачать") {
     const link = node("a", label, "file-download");
@@ -186,7 +192,8 @@
       ),
     );
     item.append(icon, info);
-    if (window.ITDViewer?.supported(file)) item.append(window.ITDViewer.control(file, project.files));
+    if (window.ITDViewer?.supported(file))
+      item.append(window.ITDViewer.control(file, project.files));
     item.append(download(file));
     if (admin) item.append(deleteFileButton(file, item));
     return item;
@@ -196,11 +203,12 @@
     button.type = "button";
     button.setAttribute("aria-label", `Удалить файл ${file.name}`);
     button.addEventListener("click", () => {
-      if (window.confirm(`Удалить файл «${file.name}»?`)) busy(container, async () => {
-        await api(`/api/files/${file.id}`, "DELETE", {});
-        await refresh();
-        message("Файл удалён");
-      });
+      if (window.confirm(`Удалить файл «${file.name}»?`))
+        busy(container, async () => {
+          await api(`/api/files/${file.id}`, "DELETE", {});
+          await refresh();
+          message("Файл удалён");
+        });
     });
     return button;
   }
@@ -278,15 +286,19 @@
     $("project-content").hidden = !project;
     for (const id of ["add-stage-form", "upload-file-form"])
       $(id).hidden = !project;
-    selectTab(!project && admin ? "management" : activeTab);
+    selectTab(
+      !project && admin && activeTab !== "recovery" ? "management" : activeTab,
+    );
     if (!project) {
       document.querySelectorAll("[data-tab]").forEach((button) => {
-        button.hidden = button.dataset.tab !== "management" || !admin;
+        button.hidden =
+          !["management", "recovery"].includes(button.dataset.tab) || !admin;
       });
       return;
     }
     document.querySelectorAll("[data-tab]").forEach((button) => {
-      button.hidden = button.dataset.tab === "management" && !admin;
+      button.hidden =
+        ["management", "recovery"].includes(button.dataset.tab) && !admin;
     });
     $("project-title").textContent = project.title;
     $("project-client").textContent =
@@ -376,7 +388,10 @@
       if (results.length) {
         const links = node("div", undefined, "stage-results");
         for (const file of results) {
-          if (window.ITDViewer?.supported(file)) links.append(window.ITDViewer.control(file, project.files, file.name));
+          if (window.ITDViewer?.supported(file))
+            links.append(
+              window.ITDViewer.control(file, project.files, file.name),
+            );
           else links.append(download(file, file.name));
         }
         content.append(links);
@@ -393,17 +408,21 @@
     ]) {
       const list = $(id);
       list.replaceChildren();
-      const categoryFiles = project.files.filter(file => file.category === category);
+      const categoryFiles = project.files.filter(
+        (file) => file.category === category,
+      );
       if (category === "result") {
         const groups = new Map();
-        for (const file of categoryFiles.filter(file => window.ITDViewer?.image(file))) {
+        for (const file of categoryFiles.filter((file) =>
+          window.ITDViewer?.image(file),
+        )) {
           const key = file.stageId ?? "unassigned";
           if (!groups.has(key)) groups.set(key, []);
           groups.get(key).push(file);
         }
         for (const [stageId, files] of groups) {
           const section = node("section", undefined, "gallery-section");
-          const stage = project.stages.find(stage => stage.id === stageId);
+          const stage = project.stages.find((stage) => stage.id === stageId);
           section.append(node("h3", stage?.title || "Без привязки к этапу"));
           const gallery = node("div", undefined, "material-gallery");
           for (const file of files) {
@@ -464,7 +483,27 @@
       select.value = previous;
   }
   async function enter(nextUser) {
+    clearRecovery();
     user = nextUser;
+    if (user.role === "admin")
+      recoveryTimer = setInterval(() => {
+        if (activeTab !== "recovery") return;
+        const current = recoveryCurrent?.request;
+        if (
+          current &&
+          current.status === "approved" &&
+          recoveryStatus(current) === "expired"
+        ) {
+          current.status = "expired";
+          const listed = recoveryRequests.find(
+            (item) => item.id === current.id,
+          );
+          if (listed) listed.status = "expired";
+          recoveryLinks.delete(current.id);
+          renderRecoveryList();
+          renderRecoveryDetail();
+        }
+      }, 1000);
     $("login-view").hidden = true;
     $("app-view").hidden = false;
     $("user-name").textContent = user.name;
@@ -474,6 +513,7 @@
     await refreshClients();
   }
   function authTab(register) {
+    $("recovery-auth").hidden = true;
     $("login-form").hidden = register;
     $("register-form").hidden = !register;
     $("show-login").setAttribute("aria-pressed", String(!register));
@@ -484,6 +524,378 @@
     $("login-error").textContent = "";
     $("register-error").textContent = "";
   }
+  const recoveryStatuses = {
+    new: "Новый",
+    approved: "Одобрен",
+    used: "Использован",
+    expired: "Истёк",
+    rejected: "Отклонён",
+  };
+  const recoveryEvents = {
+    requested: "Запрос получен",
+    viewed: "Просмотрен",
+    approved: "Запрос одобрен",
+    issued: "Ссылка создана",
+    reissued: "Создана новая ссылка",
+    rejected: "Отклонён",
+    copied: "Ссылка скопирована",
+    used: "Пароль изменён",
+    expired: "Срок ссылки истёк",
+    superseded: "Прежняя ссылка аннулирована",
+  };
+  let recoveryEpoch = 0,
+    recoverySelection = null,
+    recoveryDetailVersion = 0;
+  let recoveryRequests = [],
+    recoveryCurrent = null,
+    recoveryTimer;
+  const recoveryLinks = new Map();
+  const recoveryBase = "/api/admin/password-recovery/requests";
+  const recoveryDate = (value) =>
+    value ? new Date(value).toLocaleString("ru-RU") : "—";
+  const recoveryStatus = (request) =>
+    request.status === "approved" &&
+    request.expiresAt &&
+    Date.parse(request.expiresAt) <= Date.now()
+      ? "expired"
+      : request.status;
+  function clearRecovery() {
+    recoveryEpoch++;
+    recoveryDetailVersion++;
+    recoverySelection = null;
+    recoveryCurrent = null;
+    recoveryRequests = [];
+    recoveryLinks.clear();
+    clearInterval(recoveryTimer);
+    $("recovery-list").replaceChildren();
+    $("recovery-detail").replaceChildren(
+      node("p", "Выберите запрос, чтобы посмотреть подробности.", "muted"),
+    );
+    $("recovery-admin-message").textContent = "";
+    $("recovery-request-message").textContent = "";
+    $("recovery-request-form").reset();
+    $("recovery-auth").hidden = true;
+  }
+  function renderRecoveryList() {
+    const list = $("recovery-list");
+    list.replaceChildren();
+    if (!recoveryRequests.length) {
+      empty(list, "Запросов на восстановление пока нет.");
+      return;
+    }
+    for (const request of recoveryRequests) {
+      const button = node("button", undefined, "recovery-request");
+      button.type = "button";
+      button.setAttribute(
+        "aria-pressed",
+        String(request.id === recoverySelection),
+      );
+      button.append(
+        node("strong", request.clientName || "Аккаунт не найден"),
+        node("span", request.email, "recovery-email"),
+        node(
+          "span",
+          `${recoveryStatuses[recoveryStatus(request)] || request.status} · ${recoveryDate(request.createdAt)}`,
+          "recovery-meta",
+        ),
+      );
+      button.addEventListener("click", () => loadRecoveryDetail(request.id));
+      list.append(button);
+    }
+  }
+  async function refreshRecovery() {
+    if (user?.role !== "admin") return;
+    const epoch = recoveryEpoch;
+    $("recovery-admin-message").textContent = "Загрузка запросов…";
+    try {
+      const result = await api(recoveryBase);
+      if (epoch !== recoveryEpoch || user?.role !== "admin") return;
+      recoveryRequests = result.requests;
+      renderRecoveryList();
+      $("recovery-admin-message").textContent = "";
+      if (recoverySelection !== null)
+        await loadRecoveryDetail(recoverySelection);
+    } catch (error) {
+      if (epoch === recoveryEpoch && user?.role === "admin")
+        $("recovery-admin-message").textContent = error.message;
+    }
+  }
+  async function loadRecoveryDetail(id) {
+    const epoch = recoveryEpoch,
+      version = ++recoveryDetailVersion;
+    recoverySelection = id;
+    renderRecoveryList();
+    $("recovery-detail").replaceChildren(
+      node("p", "Загрузка запроса…", "muted"),
+    );
+    try {
+      const result = await api(`${recoveryBase}/${encodeURIComponent(id)}`);
+      if (
+        epoch !== recoveryEpoch ||
+        version !== recoveryDetailVersion ||
+        user?.role !== "admin"
+      )
+        return;
+      recoveryCurrent = result;
+      renderRecoveryDetail();
+    } catch (error) {
+      if (
+        epoch === recoveryEpoch &&
+        version === recoveryDetailVersion &&
+        user?.role === "admin"
+      )
+        $("recovery-detail").replaceChildren(node("p", error.message, "error"));
+    }
+  }
+  function renderRecoveryDetail() {
+    if (!recoveryCurrent || user?.role !== "admin") return;
+    const { request, events } = recoveryCurrent;
+    const detail = $("recovery-detail");
+    detail.replaceChildren();
+    const status = recoveryStatus(request),
+      cached = recoveryLinks.get(request.id);
+    if (
+      cached &&
+      (status !== "approved" || cached.expiresAt !== request.expiresAt)
+    )
+      recoveryLinks.delete(request.id);
+    detail.append(
+      node("h3", request.clientName || "Аккаунт не найден"),
+      node("p", request.email, "recovery-email"),
+    );
+    const fields = node("dl", undefined, "recovery-fields");
+    for (const [label, value] of [
+      ["Статус", recoveryStatuses[status] || status],
+      ["Создан", recoveryDate(request.createdAt)],
+      ["Обработал", request.processedByName || "—"],
+      ["Обработан", recoveryDate(request.processedAt)],
+      ["Ссылка действует до", recoveryDate(request.expiresAt)],
+    ])
+      fields.append(node("dt", label), node("dd", value));
+    detail.append(fields);
+    const actions = node("div", undefined, "recovery-actions");
+    if (["new", "approved"].includes(status)) {
+      if (request.userId) {
+        const identity = node("label", undefined, "recovery-identity"),
+          check = node("input");
+        check.type = "checkbox";
+        identity.append(
+          check,
+          node(
+            "span",
+            "Я проверил(а) личность клиента по известному каналу связи.",
+          ),
+        );
+        const approve = node(
+          "button",
+          status === "approved"
+            ? "Создать новую ссылку"
+            : "Одобрить и создать ссылку",
+          "primary",
+        );
+        approve.type = "button";
+        approve.disabled = true;
+        check.addEventListener("change", () => {
+          approve.disabled = !check.checked;
+        });
+        approve.addEventListener("click", () => {
+          if (!check.checked) return;
+          if (
+            status === "approved" &&
+            !window.confirm(
+              "Создать новую ссылку? Предыдущая ссылка сразу перестанет работать.",
+            )
+          )
+            return;
+          recoveryAction(request, "approve");
+        });
+        actions.append(identity, approve);
+      } else
+        actions.append(
+          node(
+            "p",
+            "Для этого email нет доступного клиентского аккаунта. Одобрение невозможно.",
+            "muted",
+          ),
+        );
+      const reject = node("button", "Отклонить запрос", "text-button");
+      reject.type = "button";
+      reject.addEventListener("click", () => {
+        if (
+          window.confirm(
+            "Отклонить этот запрос? Выданная ссылка, если она есть, перестанет работать.",
+          )
+        )
+          recoveryAction(request, "reject");
+      });
+      actions.append(reject);
+    }
+    const linkState = recoveryLinks.get(request.id);
+    if (status === "approved" && linkState) {
+      const linkBox = node("div", undefined, "recovery-link-box");
+      linkBox.append(
+        node(
+          "p",
+          "Передайте ссылку только проверенному клиенту. Она одноразовая и не сохраняется в этом браузере.",
+          "muted",
+        ),
+      );
+      const copy = node("button", "Скопировать ссылку", "primary");
+      copy.type = "button";
+      copy.addEventListener("click", () =>
+        copyRecoveryLink(request, linkState, linkBox),
+      );
+      linkBox.append(copy);
+      actions.append(linkBox);
+    } else if (status === "approved")
+      actions.append(
+        node(
+          "p",
+          "Ссылка была выдана ранее и не доступна после обновления страницы. Если нужно, создайте новую — прежняя перестанет работать.",
+          "muted",
+        ),
+      );
+    detail.append(actions);
+    detail.append(node("h4", "История действий"));
+    const history = node("ol", undefined, "recovery-history");
+    for (const event of events || [])
+      history.append(
+        node(
+          "li",
+          `${recoveryEvents[event.type] || "Действие"} · ${event.actorName || "Система"} · ${recoveryDate(event.createdAt)}`,
+        ),
+      );
+    if (!history.childElementCount)
+      history.append(node("li", "Действий пока нет."));
+    detail.append(history);
+  }
+  async function recoveryAction(request, action) {
+    const epoch = recoveryEpoch,
+      version = recoveryDetailVersion;
+    const controls = [...$("recovery-detail").querySelectorAll("button,input")];
+    controls.forEach((el) => (el.disabled = true));
+    try {
+      const result = await api(
+        `${recoveryBase}/${encodeURIComponent(request.id)}/${action}`,
+        "POST",
+        {},
+      );
+      if (epoch !== recoveryEpoch || user?.role !== "admin") return;
+      recoveryLinks.delete(request.id);
+      if (action === "approve") {
+        const path = result.resetPath;
+        if (
+          typeof path !== "string" ||
+          !/^\/reset-password\/#(?:[a-f0-9]{64})$/.test(path)
+        )
+          throw new Error("Не удалось получить ссылку. Обновите запрос.");
+        recoveryLinks.set(request.id, {
+          url: new URL(path, location.origin).href,
+          expiresAt: result.request.expiresAt,
+        });
+      }
+      if (version === recoveryDetailVersion) await refreshRecovery();
+    } catch (error) {
+      if (
+        epoch === recoveryEpoch &&
+        version === recoveryDetailVersion &&
+        user?.role === "admin"
+      ) {
+        $("recovery-admin-message").textContent = error.message;
+        renderRecoveryDetail();
+      }
+    }
+  }
+  async function copyRecoveryLink(request, state, box) {
+    const epoch = recoveryEpoch,
+      version = recoveryDetailVersion;
+    const stillCurrent = () =>
+      epoch === recoveryEpoch &&
+      version === recoveryDetailVersion &&
+      user?.role === "admin" &&
+      recoveryLinks.get(request.id) === state &&
+      Date.parse(state.expiresAt) > Date.now();
+    if (!stillCurrent()) return;
+    const copied = async () => {
+      if (!stillCurrent()) return;
+      try {
+        await api(
+          `${recoveryBase}/${encodeURIComponent(request.id)}/copied`,
+          "POST",
+          {},
+        );
+        if (stillCurrent())
+          $("recovery-admin-message").textContent =
+            "Копирование подтверждено. Передайте ссылку клиенту лично.";
+      } catch (error) {
+        if (stillCurrent())
+          $("recovery-admin-message").textContent = error.message;
+      }
+    };
+    try {
+      if (!navigator.clipboard?.writeText)
+        throw new Error("clipboard unavailable");
+      await navigator.clipboard.writeText(state.url);
+      await copied();
+    } catch {
+      if (!stillCurrent() || box.querySelector("input")) return;
+      const label = node("label", "Ссылка для ручного копирования"),
+        input = node("input");
+      input.type = "text";
+      input.readOnly = true;
+      input.value = state.url;
+      input.autocomplete = "off";
+      input.setAttribute("aria-label", "Одноразовая ссылка для клиента");
+      const confirm = node("button", "Я скопировал(а) ссылку", "text-button");
+      confirm.type = "button";
+      confirm.addEventListener("click", copied);
+      box.append(
+        label,
+        input,
+        node(
+          "p",
+          "Выделите ссылку и скопируйте её через меню браузера.",
+          "muted",
+        ),
+        confirm,
+      );
+      input.focus();
+      input.select();
+    }
+  }
+  $("recovery-refresh").addEventListener("click", refreshRecovery);
+  $("show-recovery").addEventListener("click", () => {
+    $("login-form").hidden = true;
+    $("register-form").hidden = true;
+    $("recovery-auth").hidden = false;
+    $("auth-heading").textContent = "Забыли пароль?";
+    $("show-login").setAttribute("aria-pressed", "false");
+    $("show-register").setAttribute("aria-pressed", "false");
+    $("recovery-request-message").textContent = "";
+    $("recovery-email").value = $("login-email").value;
+    $("recovery-email").focus();
+  });
+  $("recovery-back").addEventListener("click", () => {
+    authTab(false);
+    $("login-email").focus();
+  });
+  bindForm("recovery-request-form", async (values, form) => {
+    const epoch = recoveryEpoch;
+    $("recovery-request-message").textContent = "";
+    try {
+      const result = await api("/api/password-recovery/requests", "POST", {
+        email: values.email,
+      });
+      if (epoch === recoveryEpoch && !user) {
+        $("recovery-request-message").textContent = result.message;
+        form.reset();
+      }
+    } catch (error) {
+      if (epoch === recoveryEpoch && !user)
+        $("recovery-request-message").textContent = error.message;
+    }
+  });
+
   const mobileTabs = window.matchMedia("(max-width: 760px)");
   function orientTabs() {
     document
@@ -560,6 +972,7 @@
     busy($("app-view"), async () => {
       await refresh();
       await refreshClients();
+      if (activeTab === "recovery") await refreshRecovery();
       message("Данные обновлены");
     }),
   );
@@ -630,7 +1043,20 @@
     await refresh();
     message("Файл загружен");
   });
-  window.addEventListener("itd-preview-session-expired", () => { if (user) { showAuth(); message("Сессия завершилась. Войдите повторно.", true); } });
+  window.addEventListener("itd-preview-session-expired", () => {
+    if (user) {
+      showAuth();
+      message("Сессия завершилась. Войдите повторно.", true);
+    }
+  });
+  window.addEventListener("pagehide", clearRecovery);
+  window.addEventListener("pageshow", (event) => {
+    if (!event.persisted) return;
+    showAuth();
+    api("/api/me")
+      .then((result) => enter(result.user))
+      .catch(() => showAuth());
+  });
   api("/api/me")
     .then((result) => enter(result.user))
     .catch((error) => {

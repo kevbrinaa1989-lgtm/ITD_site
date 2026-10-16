@@ -10,6 +10,7 @@ import { mkdirSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { resolve, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openConfiguredData } from "./data-storage.mjs";
+import { initPasswordRecovery } from "./password-recovery.mjs";
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PDF_ASSETS = new Set(Object.keys(JSON.parse(readFileSync(join(ROOT, "vendor/pdfjs/assets.json"), "utf8"))));
 function previewType(file, bytes) {
@@ -88,6 +89,7 @@ export function createApp(options = {}) {
   const run = (sql, ...args) => db.prepare(sql).run(...args),
     get = (sql, ...args) => db.prepare(sql).get(...args),
     all = (sql, ...args) => db.prepare(sql).all(...args);
+  const recovery = initPasswordRecovery({db, passwordHash, now: options.recoveryNow});
   const limits = new Map();
   const json = (res, status, value) => {
     res.writeHead(status, {
@@ -175,6 +177,7 @@ export function createApp(options = {}) {
             fail(403, "Нет доступа");
           return p;
         };
+        if (await recovery({req,res,path,method,user,body,json,fail})) return;
         if (path === "/api/login" && method === "POST") {
           const now = Date.now(),
             ip = req.socket.remoteAddress || "unknown";
@@ -496,6 +499,9 @@ export function createApp(options = {}) {
         "/": "tilda-home-connected-fixed.html",
         "/anketa": "tilda-anketa-connected-fixed.html",
         "/anketa/": "tilda-anketa-connected-fixed.html",
+        "/reset-password": "reset-password.html",
+        "/reset-password/": "reset-password.html",
+        "/recovery.js": "recovery.js",
         "/cabinet": "cabinet.html",
         "/cabinet/": "cabinet.html",
         "/cabinet.js": "cabinet.js",
@@ -513,6 +519,10 @@ export function createApp(options = {}) {
         if (e.code === "ENOENT") fail(404, "Страница не найдена");
         throw e;
       }
+      if (file === "reset-password.html" || file === "recovery.js") {
+        res.setHeader("Referrer-Policy", "no-referrer");
+        res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+      }
       if (file === "cabinet.html")
         res.setHeader(
           "Content-Security-Policy",
@@ -527,7 +537,7 @@ export function createApp(options = {}) {
             : file.endsWith(".ttf") ? "font/ttf"
             : asset ? "application/octet-stream" : "text/html; charset=utf-8",
         "Content-Length": bytes.length,
-        "Cache-Control": "no-cache",
+        "Cache-Control": file === "reset-password.html" || file === "recovery.js" ? "no-store" : "no-cache",
       });
       res.end(method === "HEAD" ? undefined : bytes);
     } catch (e) {

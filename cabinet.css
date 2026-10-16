@@ -1572,3 +1572,195 @@ body > footer {
 }
 .gallery-actions { display:flex; flex:1; flex-wrap:wrap; justify-content:space-between; gap:8px; padding:8px 12px; border:1px solid var(--line,#d8d5ce); border-top:0; }
 .gallery-actions a,.gallery-actions button { min-height:44px; display:inline-flex; align-items:center; }
+
+/* Password recovery uses the same quiet, accessible workspace controls. */
+.forgot-password {
+  justify-self: end;
+  margin-top: 2px;
+}
+#recovery-auth h3 {
+  font-family: Georgia, serif;
+  font-size: 23px;
+  font-weight: 400;
+  margin: 18px 0 12px;
+}
+#recovery-auth .muted {
+  font-size: 12px;
+}
+.recovery-grid {
+  display: grid;
+  grid-template-columns: minmax(200px, 0.85fr) minmax(0, 1.3fr);
+  gap: 22px;
+  align-items: start;
+}
+.recovery-list {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.recovery-request {
+  padding: 17px;
+  text-align: left;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--ink);
+}
+.recovery-request[aria-pressed="true"] {
+  border-color: var(--copper);
+  box-shadow: inset 3px 0 var(--copper);
+}
+.recovery-request strong {
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.recovery-email {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  margin-bottom: 0;
+}
+.recovery-meta {
+  font-size: 10px;
+  color: var(--muted);
+}
+.recovery-detail {
+  min-width: 0;
+}
+.recovery-detail h3 {
+  font-family: Georgia, serif;
+  font-size: 24px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.recovery-detail h4 {
+  font-size: 12px;
+  margin: 28px 0 14px;
+}
+.recovery-fields {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 10px 16px;
+  font-size: 11px;
+  margin: 24px 0;
+}
+.recovery-fields dt {
+  color: var(--muted);
+}
+.recovery-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.recovery-actions {
+  display: grid;
+  gap: 12px;
+}
+.recovery-actions .primary {
+  margin-top: 0;
+}
+.recovery-identity {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.recovery-identity input {
+  width: 18px;
+  min-height: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin-top: 3px;
+  accent-color: var(--copper);
+}
+.recovery-link-box {
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.recovery-link-box .muted {
+  font-size: 11px;
+  margin: 0;
+}
+.recovery-link-box label {
+  font-size: 11px;
+}
+.recovery-link-box input {
+  min-width: 0;
+  font-size: 11px;
+}
+.recovery-history {
+  padding-left: 17px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.8;
+}
+.recovery-history li {
+  padding-bottom: 9px;
+  overflow-wrap: anywhere;
+}
+.workspace-nav #tab-recovery {
+  white-space: normal;
+  line-height: 1.5;
+}
+.reset-layout {
+  width: calc(100% - 36px);
+  max-width: 510px;
+  margin: 60px auto;
+}
+.reset-panel {
+  padding: 38px;
+}
+.reset-panel h1 {
+  font-size: 38px;
+}
+.reset-panel .muted {
+  font-size: 12px;
+}
+.reset-panel .button-link {
+  text-align: center;
+}
+#reset-message {
+  margin: 24px 0 16px;
+}
+#reset-help {
+  margin-top: 20px;
+}
+@media (max-width: 1000px) {
+  .recovery-grid {
+    grid-template-columns: 1fr;
+  }
+  .recovery-list {
+    max-height: 350px;
+    overflow: auto;
+  }
+}
+@media (max-width: 760px) {
+  .workspace-nav #tab-recovery {
+    white-space: nowrap;
+  }
+  .recovery-grid {
+    gap: 18px;
+  }
+  .recovery-fields {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .recovery-fields dd {
+    margin-bottom: 9px;
+  }
+  .reset-layout {
+    margin: 24px auto;
+  }
+  .reset-panel {
+    padding: 26px;
+  }
+  .reset-panel h1 {
+    font-size: 32px;
+  }
+}

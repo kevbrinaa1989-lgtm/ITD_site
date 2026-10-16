@@ -82,6 +82,13 @@
               maxlength="256"
             />
             <p id="login-error" class="error" role="alert"></p>
+            <button
+              id="show-recovery"
+              type="button"
+              class="text-button forgot-password"
+            >
+              Забыли пароль?
+            </button>
             <button type="submit" class="primary">Войти</button>
           </form>
           <form id="register-form" hidden>
@@ -116,6 +123,32 @@
             <p id="register-error" class="error" role="alert"></p>
             <button type="submit" class="primary">Зарегистрироваться</button>
           </form>
+          <section
+            id="recovery-auth"
+            hidden
+            aria-labelledby="recovery-auth-heading"
+          >
+            <h3 id="recovery-auth-heading">Восстановление доступа</h3>
+            <p class="muted">
+              Укажите email вашего аккаунта. Администратор проверит запрос и
+              свяжется с вами.
+            </p>
+            <form id="recovery-request-form">
+              <label for="recovery-email">Email</label
+              ><input
+                id="recovery-email"
+                name="email"
+                type="email"
+                autocomplete="email"
+                required
+                maxlength="254"
+              /><button class="primary" type="submit">Отправить запрос</button>
+            </form>
+            <p id="recovery-request-message" role="status" class="muted"></p>
+            <button id="recovery-back" type="button" class="text-button">
+              Вернуться ко входу
+            </button>
+          </section>
           <p class="login-help">
             Не получается войти?
             <a href="https://t.me/Kevbrina_Diana">Напишите в студию</a>.
@@ -197,6 +230,17 @@
               hidden
             >
               <span aria-hidden="true">⊞</span>Управление
+            </button>
+            <button
+              id="tab-recovery"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="password-recovery-panel"
+              data-tab="recovery"
+              hidden
+            >
+              <span aria-hidden="true">⌑</span>Запросы на восстановление
             </button>
           </nav>
           <div class="sidebar-bottom">
@@ -466,6 +510,45 @@
                   <button type="submit" class="primary">Загрузить файл</button>
                 </form>
               </details>
+            </section>
+            <section
+              id="password-recovery-panel"
+              data-tab-panel="recovery"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-recovery"
+              hidden
+            >
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">Безопасность аккаунтов</p>
+                  <h2>Запросы на восстановление</h2>
+                  <p class="muted">
+                    Проверьте личность клиента по известному каналу связи перед
+                    выдачей ссылки.
+                  </p>
+                </div>
+                <button id="recovery-refresh" class="text-button" type="button">
+                  Обновить список
+                </button>
+              </div>
+              <p id="recovery-admin-message" role="status" class="muted"></p>
+              <div class="recovery-grid">
+                <div
+                  id="recovery-list"
+                  class="recovery-list"
+                  aria-label="Запросы клиентов"
+                ></div>
+                <section
+                  id="recovery-detail"
+                  class="panel recovery-detail"
+                  aria-label="Детали запроса"
+                >
+                  <p class="muted">
+                    Выберите запрос, чтобы посмотреть подробности.
+                  </p>
+                </section>
+              </div>
             </section>
           </div>
           <div class="workspace-footer">
