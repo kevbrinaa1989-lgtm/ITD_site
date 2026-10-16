@@ -7,6 +7,7 @@
     <title>Личный кабинет — ITD Studio</title>
     <link rel="stylesheet" href="/cabinet.css" />
     <script src="/file-viewer.js" defer></script>
+    <script src="/admin-management.js" defer></script>
     <script src="/cabinet.js" defer></script>
   </head>
   <body>
@@ -165,6 +166,10 @@
           >
           <p class="sidebar-caption">ПРОСТРАНСТВО КЛИЕНТА</p>
           <div class="project-switcher">
+            <label class="sidebar-archive"
+              ><input type="checkbox" id="sidebar-show-archive" />Показать
+              архив</label
+            >
             <h2 id="projects-heading">
               Ваши проекты <span id="project-count"></span>
             </h2>
@@ -241,6 +246,28 @@
               hidden
             >
               <span aria-hidden="true">⌑</span>Запросы на восстановление
+            </button>
+            <button
+              id="tab-clients"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="admin-clients-panel"
+              data-tab="clients"
+              hidden
+            >
+              <span aria-hidden="true">♙</span>Клиенты
+            </button>
+            <button
+              id="tab-projects"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="admin-projects-panel"
+              data-tab="projects"
+              hidden
+            >
+              <span aria-hidden="true">▦</span>Проекты
             </button>
           </nav>
           <div class="sidebar-bottom">
@@ -454,6 +481,13 @@
                     required
                     maxlength="200"
                   />
+                  <label for="create-status">Статус проекта</label
+                  ><select id="create-status" name="status">
+                    <option>Новый</option>
+                    <option>В работе</option>
+                    <option>На паузе</option>
+                    <option>Завершён</option>
+                  </select>
                   <label for="create-client">Клиент</label
                   ><select id="create-client" name="clientId" required>
                     <option value="">
@@ -547,6 +581,104 @@
                   <p class="muted">
                     Выберите запрос, чтобы посмотреть подробности.
                   </p>
+                </section>
+              </div>
+            </section>
+            <section
+              id="admin-clients-panel"
+              data-tab-panel="clients"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-clients"
+              hidden
+            >
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">Студия / Люди</p>
+                  <h2>Клиенты</h2>
+                  <p class="muted">Контакты, проекты и доступ к кабинету.</p>
+                </div>
+              </div>
+              <form id="admin-client-search" class="admin-search">
+                <label for="admin-client-query">Поиск по имени или email</label>
+                <div>
+                  <input
+                    id="admin-client-query"
+                    name="search"
+                    type="search"
+                    maxlength="200"
+                  /><button class="primary" type="submit">Найти</button>
+                </div>
+              </form>
+              <p id="admin-clients-message" role="status" class="muted"></p>
+              <div class="admin-management-grid">
+                <div id="admin-client-list" class="admin-card-list"></div>
+                <section
+                  id="admin-client-detail"
+                  class="panel admin-detail"
+                  aria-label="Карточка клиента"
+                >
+                  <p class="muted">Выберите клиента.</p>
+                </section>
+              </div>
+            </section>
+            <section
+              id="admin-projects-panel"
+              data-tab-panel="projects"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-projects"
+              hidden
+            >
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">Студия / Пространства</p>
+                  <h2>Проекты</h2>
+                  <p class="muted">
+                    Управление проектами и архивом без удаления материалов.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="text-button"
+                  data-open-tab="management"
+                >
+                  Создать проект →
+                </button>
+              </div>
+              <form id="admin-project-search" class="admin-search">
+                <label for="admin-project-query"
+                  >Поиск по названию проекта или клиенту</label
+                >
+                <div>
+                  <input
+                    id="admin-project-query"
+                    name="search"
+                    type="search"
+                    maxlength="200"
+                  /><select
+                    id="admin-project-filter"
+                    name="status"
+                    aria-label="Статус проекта"
+                  >
+                    <option value="active">Все активные</option>
+                    <option>Новый</option>
+                    <option>В работе</option>
+                    <option>На паузе</option>
+                    <option>Завершён</option>
+                    <option>Архив</option></select
+                  ><button class="primary" type="submit">Найти</button>
+                </div>
+              </form>
+              <p id="admin-projects-message" role="status" class="muted"></p>
+              <div class="admin-management-grid">
+                <div id="admin-project-list" class="admin-card-list"></div>
+                <section
+                  id="admin-project-detail"
+                  class="panel admin-detail"
+                  aria-label="Карточка проекта"
+                >
+                  <p class="muted">Выберите проект.</p>
                 </section>
               </div>
             </section>

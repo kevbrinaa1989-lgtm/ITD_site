@@ -158,7 +158,7 @@ export function initPasswordRecovery({ db, passwordHash, now = Date.now }) {
       expire(timestamp);
       transaction(() => {
         const r = get(
-          "SELECT r.id,r.userId FROM password_recovery_requests r JOIN users u ON u.id=r.userId WHERE r.tokenHash=? AND r.status='approved' AND r.expiresAt>? AND u.role='client'",
+          "SELECT r.id,r.userId FROM password_recovery_requests r JOIN users u ON u.id=r.userId WHERE r.tokenHash=? AND r.status='approved' AND r.expiresAt>? AND u.role='client' AND u.isActive=1",
           digest(b.token),
           timestamp,
         );
@@ -230,7 +230,7 @@ export function initPasswordRecovery({ db, passwordHash, now = Date.now }) {
             if (
               !row.userId ||
               !get(
-                "SELECT id FROM users WHERE id=? AND role='client'",
+                "SELECT id FROM users WHERE id=? AND role='client' AND isActive=1",
                 row.userId,
               )
             )

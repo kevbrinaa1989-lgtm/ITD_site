@@ -11,6 +11,7 @@ import { resolve, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openConfiguredData } from "./data-storage.mjs";
 import { initPasswordRecovery } from "./password-recovery.mjs";
+import { initAdminManagement } from "./admin-management.mjs";
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PDF_ASSETS = new Set(Object.keys(JSON.parse(readFileSync(join(ROOT, "vendor/pdfjs/assets.json"), "utf8"))));
 function previewType(file, bytes) {
@@ -53,6 +54,7 @@ export function createApp(options = {}) {
   if (!store) db.exec(
     `PRAGMA foreign_keys=ON; CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT NOT NULL,role TEXT NOT NULL,password TEXT NOT NULL); CREATE TABLE IF NOT EXISTS projects(id INTEGER PRIMARY KEY,title TEXT NOT NULL,clientId INTEGER NOT NULL REFERENCES users(id),status TEXT NOT NULL DEFAULT 'В работе'); CREATE TABLE IF NOT EXISTS stages(id INTEGER PRIMARY KEY,projectId INTEGER NOT NULL REFERENCES projects(id),title TEXT NOT NULL,status TEXT NOT NULL,description TEXT NOT NULL); CREATE TABLE IF NOT EXISTS files(id INTEGER PRIMARY KEY,projectId INTEGER NOT NULL REFERENCES projects(id),stageId INTEGER REFERENCES stages(id),name TEXT NOT NULL,contentType TEXT NOT NULL,category TEXT NOT NULL,path TEXT NOT NULL,size INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,userId INTEGER NOT NULL REFERENCES users(id),expires INTEGER NOT NULL);`,
   );
+  const management = initAdminManagement({db});
   const email = (v) =>
     typeof v === "string" &&
     v.length <= 254 &&
@@ -78,12 +80,13 @@ export function createApp(options = {}) {
       throw Error("Administrator email already belongs to a client");
     if (!existing)
       db.prepare(
-        "INSERT INTO users(email,name,role,password) VALUES(?,?,?,?)",
+        "INSERT INTO users(email,name,role,password,createdAt) VALUES(?,?,?,?,?)",
       ).run(
         adminEmail.toLowerCase(),
         "Администратор",
         "admin",
         passwordHash(adminPassword),
+        Date.now(),
       );
   }
   const run = (sql, ...args) => db.prepare(sql).run(...args),
@@ -117,6 +120,7 @@ export function createApp(options = {}) {
     }
     if (!value || typeof value !== "object" || Array.isArray(value))
       fail(400, "Требуется объект JSON");
+    req.itdRecheckSession?.();
     return value;
   };
   const safeUser = (u) => ({
@@ -160,11 +164,14 @@ export function createApp(options = {}) {
           ?.slice(12);
         const user = cookie
           ? get(
-              "SELECT users.* FROM sessions JOIN users ON users.id=sessions.userId WHERE token=? AND expires>?",
+              "SELECT users.* FROM sessions JOIN users ON users.id=sessions.userId WHERE token=? AND expires>? AND users.isActive=1",
               hash(cookie),
               Date.now(),
             )
           : null;
+        if (user && !["/api/login", "/api/register"].includes(path)) req.itdRecheckSession = () => {
+          if (!get("SELECT users.id FROM sessions JOIN users ON users.id=sessions.userId WHERE token=? AND expires>? AND users.isActive=1", hash(cookie), Date.now())) fail(401, "Войдите в кабинет");
+        };
         const admin = () => {
           if (!user) fail(401, "Войдите в кабинет");
           if (user.role !== "admin") fail(403, "Нет доступа");
@@ -178,6 +185,7 @@ export function createApp(options = {}) {
           return p;
         };
         if (await recovery({req,res,path,method,user,body,json,fail})) return;
+        if (await management({req,res,path,method,url,user,body,json,fail})) return;
         if (path === "/api/login" && method === "POST") {
           const now = Date.now(),
             ip = req.socket.remoteAddress || "unknown";
@@ -209,7 +217,7 @@ export function createApp(options = {}) {
           const stored =
             u?.password ||
             `00000000000000000000000000000000:${"0".repeat(128)}`;
-          if (!validPassword(b.password, stored) || !u)
+          if (!validPassword(b.password, stored) || !u || !u.isActive)
             fail(401, "Неверный email или пароль");
           limits.delete(pairKey);
           const token = randomBytes(32).toString("hex");
@@ -250,11 +258,12 @@ export function createApp(options = {}) {
             fail(409, "Этот email уже зарегистрирован");
           const id = Number(
             run(
-              "INSERT INTO users(email,name,role,password) VALUES(?,?,?,?)",
+              "INSERT INTO users(email,name,role,password,createdAt) VALUES(?,?,?,?,?)",
               b.email.toLowerCase(),
               b.name.trim(),
               "client",
               passwordHash(b.password),
+              now,
             ).lastInsertRowid,
           );
           const token = randomBytes(32).toString("hex");
@@ -282,50 +291,6 @@ export function createApp(options = {}) {
             "itd_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0",
           );
           return json(res, 200, { ok: true });
-        }
-        if (path === "/api/projects" && method === "GET") {
-          const projects = all(
-            `SELECT p.id,p.title,p.status,u.name AS clientName,u.email AS clientEmail FROM projects p JOIN users u ON u.id=p.clientId ${user.role === "admin" ? "" : "WHERE p.clientId=?"} ORDER BY p.id DESC`,
-            ...(user.role === "admin" ? [] : [user.id]),
-          );
-          for (const p of projects) {
-            p.stages = all(
-              "SELECT id,title,status,description FROM stages WHERE projectId=? ORDER BY id",
-              p.id,
-            );
-            p.files = all(
-              "SELECT id,name,contentType,category,stageId,size FROM files WHERE projectId=? ORDER BY id",
-              p.id,
-            );
-          }
-          return json(res, 200, { projects });
-        }
-        if (path === "/api/clients" && method === "GET") {
-          admin();
-          return json(res, 200, {
-            clients: all(
-              "SELECT id,name,email FROM users WHERE role='client' ORDER BY name,id",
-            ),
-          });
-        }
-        if (path === "/api/projects" && method === "POST") {
-          admin();
-          const b = await body(req);
-          if (!text(b.title) || !Number.isSafeInteger(b.clientId))
-            fail(400, "Укажите название и клиента");
-          const u = get(
-            "SELECT id FROM users WHERE id=? AND role='client'",
-            b.clientId,
-          );
-          if (!u) fail(400, "Клиент не найден");
-          const id = Number(
-            run(
-              "INSERT INTO projects(title,clientId) VALUES(?,?)",
-              b.title.trim(),
-              u.id,
-            ).lastInsertRowid,
-          );
-          return json(res, 201, { id });
         }
         let match = path.match(/^\/api\/projects\/(\d+)\/stages$/);
         if (match && method === "POST") {
@@ -505,6 +470,7 @@ export function createApp(options = {}) {
         "/cabinet": "cabinet.html",
         "/cabinet/": "cabinet.html",
         "/cabinet.js": "cabinet.js",
+        "/admin-management.js": "admin-management.js",
         "/file-viewer.js": "file-viewer.js",
         "/cabinet.css": "cabinet.css",
       };

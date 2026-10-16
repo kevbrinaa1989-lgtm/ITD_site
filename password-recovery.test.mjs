@@ -600,12 +600,22 @@ test("legacy five-table stores migrate additively without changing existing rows
     );
     await f.stop();
     const tables = ["users", "projects", "stages", "files", "sessions"];
+    const originalColumns = {
+      users: "id,email,name,role,password",
+      projects: "id,title,clientId,status",
+      stages: "id,projectId,title,status,description",
+      files: "id,projectId,stageId,name,contentType,category,path,size",
+      sessions: "token,userId,expires",
+    };
     let before;
-    // Only this disposable fixture removes the new tables to reproduce the exact pre-recovery schema.
+    // Only this disposable fixture removes additions to reproduce the exact original schema.
     const legacy = new DatabaseSync(join(f.dataDir, "itd.sqlite"));
     try {
       legacy.exec(
-        "DROP TABLE password_recovery_events; DROP TABLE password_recovery_requests; DROP TABLE password_recovery_limits;",
+        `DROP TABLE password_recovery_events; DROP TABLE password_recovery_requests; DROP TABLE password_recovery_limits;
+         DROP TABLE admin_management_events;
+         ALTER TABLE users DROP COLUMN createdAt; ALTER TABLE users DROP COLUMN isActive;
+         ALTER TABLE projects DROP COLUMN createdAt; ALTER TABLE projects DROP COLUMN archivedFrom;`,
       );
       assert.deepEqual(
         legacy
@@ -621,7 +631,7 @@ test("legacy five-table stores migrate additively without changing existing rows
           table,
           legacy
             .prepare(
-              `SELECT * FROM ${table} ORDER BY ${table === "sessions" ? "token" : "id"}`,
+              `SELECT ${originalColumns[table]} FROM ${table} ORDER BY ${table === "sessions" ? "token" : "id"}`,
             )
             .all(),
         ]),
@@ -649,7 +659,7 @@ test("legacy five-table stores migrate additively without changing existing rows
         assert.deepEqual(
           migrated
             .prepare(
-              `SELECT * FROM ${table} ORDER BY ${table === "sessions" ? "token" : "id"}`,
+              `SELECT ${originalColumns[table]} FROM ${table} ORDER BY ${table === "sessions" ? "token" : "id"}`,
             )
             .all(),
           before[table],
@@ -658,11 +668,24 @@ test("legacy five-table stores migrate additively without changing existing rows
         "password_recovery_requests",
         "password_recovery_events",
         "password_recovery_limits",
+        "admin_management_events",
       ])
         assert.equal(
           migrated.prepare(`SELECT count(*) AS n FROM ${table}`).get().n,
           0,
         );
+      assert.ok(
+        migrated
+          .prepare("SELECT createdAt,isActive FROM users")
+          .all()
+          .every((row) => row.createdAt === null && row.isActive === 1),
+      );
+      assert.ok(
+        migrated
+          .prepare("SELECT createdAt,archivedFrom FROM projects")
+          .all()
+          .every((row) => row.createdAt === null && row.archivedFrom === null),
+      );
     } finally {
       migrated.close();
     }

@@ -10,6 +10,8 @@
     projects = [],
     selectedId = null;
   const projectTabs = new Map();
+  const adminTabs = ["management", "recovery", "clients", "projects"];
+  let showArchive = false;
   let activeTab = "overview";
   const node = (tag, text, className) => {
     const el = document.createElement(tag);
@@ -31,6 +33,9 @@
   };
   const showAuth = () => {
     clearRecovery();
+    window.ITDAdmin?.reset();
+    showArchive = false;
+    $("sidebar-show-archive").checked = false;
     window.ITDViewer?.invalidate();
     clearTimeout(messageTimer);
     user = null;
@@ -143,12 +148,11 @@
   }
   function selectTab(tab) {
     const hasProject = projects.some((project) => project.id === selectedId);
-    if (["management", "recovery"].includes(tab) && user?.role !== "admin")
-      tab = "overview";
+    if (adminTabs.includes(tab) && user?.role !== "admin") tab = "overview";
     activeTab = tab;
     if (selectedId !== null) projectTabs.set(selectedId, tab);
     document.querySelectorAll("[data-tab]").forEach((button) => {
-      const adminOnly = ["management", "recovery"].includes(button.dataset.tab);
+      const adminOnly = adminTabs.includes(button.dataset.tab);
       button.hidden = adminOnly ? user?.role !== "admin" : !hasProject;
       const selected = button.dataset.tab === tab;
       button.setAttribute("aria-selected", String(selected));
@@ -158,11 +162,13 @@
     document.querySelectorAll("[data-tab-panel]").forEach((panel) => {
       panel.hidden =
         panel.dataset.tabPanel !== tab ||
-        (["management", "recovery"].includes(tab) && user?.role !== "admin");
+        (adminTabs.includes(tab) && user?.role !== "admin");
     });
     $("admin-panel").hidden = tab !== "management" || user?.role !== "admin";
     if (tab === "recovery" && user?.role === "admin") refreshRecovery();
-    $("project-content").hidden = !hasProject || tab === "recovery";
+    window.ITDAdmin?.onTab(tab);
+    $("project-content").hidden =
+      !hasProject || ["recovery", "clients", "projects"].includes(tab);
     $("empty-state").hidden = hasProject || user?.role === "admin";
   }
   function download(file, label = "Скачать") {
@@ -259,9 +265,13 @@
         .join("")
         .toUpperCase();
     if ($("project-count"))
-      $("project-count").textContent = String(projects.length);
+      $("project-count").textContent = String(
+        projects.filter((p) => showArchive || p.status !== "Архив").length,
+      );
     $("project-list").replaceChildren();
-    for (const p of projects) {
+    for (const p of projects.filter(
+      (p) => showArchive || p.status !== "Архив",
+    )) {
       const button = node("button", undefined, "project-item");
       button.type = "button";
       button.append(
@@ -287,18 +297,18 @@
     for (const id of ["add-stage-form", "upload-file-form"])
       $(id).hidden = !project;
     selectTab(
-      !project && admin && activeTab !== "recovery" ? "management" : activeTab,
+      !project && admin && !adminTabs.includes(activeTab)
+        ? "management"
+        : activeTab,
     );
     if (!project) {
       document.querySelectorAll("[data-tab]").forEach((button) => {
-        button.hidden =
-          !["management", "recovery"].includes(button.dataset.tab) || !admin;
+        button.hidden = !adminTabs.includes(button.dataset.tab) || !admin;
       });
       return;
     }
     document.querySelectorAll("[data-tab]").forEach((button) => {
-      button.hidden =
-        ["management", "recovery"].includes(button.dataset.tab) && !admin;
+      button.hidden = adminTabs.includes(button.dataset.tab) && !admin;
     });
     $("project-title").textContent = project.title;
     $("project-client").textContent =
@@ -456,8 +466,13 @@
     const result = await api("/api/projects");
     if (!user || user !== currentUser) return;
     projects = result.projects;
-    if (!projects.some((p) => p.id === selectedId))
-      selectedId = projects[0]?.id ?? null;
+    if (
+      !projects.some(
+        (p) => p.id === selectedId && (showArchive || p.status !== "Архив"),
+      )
+    )
+      selectedId =
+        projects.find((p) => showArchive || p.status !== "Архив")?.id ?? null;
     render();
   }
   async function refreshClients() {
@@ -475,14 +490,19 @@
         "",
       ),
     );
-    for (const client of clients)
-      select.add(
-        new Option(`${client.name} (${client.email})`, String(client.id)),
+    for (const client of clients) {
+      const option = new Option(
+        `${client.name} (${client.email})${client.isActive === false ? " — доступ отключён" : ""}`,
+        String(client.id),
       );
-    if (clients.some((client) => String(client.id) === previous))
+      option.disabled = client.isActive === false;
+      select.add(option);
+    }
+    if (clients.some((client) => String(client.id) === previous && client.isActive !== false))
       select.value = previous;
   }
   async function enter(nextUser) {
+    window.ITDAdmin?.reset();
     clearRecovery();
     user = nextUser;
     if (user.role === "admin")
@@ -896,6 +916,35 @@
     }
   });
 
+  window.ITDAdmin?.init({
+    api,
+    getUser: () => user,
+    refresh: async () => {
+      await refresh();
+      await refreshClients();
+    },
+    openProject: async (id) => {
+      await refresh();
+      const project = projects.find((p) => p.id === Number(id));
+      if (!project) throw new Error("Проект больше не доступен.");
+      showArchive = project.status === "Архив";
+      $("sidebar-show-archive").checked = showArchive;
+      selectedId = project.id;
+      activeTab = "overview";
+      render();
+    },
+  });
+  $("sidebar-show-archive").addEventListener("change", () => {
+    showArchive = $("sidebar-show-archive").checked;
+    if (
+      !showArchive &&
+      projects.find((p) => p.id === selectedId)?.status === "Архив"
+    )
+      selectedId = projects.find((p) => p.status !== "Архив")?.id ?? null;
+    if (selectedId === null && showArchive)
+      selectedId = projects[0]?.id ?? null;
+    render();
+  });
   const mobileTabs = window.matchMedia("(max-width: 760px)");
   function orientTabs() {
     document
@@ -987,6 +1036,7 @@
     const result = await api("/api/projects", "POST", {
       title: values.title,
       clientId: Number(values.clientId),
+      status: values.status,
     });
     selectedId = result.id;
     form.reset();
@@ -1049,7 +1099,10 @@
       message("Сессия завершилась. Войдите повторно.", true);
     }
   });
-  window.addEventListener("pagehide", clearRecovery);
+  window.addEventListener("pagehide", () => {
+    clearRecovery();
+    window.ITDAdmin?.reset();
+  });
   window.addEventListener("pageshow", (event) => {
     if (!event.persisted) return;
     showAuth();

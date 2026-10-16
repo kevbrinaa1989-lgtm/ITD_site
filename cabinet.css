@@ -1764,3 +1764,175 @@ body > footer {
     font-size: 32px;
   }
 }
+
+/* Client and project administration; existing material viewer styles stay intact. */
+.sidebar-archive {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #aab3aa;
+  font-size: 10px;
+  margin-bottom: 16px;
+}
+.sidebar-archive input {
+  width: 14px;
+  height: 14px;
+  min-height: 14px;
+  accent-color: var(--copper);
+}
+.admin-search {
+  margin-bottom: 24px;
+  max-width: 100%;
+}
+.admin-search > div {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.admin-search .primary {
+  margin: 0;
+  flex-shrink: 0;
+}
+.admin-search input {
+  flex: 1;
+}
+.admin-search select {
+  width: auto;
+  max-width: 210px;
+}
+.admin-management-grid {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.85fr) minmax(0, 1.3fr);
+  gap: 22px;
+  align-items: start;
+}
+.admin-card-list {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.admin-record {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  text-align: left;
+  color: var(--ink);
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.admin-record[aria-pressed="true"] {
+  border-color: var(--copper);
+  box-shadow: inset 3px 0 var(--copper);
+}
+.admin-record strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.admin-record > span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.admin-record small {
+  font-size: 10px;
+}
+.admin-detail {
+  min-width: 0;
+}
+.admin-detail > h3 {
+  font-family: Georgia, serif;
+  font-size: 25px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.admin-detail > h4 {
+  font-size: 13px;
+  margin: 25px 0 14px;
+}
+.admin-editor,
+.admin-history {
+  padding-top: 18px;
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.admin-editor > summary,
+.admin-history > summary {
+  font-size: 12px;
+  color: var(--copper);
+  line-height: 1.7;
+}
+.admin-editor form {
+  margin-top: 18px;
+}
+.admin-danger {
+  background: none;
+  color: #9d4f37;
+  font-size: 11px;
+  padding: 14px 0;
+  text-align: left;
+  display: block;
+  margin-top: 15px;
+  min-height: 44px;
+}
+.admin-linked-projects {
+  display: grid;
+  gap: 5px;
+}
+.admin-linked-projects .text-button {
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.admin-warning {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #875739;
+  border: 1px solid #dfcdb7;
+  background: #f8f1e7;
+  padding: 14px;
+  border-radius: 4px;
+}
+@media (max-width: 1100px) {
+  .admin-management-grid {
+    grid-template-columns: 1fr;
+  }
+  .admin-card-list {
+    max-height: 360px;
+    overflow: auto;
+  }
+}
+@media (max-width: 760px) {
+  .admin-search > div {
+    flex-wrap: wrap;
+  }
+  .admin-search input {
+    flex-basis: 100%;
+  }
+  .admin-search select {
+    flex: 1;
+    max-width: none;
+  }
+  .admin-management-grid {
+    gap: 18px;
+  }
+  .admin-detail .recovery-fields {
+    grid-template-columns: 1fr;
+  }
+  .sidebar-archive {
+    position: absolute;
+    right: 20px;
+    top: 70px;
+    margin: 0;
+    font-size: 9px;
+  }
+  .admin-detail {
+    padding: 22px;
+  }
+}
+@media (min-width: 761px) {
+  .project-sidebar { overflow-y: auto; }
+  .project-sidebar .workspace-nav { flex-shrink: 0; }
+  .project-sidebar .project-switcher { flex-shrink: 0; }
+}
