@@ -30,6 +30,7 @@
       }, 5000);
   };
   const showAuth = () => {
+    window.ITDViewer?.invalidate();
     clearTimeout(messageTimer);
     user = null;
     projects = [];
@@ -184,22 +185,24 @@
         "file-meta",
       ),
     );
-    item.append(icon, info, download(file));
-    if (admin) {
-      const button = node("button", "Удалить", "file-delete");
-      button.type = "button";
-      button.setAttribute("aria-label", `Удалить файл ${file.name}`);
-      button.addEventListener("click", () => {
-        if (window.confirm(`Удалить файл «${file.name}»?`))
-          busy(item, async () => {
-            await api(`/api/files/${file.id}`, "DELETE", {});
-            await refresh();
-            message("Файл удалён");
-          });
-      });
-      item.append(button);
-    }
+    item.append(icon, info);
+    if (window.ITDViewer?.supported(file)) item.append(window.ITDViewer.control(file, project.files));
+    item.append(download(file));
+    if (admin) item.append(deleteFileButton(file, item));
     return item;
+  }
+  function deleteFileButton(file, container) {
+    const button = node("button", "Удалить", "file-delete");
+    button.type = "button";
+    button.setAttribute("aria-label", `Удалить файл ${file.name}`);
+    button.addEventListener("click", () => {
+      if (window.confirm(`Удалить файл «${file.name}»?`)) busy(container, async () => {
+        await api(`/api/files/${file.id}`, "DELETE", {});
+        await refresh();
+        message("Файл удалён");
+      });
+    });
+    return button;
   }
   function stageEditor(stage) {
     const details = node("details", undefined, "stage-edit");
@@ -263,6 +266,7 @@
       );
       button.setAttribute("aria-pressed", String(p.id === selectedId));
       button.addEventListener("click", () => {
+        window.ITDViewer?.invalidate();
         selectedId = p.id;
         activeTab = projectTabs.get(p.id) || "overview";
         render();
@@ -371,7 +375,10 @@
       );
       if (results.length) {
         const links = node("div", undefined, "stage-results");
-        for (const file of results) links.append(download(file, file.name));
+        for (const file of results) {
+          if (window.ITDViewer?.supported(file)) links.append(window.ITDViewer.control(file, project.files, file.name));
+          else links.append(download(file, file.name));
+        }
         content.append(links);
       }
       if (admin) content.append(stageEditor(stage));
@@ -386,10 +393,35 @@
     ]) {
       const list = $(id);
       list.replaceChildren();
-      for (const file of project.files.filter(
-        (file) => file.category === category,
-      ))
+      const categoryFiles = project.files.filter(file => file.category === category);
+      if (category === "result") {
+        const groups = new Map();
+        for (const file of categoryFiles.filter(file => window.ITDViewer?.image(file))) {
+          const key = file.stageId ?? "unassigned";
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(file);
+        }
+        for (const [stageId, files] of groups) {
+          const section = node("section", undefined, "gallery-section");
+          const stage = project.stages.find(stage => stage.id === stageId);
+          section.append(node("h3", stage?.title || "Без привязки к этапу"));
+          const gallery = node("div", undefined, "material-gallery");
+          for (const file of files) {
+            const card = window.ITDViewer.thumbnail(file, files);
+            const actions = node("div", undefined, "gallery-actions");
+            actions.append(download(file));
+            if (admin) actions.append(deleteFileButton(file, card));
+            card.append(actions);
+            gallery.append(card);
+          }
+          section.append(gallery);
+          list.append(section);
+        }
+      }
+      for (const file of categoryFiles) {
+        if (category === "result" && window.ITDViewer?.image(file)) continue;
         list.append(fileRow(file, project, admin));
+      }
       if (!list.childElementCount)
         empty(
           list,
@@ -400,6 +432,7 @@
     }
   }
   async function refresh() {
+    window.ITDViewer?.invalidate();
     const currentUser = user;
     const result = await api("/api/projects");
     if (!user || user !== currentUser) return;
@@ -597,6 +630,7 @@
     await refresh();
     message("Файл загружен");
   });
+  window.addEventListener("itd-preview-session-expired", () => { if (user) { showAuth(); message("Сессия завершилась. Войдите повторно.", true); } });
   api("/api/me")
     .then((result) => enter(result.user))
     .catch((error) => {

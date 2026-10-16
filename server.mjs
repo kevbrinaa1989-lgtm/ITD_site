@@ -11,6 +11,19 @@ import { resolve, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openConfiguredData } from "./data-storage.mjs";
 const ROOT = dirname(fileURLToPath(import.meta.url));
+const PDF_ASSETS = new Set(Object.keys(JSON.parse(readFileSync(join(ROOT, "vendor/pdfjs/assets.json"), "utf8"))));
+function previewType(file, bytes) {
+  const ext = file.name.split(".").pop().toLowerCase();
+  if (["jpg", "jpeg"].includes(ext) && file.contentType === "image/jpeg" &&
+      bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (ext === "png" && file.contentType === "image/png" &&
+      bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return "image/png";
+  if (ext === "webp" && file.contentType === "image/webp" && bytes.length >= 12 &&
+      bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP") return "image/webp";
+  if (ext === "pdf" && file.contentType === "application/pdf" &&
+      bytes.subarray(0, 5).equals(Buffer.from("%PDF-"))) return "application/pdf";
+  fail(415, "Предпросмотр этого файла недоступен. Вы можете скачать оригинал.");
+}
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const passwordHash = (password) => {
   const salt = randomBytes(16).toString("hex");
@@ -444,16 +457,23 @@ export function createApp(options = {}) {
             throw e;
           }
         }
-        match = path.match(/^\/api\/files\/(\d+)(\/download)?$/);
+        match = path.match(/^\/api\/files\/(\d+)(\/download|\/preview)?$/);
         if (match) {
           const f = get("SELECT * FROM files WHERE id=?", Number(match[1]));
           if (!f) fail(404, "Файл не найден");
           project(f.projectId);
           if (method === "GET" && match[2]) {
             const bytes = readFileSync(join(dataDir, "files", f.path));
+            const preview = match[2] === "/preview";
+            const contentType = preview ? previewType(f, bytes) : f.contentType;
+            if (preview) {
+              res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox; frame-ancestors 'self'");
+              res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+              res.setHeader("Referrer-Policy", "no-referrer");
+            }
             res.writeHead(200, {
-              "Content-Type": f.contentType,
-              "Content-Disposition": `attachment; filename="download.${f.name.split(".").pop()}"; filename*=UTF-8''${encodeURIComponent(f.name).replace(/'/g, "%27")}`,
+              "Content-Type": contentType,
+              "Content-Disposition": `${preview ? "inline" : "attachment"}; filename="download.${f.name.split(".").pop()}"; filename*=UTF-8''${encodeURIComponent(f.name).replace(/'/g, "%27")}`,
               "Cache-Control": "no-store",
               "Content-Length": bytes.length,
             });
@@ -479,9 +499,11 @@ export function createApp(options = {}) {
         "/cabinet": "cabinet.html",
         "/cabinet/": "cabinet.html",
         "/cabinet.js": "cabinet.js",
+        "/file-viewer.js": "file-viewer.js",
         "/cabinet.css": "cabinet.css",
       };
-      const file = routes[path];
+      const asset = path.startsWith("/vendor/pdfjs/") ? path.slice("/vendor/pdfjs/".length) : null;
+      const file = routes[path] || (PDF_ASSETS.has(asset) ? `vendor/pdfjs/${asset}` : null);
       if (!file || !["GET", "HEAD"].includes(method))
         fail(404, "Страница не найдена");
       let bytes;
@@ -494,14 +516,16 @@ export function createApp(options = {}) {
       if (file === "cabinet.html")
         res.setHeader(
           "Content-Security-Policy",
-          "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+          "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; font-src 'self' blob:; worker-src 'self'; connect-src 'self'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
         );
       res.writeHead(200, {
-        "Content-Type": file.endsWith(".js")
+        "Content-Type": /\.m?js$/.test(file)
           ? "text/javascript; charset=utf-8"
           : file.endsWith(".css")
             ? "text/css; charset=utf-8"
-            : "text/html; charset=utf-8",
+            : file.endsWith(".wasm") ? "application/wasm"
+            : file.endsWith(".ttf") ? "font/ttf"
+            : asset ? "application/octet-stream" : "text/html; charset=utf-8",
         "Content-Length": bytes.length,
         "Cache-Control": "no-cache",
       });
