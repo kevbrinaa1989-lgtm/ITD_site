@@ -25,6 +25,8 @@
   const viewport = el("div", undefined, "viewer-viewport"),
     content = el("div", undefined, "viewer-content");
   viewport.append(content);
+  // Image zoom belongs to this viewing session, not to the stored file.
+  const imageZoom = new Map();
   let epoch = 0,
     generation = 0,
     controllers = new Set(),
@@ -62,9 +64,11 @@
     }
   };
   const close = () => {
+    imageZoom.clear();
     abort();
     if (dialog.open) dialog.close();
-    if (opener?.isConnected) opener.focus();
+    if (opener?.isConnected)
+      opener.focus(image(current) ? { preventScroll: true } : undefined);
     opener = null;
   };
   const prev = button("← Предыдущий", () => navigate(-1)),
@@ -84,7 +88,10 @@
     close();
   });
   dialog.addEventListener("close", () => {
-    if (!dialog.open) abort();
+    if (!dialog.open) {
+      imageZoom.clear();
+      abort();
+    }
   });
   let touch;
   viewport.addEventListener(
@@ -174,13 +181,28 @@
   }
   function setZoom(value) {
     zoom = Math.min(3, Math.max(0.5, value));
+    if (image(current)) imageZoom.set(current.id, zoom);
     if (pdf) renderPdf();
     else if (source) {
-      source.width = Math.round(
-        source.naturalWidth *
-          Math.min((viewport.clientWidth - 32) / source.naturalWidth, 1) *
-          zoom,
+      const style = getComputedStyle(viewport);
+      const width = Math.max(
+        1,
+        viewport.clientWidth -
+          parseFloat(style.paddingLeft) -
+          parseFloat(style.paddingRight),
       );
+      const height = Math.max(
+        1,
+        viewport.clientHeight -
+          parseFloat(style.paddingTop) -
+          parseFloat(style.paddingBottom),
+      );
+      const fit = Math.min(
+        width / source.naturalWidth,
+        height / source.naturalHeight,
+        1,
+      );
+      source.width = Math.max(1, Math.floor(source.naturalWidth * fit * zoom));
     }
     update();
   }
@@ -193,13 +215,16 @@
   async function load(file) {
     abort();
     current = file;
+    dialog.classList.toggle("is-image-viewer", image(file));
     index = collection.findIndex((f) => f.id === file.id);
-    zoom = 1;
+    zoom = image(file) ? (imageZoom.get(file.id) ?? 1) : 1;
     page = 1;
     pages = 1;
     const token = generation;
     controller = new AbortController();
     title.textContent = file.name;
+    title.title = image(file) ? file.name : "";
+    if (image(file)) viewport.scrollTo(0, 0);
     status.textContent = "Загрузка материала…";
     download.href = `/api/files/${file.id}/download`;
     download.download = file.name;
@@ -227,10 +252,12 @@
         viewerUrl = url;
         const img = el("img");
         img.alt = file.name;
+        img.hidden = true;
         img.onload = () => {
           if (token !== generation) return;
           source = img;
-          setZoom(1);
+          setZoom(zoom);
+          img.hidden = false;
           status.textContent = `Изображение ${index + 1} из ${collection.length}`;
         };
         img.onerror = () => {
@@ -269,6 +296,7 @@
     }
   }
   function open(file, files, trigger) {
+    if (!dialog.open) imageZoom.clear();
     opener = trigger;
     collection = image(file) ? files.filter(image) : [file];
     if (!dialog.open) dialog.showModal();
@@ -304,7 +332,8 @@
       img.remove();
       b.prepend(el("span", "Изображение недоступно", "thumbnail-error"));
     };
-    const caption = el("span", file.name);
+    const caption = el("span", file.name, "gallery-caption");
+    caption.title = file.name;
     b.append(img, caption);
     card.append(b);
     const stamp = epoch;
