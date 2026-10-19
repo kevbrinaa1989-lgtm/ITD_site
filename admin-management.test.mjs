@@ -650,11 +650,11 @@ test("20. legacy client/project migration adds null historical dates without cha
       sessions: "token,userId,expires",
     };
     let before;
-    // Remove only the new management schema in this disposable database to emulate an older installation.
+    // Only this disposable fixture removes additions to emulate an older installation.
     const db = new DatabaseSync(join(f.dataDir, "itd.sqlite"));
     try {
       db.exec(
-        "DROP TABLE admin_management_events; ALTER TABLE users DROP COLUMN createdAt; ALTER TABLE users DROP COLUMN isActive; ALTER TABLE projects DROP COLUMN createdAt; ALTER TABLE projects DROP COLUMN archivedFrom;",
+        "DROP TABLE review_views; DROP TABLE review_notifications; DROP TABLE review_events; DROP TABLE review_versions; DROP TABLE review_materials; DROP TABLE admin_management_events; ALTER TABLE users DROP COLUMN createdAt; ALTER TABLE users DROP COLUMN isActive; ALTER TABLE projects DROP COLUMN createdAt; ALTER TABLE projects DROP COLUMN archivedFrom;",
       );
       before = Object.fromEntries(
         Object.entries(oldColumns).map(([table, columns]) => [

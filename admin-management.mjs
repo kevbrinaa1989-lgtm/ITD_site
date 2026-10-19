@@ -1,3 +1,4 @@
+import { decorateReviewFiles } from "./material-review.mjs";
 const STATUSES = ["Новый", "В работе", "На паузе", "Завершён", "Архив"];
 const iso = (value) => (value == null ? null : new Date(value).toISOString());
 export function initAdminManagement({ db, now = Date.now }) {
@@ -74,10 +75,10 @@ export function initAdminManagement({ db, now = Date.now }) {
         "SELECT id,title,status,description FROM stages WHERE projectId=? ORDER BY id",
         row.id,
       ),
-      files: all(
+      files: decorateReviewFiles(db, all(
         "SELECT id,name,contentType,category,stageId,size FROM files WHERE projectId=? ORDER BY id",
         row.id,
-      ),
+      )),
     };
   function history(where, args, clientId) {
     const events = all(

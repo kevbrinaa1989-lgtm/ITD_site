@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/cabinet.css" />
     <script src="/file-viewer.js" defer></script>
     <script src="/admin-management.js" defer></script>
+    <script src="/material-review.js" defer></script>
     <script src="/cabinet.js" defer></script>
   </head>
   <body>
@@ -269,6 +270,29 @@
             >
               <span aria-hidden="true">▦</span>Проекты
             </button>
+            <button
+              id="tab-review"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="panel-review"
+              data-tab="review"
+            >
+              <span aria-hidden="true">✓</span>Согласования
+            </button>
+            <button
+              id="tab-notifications"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="panel-notifications"
+              data-tab="notifications"
+            >
+              <span aria-hidden="true">◉</span>Уведомления
+              <span id="notification-count" class="notification-count" hidden
+                >0</span
+              >
+            </button>
           </nav>
           <div class="sidebar-bottom">
             <a class="studio-contact" href="https://t.me/Kevbrina_Diana"
@@ -404,6 +428,45 @@
                 </div>
               </section>
               <section
+                id="panel-review"
+                data-tab-panel="review"
+                role="tabpanel"
+                tabindex="0"
+                aria-labelledby="tab-review"
+                hidden
+              >
+                <div class="section-title">
+                  <div>
+                    <h2>Согласования материалов</h2>
+                    <p class="muted">
+                      Решение относится к конкретной версии. Старые версии и
+                      история сохраняются.
+                    </p>
+                  </div>
+                  <select id="review-filter" aria-label="Фильтр согласований">
+                    <option value="">Все материалы</option>
+                    <option value="pending_approval">
+                      Ожидает согласования
+                    </option>
+                    <option value="changes_requested">Нужны изменения</option>
+                    <option value="approved">Согласован</option>
+                    <option value="unviewed">Не просмотрено</option>
+                    <option value="viewed">Просмотрено</option>
+                  </select>
+                </div>
+                <p id="review-message" role="status" class="muted"></p>
+                <div
+                  id="review-material-list"
+                  class="review-material-list"
+                ></div>
+                <section
+                  id="review-material-detail"
+                  class="panel review-detail"
+                  aria-label="Версия материала"
+                  hidden
+                ></section>
+              </section>
+              <section
                 id="panel-stages"
                 data-tab-panel="stages"
                 role="tabpanel"
@@ -509,8 +572,13 @@
                   />
                   <label for="stage-status">Статус</label
                   ><select id="stage-status" name="status">
-                    <option value="planned">Запланирован</option>
+                    <option value="planned">Не начат</option>
                     <option value="in_progress">В работе</option>
+                    <option value="pending_approval">
+                      Ожидает согласования
+                    </option>
+                    <option value="changes_requested">Нужны изменения</option>
+                    <option value="approved">Согласован</option>
                     <option value="completed">Завершён</option>
                   </select>
                   <label for="stage-description">Описание</label
@@ -541,6 +609,20 @@
                   ><select id="upload-stage" name="stageId">
                     <option value="">Без привязки к этапу</option>
                   </select>
+                  <label class="recovery-identity"
+                    ><input
+                      id="upload-for-review"
+                      name="review"
+                      type="checkbox"
+                      value="yes"
+                    /><span
+                      >Отправить на согласование клиенту (результат с выбранным
+                      этапом)</span
+                    ></label
+                  >
+                  <p class="muted review-upload-help">
+                    Обычная загрузка сохраняет файл без запроса согласования.
+                  </p>
                   <button type="submit" class="primary">Загрузить файл</button>
                 </form>
               </details>
@@ -681,6 +763,30 @@
                   <p class="muted">Выберите проект.</p>
                 </section>
               </div>
+            </section>
+            <section
+              id="panel-notifications"
+              data-tab-panel="notifications"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-notifications"
+              hidden
+            >
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">События проекта</p>
+                  <h2>Уведомления</h2>
+                </div>
+                <button
+                  id="notifications-refresh"
+                  class="text-button"
+                  type="button"
+                >
+                  Обновить
+                </button>
+              </div>
+              <p id="notifications-message" class="muted" role="status"></p>
+              <div id="notification-list" class="notification-list"></div>
             </section>
           </div>
           <div class="workspace-footer">

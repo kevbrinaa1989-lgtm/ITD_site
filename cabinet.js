@@ -2,8 +2,11 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const statuses = {
-    planned: "Запланирован",
+    planned: "Не начат",
     in_progress: "В работе",
+    pending_approval: "Ожидает согласования",
+    changes_requested: "Нужны изменения",
+    approved: "Согласован",
     completed: "Завершён",
   };
   let user = null,
@@ -34,6 +37,7 @@
   const showAuth = () => {
     clearRecovery();
     window.ITDAdmin?.reset();
+    window.ITDReview?.reset();
     showArchive = false;
     $("sidebar-show-archive").checked = false;
     window.ITDViewer?.invalidate();
@@ -106,9 +110,11 @@
       throw new Error("Сессия изменилась. Повторите действие.");
     if (!response.ok) {
       if (response.status === 401 && user) showAuth();
-      throw new Error(
+      const error = new Error(
         result.error || result.message || `Ошибка запроса (${response.status})`,
       );
+      error.status = response.status;
+      throw error;
     }
     return result;
   }
@@ -153,7 +159,11 @@
     if (selectedId !== null) projectTabs.set(selectedId, tab);
     document.querySelectorAll("[data-tab]").forEach((button) => {
       const adminOnly = adminTabs.includes(button.dataset.tab);
-      button.hidden = adminOnly ? user?.role !== "admin" : !hasProject;
+      button.hidden = adminOnly
+        ? user?.role !== "admin"
+        : button.dataset.tab === "notifications"
+          ? false
+          : !hasProject;
       const selected = button.dataset.tab === tab;
       button.setAttribute("aria-selected", String(selected));
       button.tabIndex = selected ? 0 : -1;
@@ -167,9 +177,12 @@
     $("admin-panel").hidden = tab !== "management" || user?.role !== "admin";
     if (tab === "recovery" && user?.role === "admin") refreshRecovery();
     window.ITDAdmin?.onTab(tab);
+    window.ITDReview?.onTab(tab);
     $("project-content").hidden =
-      !hasProject || ["recovery", "clients", "projects"].includes(tab);
-    $("empty-state").hidden = hasProject || user?.role === "admin";
+      !hasProject ||
+      ["recovery", "clients", "projects", "notifications"].includes(tab);
+    $("empty-state").hidden =
+      hasProject || user?.role === "admin" || tab === "notifications";
   }
   function download(file, label = "Скачать") {
     const link = node("a", label, "file-download");
@@ -201,10 +214,16 @@
     if (window.ITDViewer?.supported(file))
       item.append(window.ITDViewer.control(file, project.files));
     item.append(download(file));
-    if (admin) item.append(deleteFileButton(file, item));
+    if (file.review) item.append(window.ITDReview.reviewControl(file));
+    if (admin)
+      item.append(
+        deleteFileButton(file, item),
+        window.ITDReview.sendControl(file),
+      );
     return item;
   }
   function deleteFileButton(file, container) {
+    if (file.review) return document.createDocumentFragment();
     const button = node("button", "Удалить", "file-delete");
     button.type = "button";
     button.setAttribute("aria-label", `Удалить файл ${file.name}`);
@@ -297,13 +316,20 @@
     for (const id of ["add-stage-form", "upload-file-form"])
       $(id).hidden = !project;
     selectTab(
-      !project && admin && !adminTabs.includes(activeTab)
+      !project &&
+        admin &&
+        !adminTabs.includes(activeTab) &&
+        activeTab !== "notifications"
         ? "management"
         : activeTab,
     );
     if (!project) {
+      window.ITDReview?.setProject(null);
       document.querySelectorAll("[data-tab]").forEach((button) => {
-        button.hidden = !adminTabs.includes(button.dataset.tab) || !admin;
+        button.hidden =
+          button.dataset.tab === "notifications"
+            ? false
+            : !adminTabs.includes(button.dataset.tab) || !admin;
       });
       return;
     }
@@ -322,7 +348,8 @@
       : 0;
     const current =
       project.stages.find((stage) => stage.status === "in_progress") ||
-      project.stages.find((stage) => stage.status === "planned");
+      project.stages.find((stage) => stage.status === "planned") ||
+      project.stages.find((stage) => stage.status !== "completed");
     const setText = (id, value) => {
       if ($(id)) $(id).textContent = value;
     };
@@ -350,8 +377,8 @@
       "overview-next-action",
       current
         ? admin
-          ? "Статус меняется в разделе «Этапы проекта», материалы добавляются в «Управлении»."
-          : "Посмотрите описание текущего этапа и доступные материалы."
+          ? "Следите за решениями в разделе «Согласования». Материалы добавляются в «Управлении»."
+          : "Посмотрите материалы этапа. Решения и комментарии доступны в разделе «Согласования»."
         : project.stages.length
           ? "Все этапы завершены. Доступные результаты и документы можно скачать в соответствующих разделах."
           : admin
@@ -393,7 +420,10 @@
         node("p", stage.description || "Описание этапа пока не добавлено."),
       );
       const results = project.files.filter(
-        (file) => file.stageId === stage.id && file.category === "result",
+        (file) =>
+          file.stageId === stage.id &&
+          file.category === "result" &&
+          !file.review,
       );
       if (results.length) {
         const links = node("div", undefined, "stage-results");
@@ -406,6 +436,9 @@
         }
         content.append(links);
       }
+      const reviewHost = node("div", undefined, "stage-review-materials");
+      reviewHost.dataset.reviewStage = String(stage.id);
+      content.append(reviewHost);
       if (admin) content.append(stageEditor(stage));
       item.append(number, content);
       $("stage-list").append(item);
@@ -439,7 +472,13 @@
             const card = window.ITDViewer.thumbnail(file, files);
             const actions = node("div", undefined, "gallery-actions");
             actions.append(download(file));
-            if (admin) actions.append(deleteFileButton(file, card));
+            if (file.review)
+              actions.append(window.ITDReview.reviewControl(file));
+            if (admin)
+              actions.append(
+                deleteFileButton(file, card),
+                window.ITDReview.sendControl(file),
+              );
             card.append(actions);
             gallery.append(card);
           }
@@ -459,6 +498,7 @@
             : "Документы пока не загружены.",
         );
     }
+    window.ITDReview?.setProject(project);
   }
   async function refresh() {
     window.ITDViewer?.invalidate();
@@ -498,11 +538,16 @@
       option.disabled = client.isActive === false;
       select.add(option);
     }
-    if (clients.some((client) => String(client.id) === previous && client.isActive !== false))
+    if (
+      clients.some(
+        (client) => String(client.id) === previous && client.isActive !== false,
+      )
+    )
       select.value = previous;
   }
   async function enter(nextUser) {
     window.ITDAdmin?.reset();
+    window.ITDReview?.reset();
     clearRecovery();
     user = nextUser;
     if (user.role === "admin")
@@ -531,6 +576,7 @@
       user.role === "admin" ? "Администратор" : "Клиент";
     await refresh();
     await refreshClients();
+    window.ITDReview?.start();
   }
   function authTab(register) {
     $("recovery-auth").hidden = true;
@@ -945,6 +991,25 @@
       selectedId = projects[0]?.id ?? null;
     render();
   });
+  window.ITDReview?.init({
+    api,
+    getUser: () => user,
+    selectTab,
+    encodeFile: encodeUploadFile,
+    refresh,
+    openProject: async (id) => {
+      const currentUser = user;
+      await refresh();
+      if (user !== currentUser) throw new Error("Сессия изменилась.");
+      const project = projects.find((item) => item.id === Number(id));
+      if (!project) throw new Error("Проект недоступен.");
+      showArchive = project.status === "Архив";
+      $("sidebar-show-archive").checked = showArchive;
+      selectedId = project.id;
+      activeTab = "review";
+      render();
+    },
+  });
   const mobileTabs = window.matchMedia("(max-width: 760px)");
   function orientTabs() {
     document
@@ -1050,11 +1115,7 @@
     await refresh();
     message("Этап добавлен");
   });
-  bindForm("upload-file-form", async (values, form) => {
-    if (!selectedId) throw new Error("Выберите проект");
-    const projectId = selectedId;
-    const uploadUser = user;
-    const file = values.file;
+  async function encodeUploadFile(file) {
     if (!(file instanceof File) || !file.size)
       throw new Error("Выберите непустой файл");
     if (file.size > 10 * 1024 * 1024)
@@ -1081,12 +1142,20 @@
       reader.onerror = () => reject(new Error("Не удалось прочитать файл"));
       reader.readAsDataURL(file);
     });
+    return { name: file.name, contentType, data };
+  }
+  bindForm("upload-file-form", async (values, form) => {
+    if (!selectedId) throw new Error("Выберите проект");
+    const projectId = selectedId;
+    const uploadUser = user;
+    if (values.review && (values.category !== "result" || !values.stageId))
+      throw new Error("Для согласования выберите раздел «Результаты» и этап.");
+    const payload = await encodeUploadFile(values.file);
     if (user !== uploadUser) return;
     await api(`/api/projects/${projectId}/files`, "POST", {
-      name: file.name,
-      contentType,
-      data,
+      ...payload,
       category: values.category,
+      ...(values.review ? { review: true } : {}),
       ...(values.stageId ? { stageId: Number(values.stageId) } : {}),
     });
     form.reset();
@@ -1102,6 +1171,7 @@
   window.addEventListener("pagehide", () => {
     clearRecovery();
     window.ITDAdmin?.reset();
+    window.ITDReview?.reset();
   });
   window.addEventListener("pageshow", (event) => {
     if (!event.persisted) return;

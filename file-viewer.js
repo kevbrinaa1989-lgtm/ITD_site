@@ -45,6 +45,12 @@
     source,
     opener,
     viewerUrl;
+  let renderedCallback = null, reportedOpen = false;
+  function reportRendered() {
+    if (!dialog.open || !current || reportedOpen) return;
+    reportedOpen = true;
+    renderedCallback?.(current);
+  }
   const abort = () => {
     clearTimeout(resizeTimer);
     generation++;
@@ -146,6 +152,7 @@
   }
   async function renderPdf() {
     const token = ++generation;
+    status.textContent = "Подготовка страницы…";
     renderTask?.cancel();
     try {
       const p = await pdf.getPage(page);
@@ -172,7 +179,8 @@
         viewport: view,
       });
       await renderTask.promise;
-      if (token !== generation) return;
+      if (token !== generation || !dialog.open) return;
+      reportRendered();
       status.textContent = `Страница ${page} из ${pages}`;
       update();
     } catch (e) {
@@ -215,6 +223,7 @@
   async function load(file) {
     abort();
     current = file;
+    reportedOpen = false;
     dialog.classList.toggle("is-image-viewer", image(file));
     index = collection.findIndex((f) => f.id === file.id);
     zoom = image(file) ? (imageZoom.get(file.id) ?? 1) : 1;
@@ -254,10 +263,11 @@
         img.alt = file.name;
         img.hidden = true;
         img.onload = () => {
-          if (token !== generation) return;
+          if (token !== generation || !dialog.open || current !== file) return;
           source = img;
           setZoom(zoom);
           img.hidden = false;
+          reportRendered();
           status.textContent = `Изображение ${index + 1} из ${collection.length}`;
         };
         img.onerror = () => {
@@ -399,5 +409,5 @@
     current = null;
     collection = [];
   }
-  window.ITDViewer = { supported, image, control, thumbnail, invalidate };
+  window.ITDViewer = { supported, image, control, thumbnail, invalidate, onRendered: callback => {renderedCallback = callback;} };
 })();

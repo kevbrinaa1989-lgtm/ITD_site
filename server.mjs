@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { openConfiguredData } from "./data-storage.mjs";
 import { initPasswordRecovery } from "./password-recovery.mjs";
 import { initAdminManagement } from "./admin-management.mjs";
+import { initMaterialReview } from "./material-review.mjs";
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PDF_ASSETS = new Set(Object.keys(JSON.parse(readFileSync(join(ROOT, "vendor/pdfjs/assets.json"), "utf8"))));
 function previewType(file, bytes) {
@@ -93,6 +94,11 @@ export function createApp(options = {}) {
     get = (sql, ...args) => db.prepare(sql).get(...args),
     all = (sql, ...args) => db.prepare(sql).all(...args);
   const recovery = initPasswordRecovery({db, passwordHash, now: options.recoveryNow});
+  const review = initMaterialReview({
+    db,
+    validatePreview: (file) =>
+      previewType(file, readFileSync(join(dataDir, "files", file.path))),
+  });
   const limits = new Map();
   const json = (res, status, value) => {
     res.writeHead(status, {
@@ -185,6 +191,8 @@ export function createApp(options = {}) {
           return p;
         };
         if (await recovery({req,res,path,method,user,body,json,fail})) return;
+        if (await review.handle({ req, res, path, method, user, body, json, fail }))
+          return;
         if (await management({req,res,path,method,url,user,body,json,fail})) return;
         if (path === "/api/login" && method === "POST") {
           const now = Date.now(),
@@ -299,7 +307,7 @@ export function createApp(options = {}) {
           const b = await body(req);
           if (
             !text(b.title) ||
-            !["planned", "in_progress", "completed"].includes(b.status) ||
+            !["planned", "in_progress", "pending_approval", "changes_requested", "approved", "completed"].includes(b.status) ||
             typeof (b.description ?? "") !== "string" ||
             (b.description || "").length > 10000
           )
@@ -333,7 +341,7 @@ export function createApp(options = {}) {
             description = b.description ?? old.description;
           if (
             !text(title) ||
-            !["planned", "in_progress", "completed"].includes(status) ||
+            !["planned", "in_progress", "pending_approval", "changes_requested", "approved", "completed"].includes(status) ||
             typeof description !== "string" ||
             description.length > 10000
           )
@@ -394,37 +402,60 @@ export function createApp(options = {}) {
               ))
           )
             fail(400, "Этап не принадлежит проекту");
+          if (
+            Object.keys(b).some((key) =>
+              ![
+                "name",
+                "contentType",
+                "data",
+                "category",
+                "stageId",
+                "review",
+                "materialId",
+                "expectedVersionId",
+              ].includes(key),
+            )
+          )
+            fail(400, "Недопустимые поля запроса");
+          review.validateUpload(b, p.id, user, fail);
           const storage = randomBytes(24).toString("hex");
           writeFileSync(join(dataDir, "files", storage), bytes, {
             mode: 0o600,
             flag: "wx",
           });
+          let result;
           try {
-            const id = Number(
-              run(
-                "INSERT INTO files(projectId,stageId,name,contentType,category,path,size) VALUES(?,?,?,?,?,?,?)",
-                p.id,
-                b.stageId ?? null,
-                b.name,
-                b.contentType,
-                b.category,
-                storage,
-                bytes.length,
-              ).lastInsertRowid,
-            );
-            return json(res, 201, {
-              id,
-              name: b.name,
-              contentType: b.contentType,
-              category: b.category,
-              stageId: b.stageId ?? null,
-              size: bytes.length,
+            result = review.transaction(() => {
+              const id = Number(
+                run(
+                  "INSERT INTO files(projectId,stageId,name,contentType,category,path,size) VALUES(?,?,?,?,?,?,?)",
+                  p.id,
+                  b.stageId ?? null,
+                  b.name,
+                  b.contentType,
+                  b.category,
+                  storage,
+                  bytes.length,
+                ).lastInsertRowid,
+              );
+              const fileReview = review.attachFile(id, b, p.id, user, fail);
+              return {
+                id,
+                name: b.name,
+                contentType: b.contentType,
+                category: b.category,
+                stageId: b.stageId ?? null,
+                size: bytes.length,
+                ...(fileReview ? { review: fileReview } : {}),
+              };
             });
           } catch (e) {
             unlinkSync(join(dataDir, "files", storage));
             throw e;
           }
+          return json(res, 201, result);
         }
+
         match = path.match(/^\/api\/files\/(\d+)(\/download|\/preview)?$/);
         if (match) {
           const f = get("SELECT * FROM files WHERE id=?", Number(match[1]));
@@ -449,6 +480,8 @@ export function createApp(options = {}) {
           }
           if (method === "DELETE" && !match[2]) {
             admin();
+            if (review.isLinked(f.id))
+              fail(409, "Файл входит в историю согласования и не может быть удалён");
             run("DELETE FROM files WHERE id=?", f.id);
             try {
               unlinkSync(join(dataDir, "files", f.path));
@@ -471,6 +504,7 @@ export function createApp(options = {}) {
         "/cabinet/": "cabinet.html",
         "/cabinet.js": "cabinet.js",
         "/admin-management.js": "admin-management.js",
+        "/material-review.js": "material-review.js",
         "/file-viewer.js": "file-viewer.js",
         "/cabinet.css": "cabinet.css",
       };

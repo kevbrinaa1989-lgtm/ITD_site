@@ -52,6 +52,16 @@
     host.append(list);
   }
   const eventNames = {
+    "material.submitted": "Материал отправлен на согласование",
+    "material.version_uploaded": "Загружена новая версия материала",
+    "material.version_replaced": "Текущая версия материала заменена",
+    "material.approved": "Клиент согласовал материал",
+    "material.changes_requested": "Клиент запросил изменения",
+    "material.comment": "Клиент оставил комментарий",
+    "material.admin_reply": "Студия ответила на комментарий",
+    "material.approval_cancelled": "Согласование отменено",
+    "material.first_viewed": "Материал впервые просмотрен клиентом",
+
     "client.renamed": "Имя клиента изменено",
     "client.disabled": "Доступ клиента отключён",
     "client.enabled": "Доступ клиента восстановлен",

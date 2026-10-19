@@ -556,32 +556,38 @@ try {
     await page.locator("#tab-documents").click();
     assert.equal(await page.locator("#document-list .file-preview").count(), 1);
     await page.locator("#document-list .file-preview").click();
-    await page.waitForFunction(
-      () =>
-        document.querySelector(".viewer-status").textContent ===
-        "Страница 1 из 2",
-      {},
-      { timeout: 15000 },
-    );
-    const pixel = () =>
-      page
-        .locator(".viewer-content canvas")
-        .evaluate((c) =>
-          Array.from(
-            c.getContext("2d").getImageData(c.width / 2, c.height / 2, 1, 1)
-              .data,
-          ),
-        );
-    assert.deepEqual(await pixel(), [255, 0, 0, 255]);
+    // ResizeObserver may replace the canvas between two separate browser calls.
+    // Check the page label and rendered pixels together in a single browser turn.
+    const waitForPdfColor = async (pageNumber, expected) => {
+      const result = await page.waitForFunction(
+        ({ pageNumber, expected }) => {
+          const canvas = document.querySelector(".viewer-content canvas");
+          if (
+            !canvas ||
+            document.querySelector(".viewer-status").textContent !==
+              `Страница ${pageNumber} из 2`
+          )
+            return false;
+          const pixel = Array.from(
+            canvas
+              .getContext("2d")
+              .getImageData(canvas.width / 2, canvas.height / 2, 1, 1).data,
+          );
+          return expected.every((channel, index) => channel === pixel[index])
+            ? pixel
+            : false;
+        },
+        { pageNumber, expected },
+        { timeout: 15000 },
+      );
+      assert.deepEqual(await result.jsonValue(), expected);
+      await result.dispose();
+    };
+    await waitForPdfColor(1, [255, 0, 0, 255]);
     await page
       .getByRole("button", { name: "Следующий →", exact: true })
       .click();
-    await page.waitForFunction(
-      () =>
-        document.querySelector(".viewer-status").textContent ===
-        "Страница 2 из 2",
-    );
-    assert.deepEqual(await pixel(), [0, 0, 255, 255]);
+    await waitForPdfColor(2, [0, 0, 255, 255]);
     await page.getByRole("button", { name: "Увеличить", exact: true }).click();
     await page.waitForFunction(() =>
       document.querySelector(".viewer-controls").textContent.includes("125%"),
