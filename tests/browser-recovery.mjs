@@ -1,3 +1,4 @@
+import { prepareFixtureUpload } from "./upload-fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -33,6 +34,14 @@ try {
     args: ["--no-sandbox"],
   });
   async function api(path, body, cookie, status = 200) {
+    body = await prepareFixtureUpload(
+      base,
+      path,
+      body,
+      cookie,
+      body ? "POST" : "GET",
+    );
+
     const r = await fetch(base + path, {
       method: body ? "POST" : "GET",
       headers: {

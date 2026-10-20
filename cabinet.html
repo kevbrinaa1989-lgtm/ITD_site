@@ -10,6 +10,7 @@
     <script src="/admin-management.js" defer></script>
     <script src="/material-review.js" defer></script>
     <script src="/admin-workspace.js" defer></script>
+    <script src="/upload-context.js" defer></script>
     <script src="/cabinet.js" defer></script>
   </head>
   <body>
@@ -657,6 +658,14 @@
                   <p class="muted review-upload-help">
                     Обычная загрузка сохраняет файл без запроса согласования.
                   </p>
+                  <div
+                    id="upload-recipient"
+                    class="upload-recipient"
+                    aria-live="polite"
+                  >
+                    <p id="upload-project-name">Проект: не выбран</p>
+                    <p id="upload-client-name">Клиент: не выбран</p>
+                  </div>
                   <button type="submit" class="primary">Загрузить файл</button>
                 </form>
               </details>
@@ -976,6 +985,28 @@
         </p></noscript
       >
     </main>
+    <dialog
+      id="upload-switch-dialog"
+      class="upload-switch-dialog"
+      aria-labelledby="upload-switch-title"
+      aria-describedby="upload-switch-message"
+    >
+      <h2 id="upload-switch-title">Перейти в другой проект?</h2>
+      <p id="upload-switch-message"></p>
+      <div class="upload-switch-actions">
+        <button
+          id="upload-stay"
+          type="button"
+          class="upload-dialog-stay"
+          autofocus
+        >
+          Остаться
+        </button>
+        <button id="upload-discard" type="button" class="primary">
+          Перейти и отменить загрузку
+        </button>
+      </div>
+    </dialog>
     <footer>ITD Studio <span>Интерьер, продуманный до мелочей.</span></footer>
   </body>
 </html>

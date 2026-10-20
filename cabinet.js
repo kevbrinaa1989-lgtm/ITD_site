@@ -42,6 +42,7 @@
       }, 5000);
   };
   const showAuth = () => {
+    window.ITDUploads?.reset();
     clearRecovery();
     window.ITDWorkspace?.reset();
     window.ITDAdmin?.reset();
@@ -352,7 +353,9 @@
         ),
       );
       button.setAttribute("aria-pressed", String(p.id === selectedId));
-      button.addEventListener("click", () => {
+      button.addEventListener("click", async () => {
+        if (!(await window.ITDUploads.allowSwitch(p.id))) return;
+        if (!user) return;
         window.ITDViewer?.invalidate();
         selectedId = p.id;
         activeTab = projectTabs.get(p.id) || "overview";
@@ -361,6 +364,7 @@
       $("project-list").append(button);
     }
     const project = projects.find((p) => p.id === selectedId);
+    window.ITDUploads?.reconcile();
     $("empty-state").hidden = !!project || admin;
     $("project-content").hidden = !project;
     for (const id of ["add-stage-form", "upload-file-form"])
@@ -453,6 +457,7 @@
     }
     $("stage-list").replaceChildren();
     const stageSelect = $("upload-file-form").elements.namedItem("stageId");
+    const previousStage = stageSelect.value;
     stageSelect.replaceChildren(new Option("Без привязки к этапу", ""));
     project.stages.forEach((stage, index) => {
       stageSelect.add(new Option(stage.title, String(stage.id)));
@@ -563,7 +568,10 @@
             : "Документы пока не загружены.",
         );
     }
+    if ([...stageSelect.options].some(option => option.value === previousStage))
+      stageSelect.value = previousStage;
     window.ITDReview?.setProject(project);
+    window.ITDUploads?.reconcile();
   }
   async function refresh() {
     window.ITDViewer?.invalidate();
@@ -611,6 +619,7 @@
       select.value = previous;
   }
   async function enter(nextUser) {
+    window.ITDUploads?.reset();
     window.ITDWorkspace?.reset();
     window.ITDAdmin?.reset();
     window.ITDReview?.reset();
@@ -1031,6 +1040,15 @@
     }
   });
 
+  window.ITDUploads.init({
+    api, getUser: () => user,
+    getProject: () => projects.find(p => p.id === selectedId),
+    encodeFile: encodeUploadFile, message,
+  });
+  window.ITDUploads.register($("upload-file-form"), {
+    context: () => window.ITDUploads.contextOf(projects.find(p => p.id === selectedId)),
+    receiver: $("upload-recipient"),
+  });
   window.ITDAdmin?.init({
     api,
     getUser: () => user,
@@ -1039,6 +1057,7 @@
       await refreshClients();
     },
     openProject: async (id) => {
+      if (!(await window.ITDUploads.allowSwitch(Number(id)))) return;
       await refresh();
       const project = projects.find((p) => p.id === Number(id));
       if (!project) throw new Error("Проект больше не доступен.");
@@ -1049,8 +1068,17 @@
       render();
     },
   });
-  $("sidebar-show-archive").addEventListener("change", () => {
-    showArchive = $("sidebar-show-archive").checked;
+  $("sidebar-show-archive").addEventListener("change", async () => {
+    const requested = $("sidebar-show-archive").checked;
+    const nextId = !requested && projects.find(p => p.id === selectedId)?.status === "Архив"
+      ? projects.find(p => p.status !== "Архив")?.id ?? null
+      : selectedId === null && requested ? projects[0]?.id ?? null : selectedId;
+    if (!(await window.ITDUploads.allowSwitch(nextId))) {
+      $("sidebar-show-archive").checked = showArchive;
+      return;
+    }
+    if (!user) return;
+    showArchive = requested;
     if (
       !showArchive &&
       projects.find((p) => p.id === selectedId)?.status === "Архив"
@@ -1067,6 +1095,8 @@
     encodeFile: encodeUploadFile,
     refresh,
     openProject: async (id) => {
+      if (!(await window.ITDUploads.allowSwitch(Number(id))))
+        throw new Error("Переход отменён. Подготовленная загрузка сохранена.");
       const currentUser = user;
       await refresh();
       if (user !== currentUser) throw new Error("Сессия изменилась.");
@@ -1080,6 +1110,8 @@
     },
   });
   const openWorkspaceProject = async (id, tab) => {
+    if (!(await window.ITDUploads.allowSwitch(Number(id))))
+      throw new Error("Переход отменён. Подготовленная загрузка сохранена.");
     const currentUser = user;
     await refresh();
     if (user !== currentUser) throw new Error("Сессия изменилась.");
@@ -1197,6 +1229,7 @@
     }),
   );
   bindForm("create-project-form", async (values, form) => {
+    if (!(await window.ITDUploads.allowSwitch(null))) return;
     const result = await api("/api/projects", "POST", {
       title: values.title,
       clientId: Number(values.clientId),
@@ -1249,19 +1282,15 @@
   }
   bindForm("upload-file-form", async (values, form) => {
     if (!selectedId) throw new Error("Выберите проект");
-    const projectId = selectedId;
     const uploadUser = user;
     if (values.review && (values.category !== "result" || !values.stageId))
       throw new Error("Для согласования выберите раздел «Результаты» и этап.");
-    const payload = await encodeUploadFile(values.file);
-    if (user !== uploadUser) return;
-    await api(`/api/projects/${projectId}/files`, "POST", {
-      ...payload,
+    const result = await window.ITDUploads.send(form, {
       category: values.category,
       ...(values.review ? { review: true } : {}),
       ...(values.stageId ? { stageId: Number(values.stageId) } : {}),
     });
-    form.reset();
+    if (!result || user !== uploadUser) return;
     await refresh();
     message("Файл загружен");
   });
@@ -1272,6 +1301,7 @@
     }
   });
   window.addEventListener("pagehide", () => {
+    window.ITDUploads?.reset();
     clearRecovery();
     window.ITDWorkspace?.reset();
     window.ITDAdmin?.reset();

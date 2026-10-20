@@ -14,6 +14,7 @@ import { initPasswordRecovery } from "./password-recovery.mjs";
 import { initAdminManagement } from "./admin-management.mjs";
 import { initMaterialReview } from "./material-review.mjs";
 import { initAdminWorkspace, validateStageDates } from "./admin-workspace.mjs";
+import { createUploadIntents } from "./upload-intents.mjs";
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PDF_ASSETS = new Set(Object.keys(JSON.parse(readFileSync(join(ROOT, "vendor/pdfjs/assets.json"), "utf8"))));
 function previewType(file, bytes) {
@@ -104,6 +105,7 @@ export function createApp(options = {}) {
     validatePreview: (file) =>
       previewType(file, readFileSync(join(dataDir, "files", file.path))),
   });
+  const uploadIntents = createUploadIntents({ now: options.uploadIntentNow });
   const limits = new Map();
   const json = (res, status, value) => {
     res.writeHead(status, {
@@ -395,11 +397,87 @@ export function createApp(options = {}) {
           return json(res, 200, updated);
         }
 
+        match = path.match(/^\/api\/projects\/(\d+)\/upload-intents$/);
+        if (match && method === "POST") {
+          admin();
+          const b = await body(req);
+          if (
+            Object.keys(b).some(
+              (key) => !["materialId", "expectedVersionId"].includes(key),
+            )
+          )
+            fail(400, "Недопустимые поля запроса");
+          const p = project(Number(match[1]));
+          let materialId = null,
+            expectedVersionId = null,
+            revision = null;
+          if ("materialId" in b || "expectedVersionId" in b) {
+            if (
+              !Number.isSafeInteger(b.materialId) ||
+              !Number.isSafeInteger(b.expectedVersionId)
+            )
+              fail(400, "Укажите материал и текущую версию");
+            const material = get(
+              "SELECT * FROM review_materials WHERE id=?",
+              b.materialId,
+            );
+            if (!material || material.projectId !== p.id)
+              fail(
+                409,
+                "Материал не относится к выбранному проекту. Обновите данные.",
+              );
+            const current = get(
+              "SELECT id,revision FROM review_versions WHERE materialId=? ORDER BY versionNumber DESC LIMIT 1",
+              material.id,
+            );
+            if (!current || current.id !== b.expectedVersionId)
+              fail(409, "Текущая версия изменилась. Обновите данные.");
+            materialId = material.id;
+            expectedVersionId = current.id;
+            revision = current.revision;
+          }
+          return json(
+            res,
+            201,
+            uploadIntents.issue({
+              sessionHash: hash(cookie),
+              adminId: user.id,
+              projectId: p.id,
+              clientId: p.clientId,
+              materialId,
+              expectedVersionId,
+              revision,
+            }),
+          );
+        }
+
         match = path.match(/^\/api\/projects\/(\d+)\/files$/);
         if (match && method === "POST") {
           admin();
-          const p = project(Number(match[1])),
-            b = await body(req);
+          const b = await body(req);
+          const p = project(Number(match[1]));
+          const checkIntent = () => {
+            req.itdRecheckSession?.();
+            const currentProject = project(p.id);
+            const currentVersion = Number.isSafeInteger(b.materialId)
+              ? get(
+                  "SELECT id,revision FROM review_versions WHERE materialId=? ORDER BY versionNumber DESC LIMIT 1",
+                  b.materialId,
+                )
+              : null;
+            return uploadIntents.validate({
+              uploadIntent: b.uploadIntent,
+              sessionHash: hash(cookie),
+              adminId: user.id,
+              projectId: currentProject.id,
+              clientId: currentProject.clientId,
+              payload: b,
+              currentVersionId: currentVersion?.id ?? null,
+              currentRevision: currentVersion?.revision ?? null,
+            });
+          };
+          const prepared = checkIntent();
+          if (prepared.result) return json(res, 201, prepared.result);
           const types = {
             pdf: "application/pdf",
             png: "image/png",
@@ -443,17 +521,19 @@ export function createApp(options = {}) {
           )
             fail(400, "Этап не принадлежит проекту");
           if (
-            Object.keys(b).some((key) =>
-              ![
-                "name",
-                "contentType",
-                "data",
-                "category",
-                "stageId",
-                "review",
-                "materialId",
-                "expectedVersionId",
-              ].includes(key),
+            Object.keys(b).some(
+              (key) =>
+                ![
+                  "name",
+                  "contentType",
+                  "data",
+                  "category",
+                  "stageId",
+                  "review",
+                  "materialId",
+                  "expectedVersionId",
+                  "uploadIntent",
+                ].includes(key),
             )
           )
             fail(400, "Недопустимые поля запроса");
@@ -466,6 +546,7 @@ export function createApp(options = {}) {
           let result;
           try {
             result = review.transaction(() => {
+              checkIntent();
               const id = Number(
                 run(
                   "INSERT INTO files(projectId,stageId,name,contentType,category,path,size) VALUES(?,?,?,?,?,?,?)",
@@ -493,6 +574,7 @@ export function createApp(options = {}) {
             unlinkSync(join(dataDir, "files", storage));
             throw e;
           }
+          uploadIntents.complete(prepared, result);
           return json(res, 201, result);
         }
 
@@ -545,6 +627,7 @@ export function createApp(options = {}) {
         "/cabinet.js": "cabinet.js",
         "/admin-management.js": "admin-management.js",
         "/admin-workspace.js": "admin-workspace.js",
+        "/upload-context.js": "upload-context.js",
         "/material-review.js": "material-review.js",
         "/file-viewer.js": "file-viewer.js",
         "/cabinet.css": "cabinet.css",

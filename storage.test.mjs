@@ -1,3 +1,4 @@
+import { prepareFixtureUpload } from "./tests/upload-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -36,6 +37,8 @@ async function startServer(options, { cwd, env = {} } = {}) {
   return { child, base: `http://127.0.0.1:${ready.port}`, async stop(signal) { if(child.exitCode !== null || child.signalCode) return; if(signal)child.kill(signal);else child.send("stop");await exit; } };
 }
 async function request(server, path, { method="GET", cookie, body }={}) {
+  body = await prepareFixtureUpload(server.base, path, body, cookie, method);
+
   const response = await fetch(server.base + path, { method, headers: {
     ...(cookie ? {Cookie:cookie} : {}), ...(method === "GET" ? {} : {Origin:server.base,"X-ITD-Request":"1","Content-Type":"application/json"}),
   }, ...(body === undefined ? {} : {body:JSON.stringify(body)}) });

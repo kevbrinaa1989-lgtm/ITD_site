@@ -1,3 +1,4 @@
+import { prepareFixtureUpload } from "./upload-fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -30,6 +31,8 @@ try {
     path,
     { body, cookie, method = body ? "POST" : "GET", status = 200 } = {},
   ) {
+    body = await prepareFixtureUpload(base, path, body, cookie, method);
+
     const r = await fetch(base + path, {
       method,
       headers: {

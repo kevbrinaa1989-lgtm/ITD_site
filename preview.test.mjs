@@ -1,3 +1,4 @@
+import { prepareFixtureUpload } from "./tests/upload-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, readdir, readFile } from "node:fs/promises";
@@ -23,6 +24,8 @@ test("file previews preserve authorization, security headers and original downlo
     base = `http://127.0.0.1:${app.server.address().port}`;
   }
   async function request(path, { cookie, method = "GET", body } = {}) {
+    body = await prepareFixtureUpload(base, path, body, cookie, method);
+
     return fetch(base + path, {
       method,
       headers: {

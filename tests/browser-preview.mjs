@@ -1,3 +1,4 @@
+import { prepareFixtureUpload } from "./upload-fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -92,6 +93,14 @@ try {
   await new Promise((resolve) => app.server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${app.server.address().port}`;
   async function request(path, body, cookie) {
+    body = await prepareFixtureUpload(
+      base,
+      path,
+      body,
+      cookie,
+      body ? "POST" : "GET",
+    );
+
     const r = await fetch(base + path, {
       method: body ? "POST" : "GET",
       headers: {
@@ -599,7 +608,7 @@ try {
     assert.deepEqual(await readFile(await download.path()), pdfFile.bytes);
     assert.ok(
       await page
-        .locator("dialog")
+        .locator("dialog.file-viewer")
         .evaluate((d) => d.getBoundingClientRect().right <= innerWidth + 1),
     );
     const screenshot = process.env.ITD_SCREENSHOT_DIR;

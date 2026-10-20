@@ -1,3 +1,4 @@
+import { prepareFixtureUpload } from "./tests/upload-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -27,6 +28,11 @@ test("client and administrator workflows preserve authorization and data", async
     path,
     { method = "GET", cookie, body, csrf = true, origin = base } = {},
   ) {
+    body = await prepareFixtureUpload(base, path, body, cookie, method, {
+      csrf,
+      origin,
+    });
+
     const headers = {};
     if (cookie) headers.Cookie = cookie;
     if (method !== "GET") {

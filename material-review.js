@@ -463,22 +463,35 @@
         caption,
       );
       attachSubmit(form, "Отправить новую версию", async () => {
+        if (form.dataset.uploading) return;
         const generation = epoch,
           pid = project.id,
-          seq = detailSeq;
-        const payload = await h.encodeFile(file.files[0]);
-        if (!valid(generation, pid) || seq !== detailSeq) return;
-        await mutate(
-          `/api/projects/${pid}/files`,
-          {
-            ...payload,
+          seq = detailSeq,
+          mid = material.id;
+        form.dataset.uploading = "true";
+        try {
+          const result = await window.ITDUploads.send(form, {
             category: "result",
             stageId: material.stageId,
             materialId: material.id,
             expectedVersionId: material.currentVersion.id,
-          },
-          true,
-        );
+          });
+          if (!result || !valid(generation, pid) || seq !== detailSeq) return;
+          await h.refresh();
+          if (!valid(generation, pid) || seq !== detailSeq) return;
+          await open(mid);
+          notice("Новая версия отправлена на согласование.");
+          await loadNotifications();
+        } finally {
+          delete form.dataset.uploading;
+        }
+      });
+      window.ITDUploads.register(form, {
+        context: () => ({
+          ...window.ITDUploads.contextOf(project),
+          materialId: material.id,
+          expectedVersionId: material.currentVersion.id,
+        }),
       });
       upload.append(form);
       host.append(upload);

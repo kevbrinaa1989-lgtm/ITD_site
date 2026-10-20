@@ -1,3 +1,4 @@
+import { prepareFixtureUpload } from "./tests/upload-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, readFile, readdir } from "node:fs/promises";
@@ -35,6 +36,11 @@ async function fixture() {
     path,
     { method = "GET", body, cookie, csrf = true, origin } = {},
   ) {
+    body = await prepareFixtureUpload(base, path, body, cookie, method, {
+      csrf,
+      origin,
+    });
+
     return fetch(base + path, {
       method,
       headers: {
@@ -1072,9 +1078,16 @@ test("42. additive migration leaves old rows files and prior audit history uncha
       db.exec(
         "DROP TABLE admin_tasks; ALTER TABLE stages DROP COLUMN startDate; ALTER TABLE stages DROP COLUMN plannedEndDate; DROP TABLE review_views; DROP TABLE review_notifications; DROP TABLE review_events; DROP TABLE review_versions; DROP TABLE review_materials;",
       );
-      oldColumns = Object.fromEntries(oldTables.map((table) => [
-        table, db.prepare(`PRAGMA table_info(${table})`).all().map((column) => column.name).join(","),
-      ]));
+      oldColumns = Object.fromEntries(
+        oldTables.map((table) => [
+          table,
+          db
+            .prepare(`PRAGMA table_info(${table})`)
+            .all()
+            .map((column) => column.name)
+            .join(","),
+        ]),
+      );
       before = Object.fromEntries(
         oldTables.map((table) => [
           table,
@@ -1099,7 +1112,9 @@ test("42. additive migration leaves old rows files and prior audit history uncha
       for (const table of oldTables)
         assert.deepEqual(
           migrated
-            .prepare(`SELECT ${oldColumns[table]} FROM ${table} ORDER BY ${order(table)}`)
+            .prepare(
+              `SELECT ${oldColumns[table]} FROM ${table} ORDER BY ${order(table)}`,
+            )
             .all(),
           before[table],
         );

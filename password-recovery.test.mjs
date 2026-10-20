@@ -1,3 +1,4 @@
+import { prepareFixtureUpload } from "./tests/upload-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, readFile, readdir } from "node:fs/promises";
@@ -41,6 +42,12 @@ async function fixture() {
     path,
     { method = "GET", cookie, body, csrf = true, origin, headers = {} } = {},
   ) {
+    body = await prepareFixtureUpload(base, path, body, cookie, method, {
+      csrf,
+      origin,
+      headers,
+    });
+
     return fetch(base + path, {
       method,
       headers: {
