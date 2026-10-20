@@ -2232,3 +2232,281 @@ body > footer {
     font-size: 10px;
   }
 }
+
+/* Daily studio overview and internal tasks. */
+.workspace-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 28px 0;
+}
+.workspace-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 25px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  text-align: left;
+  color: var(--ink);
+  min-width: 0;
+  min-height: 130px;
+}
+.workspace-metric strong {
+  font-family: Georgia, serif;
+  font-size: 39px;
+  font-weight: 400;
+  line-height: 1.1;
+}
+.workspace-metric span {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.workspace-quick-actions {
+  display: flex;
+  gap: 8px 23px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.workspace-quick-actions button {
+  min-height: 44px;
+  white-space: normal;
+  text-align: left;
+}
+.workspace-attention-filters {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.workspace-attention-filters label {
+  display: grid;
+  gap: 8px;
+  font-size: 11px;
+  flex: 1;
+}
+.workspace-sections {
+  display: grid;
+  gap: 28px;
+}
+.workspace-section > h2,
+.workspace-period > h2 {
+  font-size: 26px;
+  margin: 0 0 20px;
+}
+.workspace-section {
+  margin-bottom: 27px;
+  min-width: 0;
+}
+.workspace-item-list {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+}
+.workspace-attention-card,
+.workspace-task-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 22px;
+  min-width: 0;
+}
+.workspace-attention-card h3,
+.workspace-task-card h3 {
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+  margin-bottom: 13px;
+}
+.workspace-context {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  margin-bottom: 11px;
+}
+.workspace-comment {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.8;
+  padding: 12px;
+  background: var(--ivory);
+  border-left: 2px solid #c9b79b;
+}
+.workspace-tag {
+  display: inline-block;
+  font-size: 10px;
+  line-height: 1.7;
+  color: #806447;
+  padding: 4px 8px;
+  background: #f1ede2;
+  margin: 0 6px 12px 0;
+  border-radius: 3px;
+}
+.deadline-warning {
+  font-size: 10px;
+  line-height: 1.7;
+  color: #9c4736;
+  background: #f8eae3;
+  border: 1px solid #ead2c4;
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 3px;
+  margin: 0 6px 12px 0;
+}
+.workspace-attention-card > .text-button,
+.workspace-task-card > .text-button {
+  white-space: normal;
+  text-align: left;
+  min-height: 44px;
+}
+.workspace-period {
+  padding-top: 27px;
+  border-top: 1px solid var(--line);
+}
+.workspace-period .workspace-section > h2 {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 22px;
+}
+.task-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 23px;
+  align-items: end;
+}
+.task-filters label {
+  display: grid;
+  gap: 8px;
+  font-size: 11px;
+  min-width: 0;
+}
+.task-filters .primary {
+  margin: 0;
+  min-height: 45px;
+}
+.task-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.2fr);
+  gap: 23px;
+  align-items: start;
+}
+.task-list {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.task-detail {
+  min-width: 0;
+  scroll-margin-top: 20px;
+}
+.task-detail > h3 {
+  font-family: Georgia, serif;
+  font-size: 27px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+.workspace-task-form {
+  gap: 13px;
+}
+.workspace-task-form label {
+  display: grid;
+  gap: 8px;
+  font-size: 11px;
+}
+.workspace-task-form .text-button {
+  min-height: 44px;
+}
+.stage-dates {
+  color: var(--muted);
+  font-size: 10px !important;
+  line-height: 1.8;
+  margin: 13px 0;
+}
+.stage-edit-form label {
+  display: grid;
+  gap: 7px;
+  font-size: 11px;
+  flex: 1;
+  min-width: 150px;
+}
+.workspace-nav #tab-overview > span:last-child {
+  width: auto;
+  font-size: 12px;
+  text-align: left;
+  line-height: 1.5;
+}
+.workspace-nav #tab-overview[aria-selected="true"] > span:last-child {
+  color: #f9f6e9;
+}
+@media (max-width: 1100px) {
+  .task-layout {
+    grid-template-columns: 1fr;
+  }
+  .task-list {
+    max-height: 450px;
+    overflow: auto;
+  }
+  .workspace-metric {
+    padding: 21px;
+  }
+  .workspace-metric strong {
+    font-size: 33px;
+  }
+}
+@media (max-width: 760px) {
+  .workspace-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 11px;
+  }
+  .workspace-metric {
+    padding: 19px;
+    min-height: 125px;
+  }
+  .workspace-metric strong {
+    font-size: 32px;
+  }
+  .workspace-metric span {
+    font-size: 10px;
+  }
+  .task-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .task-filters label:first-child {
+    grid-column: 1/-1;
+  }
+  .task-filters .primary {
+    grid-column: 1/-1;
+  }
+  .workspace-attention-filters {
+    flex-direction: column;
+  }
+  .workspace-section > h2,
+  .workspace-period > h2 {
+    font-size: 24px;
+  }
+  .workspace-attention-card,
+  .workspace-task-card {
+    padding: 20px;
+  }
+  .workspace-quick-actions {
+    gap: 5px 18px;
+  }
+  .task-detail {
+    padding: 22px;
+  }
+  .workspace-nav #tab-overview > span:last-child {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+}

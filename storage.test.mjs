@@ -90,7 +90,7 @@ test("pinned storage survives process restarts and restores complete verified ba
         const current=await json(server,"/api/me",{cookie:session});assert.equal(current.user.id,user.id);
         const {projects}=await json(server,"/api/projects",{cookie});
         assert.equal(projects.length,1);assert.equal(projects[0].title,"Persistent project");
-        assert.deepEqual(projects[0].stages,[{id:stage.id,title:"Approved design",status:"completed",description:"Keep this description"}]);
+        assert.deepEqual(projects[0].stages,[{id:stage.id,title:"Approved design",status:"completed",description:"Keep this description",startDate:null,plannedEndDate:null}]);
         assert.equal(projects[0].files[0].category,"document");assert.equal(projects[0].files[0].stageId,stage.id);
         const response=await request(server,`/api/files/${file.id}/download`,{cookie});assert.equal(response.status,200);assert.deepEqual(Buffer.from(await response.arrayBuffer()),document);
         await login(server,adminEmail,password);

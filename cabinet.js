@@ -13,7 +13,14 @@
     projects = [],
     selectedId = null;
   const projectTabs = new Map();
-  const adminTabs = ["management", "recovery", "clients", "projects"];
+  const adminTabs = [
+    "workspace",
+    "tasks",
+    "management",
+    "recovery",
+    "clients",
+    "projects",
+  ];
   let showArchive = false;
   let activeTab = "overview";
   const node = (tag, text, className) => {
@@ -36,6 +43,7 @@
   };
   const showAuth = () => {
     clearRecovery();
+    window.ITDWorkspace?.reset();
     window.ITDAdmin?.reset();
     window.ITDReview?.reset();
     showArchive = false;
@@ -176,11 +184,19 @@
     });
     $("admin-panel").hidden = tab !== "management" || user?.role !== "admin";
     if (tab === "recovery" && user?.role === "admin") refreshRecovery();
+    window.ITDWorkspace?.onTab(tab);
     window.ITDAdmin?.onTab(tab);
     window.ITDReview?.onTab(tab);
     $("project-content").hidden =
       !hasProject ||
-      ["recovery", "clients", "projects", "notifications"].includes(tab);
+      [
+        "workspace",
+        "tasks",
+        "recovery",
+        "clients",
+        "projects",
+        "notifications",
+      ].includes(tab);
     $("empty-state").hidden =
       hasProject || user?.role === "admin" || tab === "notifications";
   }
@@ -237,6 +253,22 @@
     });
     return button;
   }
+  function displayStageDate(value) {
+    if (!value) return "Без срока";
+    const [y, m, d] = value.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("ru-RU");
+  }
+  function localCalendarToday() {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(
+      parts.map((part) => [part.type, part.value]),
+    );
+    return `${values.year}-${values.month}-${values.day}`;
+  }
   function stageEditor(stage) {
     const details = node("details", undefined, "stage-edit");
     details.append(node("summary", "Редактировать этап"));
@@ -260,12 +292,30 @@
     description.setAttribute("aria-label", "Описание этапа");
     const save = node("button", "Сохранить этап");
     save.type = "submit";
-    form.append(title, status, description, save);
+    form.append(title, status, description);
+    for (const [name, label, value] of [
+      ["startDate", "Дата начала", stage.startDate],
+      ["plannedEndDate", "Плановая дата завершения", stage.plannedEndDate],
+    ]) {
+      const caption = node("label", label),
+        field = node("input");
+      field.type = "date";
+      field.name = name;
+      field.value = value || "";
+      field.setAttribute("aria-label", label);
+      caption.append(field);
+      form.append(caption);
+    }
+    form.append(save);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       const values = Object.fromEntries(new FormData(form));
       busy(form, async () => {
-        await api(`/api/stages/${stage.id}`, "PATCH", values);
+        await api(`/api/stages/${stage.id}`, "PATCH", {
+          ...values,
+          startDate: values.startDate || null,
+          plannedEndDate: values.plannedEndDate || null,
+        });
         await refresh();
         message("Этап обновлён");
       });
@@ -411,6 +461,7 @@
         undefined,
         `stage-card stage-${stage.status}`,
       );
+      item.dataset.stageId = String(stage.id);
       const number = node("span", String(index + 1), "stage-number");
       number.setAttribute("aria-hidden", "true");
       const content = node("div", undefined, "stage-body");
@@ -419,6 +470,20 @@
         node("p", statuses[stage.status] || stage.status, "stage-status"),
         node("p", stage.description || "Описание этапа пока не добавлено."),
       );
+      content.append(
+        node(
+          "p",
+          `Начало: ${displayStageDate(stage.startDate)} · Срок: ${displayStageDate(stage.plannedEndDate)}`,
+          "stage-dates",
+        ),
+      );
+      if (
+        stage.plannedEndDate &&
+        stage.plannedEndDate < localCalendarToday() &&
+        stage.status !== "completed" &&
+        !["Архив", "Завершён"].includes(project.status)
+      )
+        content.append(node("span", "Срок этапа прошёл", "deadline-warning"));
       const results = project.files.filter(
         (file) =>
           file.stageId === stage.id &&
@@ -546,10 +611,14 @@
       select.value = previous;
   }
   async function enter(nextUser) {
+    window.ITDWorkspace?.reset();
     window.ITDAdmin?.reset();
     window.ITDReview?.reset();
     clearRecovery();
     user = nextUser;
+    activeTab = user.role === "admin" ? "workspace" : "overview";
+    $("project-overview-label").textContent =
+      user.role === "admin" ? "Обзор проекта" : "Обзор";
     if (user.role === "admin")
       recoveryTimer = setInterval(() => {
         if (activeTab !== "recovery") return;
@@ -1010,6 +1079,36 @@
       render();
     },
   });
+  const openWorkspaceProject = async (id, tab) => {
+    const currentUser = user;
+    await refresh();
+    if (user !== currentUser) throw new Error("Сессия изменилась.");
+    const project = projects.find((item) => item.id === Number(id));
+    if (!project) throw new Error("Проект недоступен.");
+    showArchive = project.status === "Архив";
+    $("sidebar-show-archive").checked = showArchive;
+    selectedId = project.id;
+    activeTab = tab;
+    render();
+  };
+  window.ITDWorkspace?.init({
+    api,
+    getUser: () => user,
+    selectTab,
+    openMaterial: async (pid, mid, vid) => {
+      await openWorkspaceProject(pid, "review");
+      await window.ITDReview.open(mid, vid);
+    },
+    openStage: async (pid, sid) => {
+      await openWorkspaceProject(pid, "stages");
+      const target = document.querySelector(`[data-stage-id="${Number(sid)}"]`);
+      if (target) {
+        target.tabIndex = -1;
+        target.focus({ preventScroll: true });
+        target.scrollIntoView({ block: "start" });
+      }
+    },
+  });
   const mobileTabs = window.matchMedia("(max-width: 760px)");
   function orientTabs() {
     document
@@ -1110,7 +1209,11 @@
   });
   bindForm("add-stage-form", async (values, form) => {
     if (!selectedId) throw new Error("Выберите проект");
-    await api(`/api/projects/${selectedId}/stages`, "POST", values);
+    await api(`/api/projects/${selectedId}/stages`, "POST", {
+      ...values,
+      startDate: values.startDate || null,
+      plannedEndDate: values.plannedEndDate || null,
+    });
     form.reset();
     await refresh();
     message("Этап добавлен");
@@ -1170,6 +1273,7 @@
   });
   window.addEventListener("pagehide", () => {
     clearRecovery();
+    window.ITDWorkspace?.reset();
     window.ITDAdmin?.reset();
     window.ITDReview?.reset();
   });

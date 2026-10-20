@@ -9,6 +9,7 @@
     <script src="/file-viewer.js" defer></script>
     <script src="/admin-management.js" defer></script>
     <script src="/material-review.js" defer></script>
+    <script src="/admin-workspace.js" defer></script>
     <script src="/cabinet.js" defer></script>
   </head>
   <body>
@@ -187,6 +188,27 @@
             aria-label="Разделы проекта"
           >
             <button
+              id="tab-workspace"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="panel-workspace"
+              data-tab="workspace"
+              hidden
+            >
+              <span aria-hidden="true">◫</span>Обзор</button
+            ><button
+              id="tab-tasks"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="panel-tasks"
+              data-tab="tasks"
+              hidden
+            >
+              <span aria-hidden="true">≡</span>Задачи
+            </button>
+            <button
               id="tab-overview"
               type="button"
               role="tab"
@@ -194,7 +216,8 @@
               aria-controls="panel-overview"
               data-tab="overview"
             >
-              <span aria-hidden="true">◫</span>Обзор
+              <span aria-hidden="true">◫</span
+              ><span id="project-overview-label">Обзор</span>
             </button>
             <button
               id="tab-stages"
@@ -581,6 +604,17 @@
                     <option value="approved">Согласован</option>
                     <option value="completed">Завершён</option>
                   </select>
+                  <label for="stage-start-date">Дата начала</label
+                  ><input
+                    id="stage-start-date"
+                    name="startDate"
+                    type="date"
+                  /><label for="stage-end-date">Плановая дата завершения</label
+                  ><input
+                    id="stage-end-date"
+                    name="plannedEndDate"
+                    type="date"
+                  />
                   <label for="stage-description">Описание</label
                   ><textarea
                     id="stage-description"
@@ -787,6 +821,142 @@
               </div>
               <p id="notifications-message" class="muted" role="status"></p>
               <div id="notification-list" class="notification-list"></div>
+            </section>
+            <section
+              id="panel-workspace"
+              data-tab-panel="workspace"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-workspace"
+              hidden
+            >
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">Студия / Рабочий день</p>
+                  <h1>Обзор студии</h1>
+                  <p id="workspace-calendar" class="muted"></p>
+                </div>
+                <button
+                  id="workspace-refresh"
+                  class="text-button"
+                  type="button"
+                >
+                  Обновить
+                </button>
+              </div>
+              <p id="workspace-message" role="status" class="muted"></p>
+              <div id="workspace-metrics" class="workspace-metrics"></div>
+              <div class="workspace-quick-actions">
+                <button
+                  type="button"
+                  class="text-button"
+                  id="workspace-new-project"
+                >
+                  Создать проект →</button
+                ><button
+                  id="workspace-new-task"
+                  type="button"
+                  class="text-button"
+                >
+                  Создать задачу →</button
+                ><button
+                  type="button"
+                  class="text-button"
+                  data-open-tab="clients"
+                >
+                  Клиенты →</button
+                ><button
+                  type="button"
+                  class="text-button"
+                  data-open-tab="projects"
+                >
+                  Открыть проекты →</button
+                ><button
+                  type="button"
+                  class="text-button"
+                  data-open-tab="recovery"
+                >
+                  Запросы на восстановление →
+                </button>
+              </div>
+              <div class="workspace-attention-filters">
+                <label
+                  >Проект<select id="workspace-project-filter">
+                    <option value="">Все активные проекты</option>
+                  </select></label
+                ><label
+                  >Требует внимания<select id="workspace-type-filter">
+                    <option value="">Все события</option>
+                    <option value="changes_requested">Нужны изменения</option>
+                    <option value="unanswered_comment">Ждёт ответа</option>
+                  </select></label
+                >
+              </div>
+              <div id="workspace-attention" class="workspace-sections"></div>
+              <div id="workspace-deadlines" class="workspace-sections"></div>
+            </section>
+            <section
+              id="panel-tasks"
+              data-tab-panel="tasks"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-tasks"
+              hidden
+            >
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">Студия / Внутренняя работа</p>
+                  <h2>Задачи</h2>
+                  <p class="muted">
+                    Работа команды и сроки. Этот раздел доступен только
+                    сотрудникам.
+                  </p>
+                </div>
+                <button id="task-new-button" class="primary" type="button">
+                  Новая задача
+                </button>
+              </div>
+              <form id="task-filter-form" class="task-filters">
+                <label
+                  >Поиск<input
+                    id="task-search"
+                    name="search"
+                    type="search"
+                    maxlength="200" /></label
+                ><label
+                  >Показать<select id="task-preset" name="preset">
+                    <option value="active">Все активные</option>
+                    <option value="mine">Мои задачи</option>
+                    <option value="today">На сегодня</option>
+                    <option value="overdue">Просроченные</option>
+                    <option value="completed">Выполненные</option>
+                    <option value="nodue">Без срока</option>
+                  </select></label
+                ><label
+                  >Проект<select id="task-project-filter" name="projectId">
+                    <option value="">Активные проекты</option>
+                  </select></label
+                ><label
+                  >Статус<select id="task-status-filter" name="status">
+                    <option value="">Все активные</option>
+                  </select></label
+                ><label
+                  >Приоритет<select id="task-priority-filter" name="priority">
+                    <option value="">Любой</option>
+                  </select></label
+                ><button class="primary" type="submit">Применить</button>
+              </form>
+              <p id="task-message" role="status" class="muted"></p>
+              <div class="task-layout">
+                <div id="task-list" class="task-list"></div>
+                <section
+                  id="task-detail"
+                  class="panel task-detail"
+                  aria-label="Карточка задачи"
+                >
+                  <p class="muted">Выберите задачу или создайте новую.</p>
+                </section>
+              </div>
             </section>
           </div>
           <div class="workspace-footer">

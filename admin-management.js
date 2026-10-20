@@ -52,6 +52,13 @@
     host.append(list);
   }
   const eventNames = {
+    "task.created": "Создана задача",
+    "task.updated": "Задача обновлена",
+    "task.completed": "Задача выполнена",
+    "task.cancelled": "Задача отменена",
+    "task.due_date_changed": "Срок задачи изменён",
+    "stage.dates_changed": "Сроки этапа изменены",
+
     "material.submitted": "Материал отправлен на согласование",
     "material.version_uploaded": "Загружена новая версия материала",
     "material.version_replaced": "Текущая версия материала заменена",

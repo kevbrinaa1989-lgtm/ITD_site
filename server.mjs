@@ -13,6 +13,7 @@ import { openConfiguredData } from "./data-storage.mjs";
 import { initPasswordRecovery } from "./password-recovery.mjs";
 import { initAdminManagement } from "./admin-management.mjs";
 import { initMaterialReview } from "./material-review.mjs";
+import { initAdminWorkspace, validateStageDates } from "./admin-workspace.mjs";
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PDF_ASSETS = new Set(Object.keys(JSON.parse(readFileSync(join(ROOT, "vendor/pdfjs/assets.json"), "utf8"))));
 function previewType(file, bytes) {
@@ -56,6 +57,10 @@ export function createApp(options = {}) {
     `PRAGMA foreign_keys=ON; CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT NOT NULL,role TEXT NOT NULL,password TEXT NOT NULL); CREATE TABLE IF NOT EXISTS projects(id INTEGER PRIMARY KEY,title TEXT NOT NULL,clientId INTEGER NOT NULL REFERENCES users(id),status TEXT NOT NULL DEFAULT 'В работе'); CREATE TABLE IF NOT EXISTS stages(id INTEGER PRIMARY KEY,projectId INTEGER NOT NULL REFERENCES projects(id),title TEXT NOT NULL,status TEXT NOT NULL,description TEXT NOT NULL); CREATE TABLE IF NOT EXISTS files(id INTEGER PRIMARY KEY,projectId INTEGER NOT NULL REFERENCES projects(id),stageId INTEGER REFERENCES stages(id),name TEXT NOT NULL,contentType TEXT NOT NULL,category TEXT NOT NULL,path TEXT NOT NULL,size INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,userId INTEGER NOT NULL REFERENCES users(id),expires INTEGER NOT NULL);`,
   );
   const management = initAdminManagement({db});
+  const workspace = initAdminWorkspace({
+    db,
+    now: options.workspaceNow,
+  });
   const email = (v) =>
     typeof v === "string" &&
     v.length <= 254 &&
@@ -191,6 +196,9 @@ export function createApp(options = {}) {
           return p;
         };
         if (await recovery({req,res,path,method,user,body,json,fail})) return;
+        if (
+          await workspace.handle({ req, res, path, method, url, user, body, json, fail })
+        ) return;
         if (await review.handle({ req, res, path, method, user, body, json, fail }))
           return;
         if (await management({req,res,path,method,url,user,body,json,fail})) return;
@@ -307,25 +315,39 @@ export function createApp(options = {}) {
           const b = await body(req);
           if (
             !text(b.title) ||
-            !["planned", "in_progress", "pending_approval", "changes_requested", "approved", "completed"].includes(b.status) ||
+            ![
+              "planned",
+              "in_progress",
+              "pending_approval",
+              "changes_requested",
+              "approved",
+              "completed",
+            ].includes(b.status) ||
             typeof (b.description ?? "") !== "string" ||
             (b.description || "").length > 10000
           )
             fail(400, "Некорректный этап");
-          const id = Number(
-            run(
-              "INSERT INTO stages(projectId,title,status,description) VALUES(?,?,?,?)",
-              Number(match[1]),
-              b.title,
-              b.status,
-              b.description || "",
-            ).lastInsertRowid,
-          );
+          const dates = validateStageDates(b, null, fail);
+          const id = workspace.transaction(() => {
+            const id = Number(
+              run(
+                "INSERT INTO stages(projectId,title,status,description,startDate,plannedEndDate) VALUES(?,?,?,?,?,?)",
+                Number(match[1]),
+                b.title,
+                b.status,
+                b.description || "",
+                dates.startDate,
+                dates.plannedEndDate,
+              ).lastInsertRowid,
+            );
+            workspace.auditStageDates(user, Number(match[1]), id, null, dates);
+            return id;
+          });
           return json(
             res,
             201,
             get(
-              "SELECT id,title,status,description FROM stages WHERE id=?",
+              "SELECT id,title,status,description,startDate,plannedEndDate FROM stages WHERE id=?",
               id,
             ),
           );
@@ -333,28 +355,46 @@ export function createApp(options = {}) {
         match = path.match(/^\/api\/stages\/(\d+)$/);
         if (match && method === "PATCH") {
           admin();
-          const old = get("SELECT * FROM stages WHERE id=?", Number(match[1]));
-          if (!old) fail(404, "Этап не найден");
-          const b = await body(req),
-            title = b.title ?? old.title,
-            status = b.status ?? old.status,
-            description = b.description ?? old.description;
-          if (
-            !text(title) ||
-            !["planned", "in_progress", "pending_approval", "changes_requested", "approved", "completed"].includes(status) ||
-            typeof description !== "string" ||
-            description.length > 10000
-          )
-            fail(400, "Некорректный этап");
-          run(
-            "UPDATE stages SET title=?,status=?,description=? WHERE id=?",
-            title,
-            status,
-            description,
-            old.id,
-          );
-          return json(res, 200, { id: old.id, title, status, description });
+          const b = await body(req);
+          const updated = workspace.transaction(() => {
+            const old = get(
+              "SELECT * FROM stages WHERE id=?",
+              Number(match[1]),
+            );
+            if (!old) fail(404, "Этап не найден");
+            const title = b.title ?? old.title,
+              status = b.status ?? old.status,
+              description = b.description ?? old.description;
+            if (
+              !text(title) ||
+              ![
+                "planned",
+                "in_progress",
+                "pending_approval",
+                "changes_requested",
+                "approved",
+                "completed",
+              ].includes(status) ||
+              typeof description !== "string" ||
+              description.length > 10000
+            )
+              fail(400, "Некорректный этап");
+            const dates = validateStageDates(b, old, fail);
+            run(
+              "UPDATE stages SET title=?,status=?,description=?,startDate=?,plannedEndDate=? WHERE id=?",
+              title,
+              status,
+              description,
+              dates.startDate,
+              dates.plannedEndDate,
+              old.id,
+            );
+            workspace.auditStageDates(user, old.projectId, old.id, old, dates);
+            return { id: old.id, title, status, description, ...dates };
+          });
+          return json(res, 200, updated);
         }
+
         match = path.match(/^\/api\/projects\/(\d+)\/files$/);
         if (match && method === "POST") {
           admin();
@@ -504,6 +544,7 @@ export function createApp(options = {}) {
         "/cabinet/": "cabinet.html",
         "/cabinet.js": "cabinet.js",
         "/admin-management.js": "admin-management.js",
+        "/admin-workspace.js": "admin-workspace.js",
         "/material-review.js": "material-review.js",
         "/file-viewer.js": "file-viewer.js",
         "/cabinet.css": "cabinet.css",

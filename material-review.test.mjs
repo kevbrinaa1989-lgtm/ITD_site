@@ -1065,13 +1065,16 @@ test("42. additive migration leaves old rows files and prior audit history uncha
         : table === "password_recovery_limits"
           ? "key"
           : "id";
-    let before;
-    // Only this disposable fixture removes the five new review tables to emulate the previous release.
+    let before, oldColumns;
+    // Only this disposable fixture removes additions to emulate the previous release.
     const db = new DatabaseSync(join(f.dataDir, "itd.sqlite"));
     try {
       db.exec(
-        "DROP TABLE review_views; DROP TABLE review_notifications; DROP TABLE review_events; DROP TABLE review_versions; DROP TABLE review_materials;",
+        "DROP TABLE admin_tasks; ALTER TABLE stages DROP COLUMN startDate; ALTER TABLE stages DROP COLUMN plannedEndDate; DROP TABLE review_views; DROP TABLE review_notifications; DROP TABLE review_events; DROP TABLE review_versions; DROP TABLE review_materials;",
       );
+      oldColumns = Object.fromEntries(oldTables.map((table) => [
+        table, db.prepare(`PRAGMA table_info(${table})`).all().map((column) => column.name).join(","),
+      ]));
       before = Object.fromEntries(
         oldTables.map((table) => [
           table,
@@ -1096,7 +1099,7 @@ test("42. additive migration leaves old rows files and prior audit history uncha
       for (const table of oldTables)
         assert.deepEqual(
           migrated
-            .prepare(`SELECT * FROM ${table} ORDER BY ${order(table)}`)
+            .prepare(`SELECT ${oldColumns[table]} FROM ${table} ORDER BY ${order(table)}`)
             .all(),
           before[table],
         );
@@ -1106,6 +1109,7 @@ test("42. additive migration leaves old rows files and prior audit history uncha
         "review_events",
         "review_notifications",
         "review_views",
+        "admin_tasks",
       ])
         assert.equal(
           migrated.prepare(`SELECT count(*) AS n FROM ${table}`).get().n,

@@ -72,7 +72,7 @@ export function initAdminManagement({ db, now = Date.now }) {
         ? Math.round((row.completedStageCount / row.stageCount) * 100)
         : null,
       stages: all(
-        "SELECT id,title,status,description FROM stages WHERE projectId=? ORDER BY id",
+        "SELECT id,title,status,description,startDate,plannedEndDate FROM stages WHERE projectId=? ORDER BY id",
         row.id,
       ),
       files: decorateReviewFiles(db, all(
