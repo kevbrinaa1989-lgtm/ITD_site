@@ -846,6 +846,8 @@ test("admin working center uses actual actionable material threads, tasks, dates
         const restored = join(f.root, "restored");
         restoreBackup(saved, restored);
         await f.start(restored);
+        await f.json("/api/me", { cookie: f.admin }, 401);
+        f.admin = await f.login("admin@example.test");
         assert.deepEqual(await tasks(), before);
         assert.deepEqual(await material(), review);
       },
@@ -965,6 +967,9 @@ test("additive workspace migration keeps previous projects files review history 
     const restored = join(f.root, "restored-legacy");
     restoreBackup(backup.backupDir, restored);
     await f.start(restored);
+    await f.json("/api/me", { cookie: f.admin }, 401);
+    f.admin = await f.login("admin@example.test");
+    f.clients[0].cookie = await f.login(f.clients[0].email);
     const review = await f.json(`/api/materials/${file.review.materialId}`, {
       cookie: f.clients[0].cookie,
     });

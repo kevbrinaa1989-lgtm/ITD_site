@@ -1,11 +1,13 @@
 import http from "node:http";
+import { createSecurityPolicy } from "./security-policy.mjs";
+import { hashPassword, hashPasswordSync, verifyPassword } from "./passwords.mjs";
+import { initInvitations } from "./invitation.mjs";
+import { validateUploadContent } from "./upload-content.mjs";
 import { migrateProjectProfile } from "./project-profile-migration.mjs";
 import { validateProfile } from "./profile.mjs";
 import { DatabaseSync } from "node:sqlite";
 import {
   randomBytes,
-  scryptSync,
-  timingSafeEqual,
   createHash,
 } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
@@ -32,21 +34,11 @@ function previewType(file, bytes) {
   fail(415, "Предпросмотр этого файла недоступен. Вы можете скачать оригинал.");
 }
 const hash = (value) => createHash("sha256").update(value).digest("hex");
-const passwordHash = (password) => {
-  const salt = randomBytes(16).toString("hex");
-  return `${salt}:${scryptSync(password, salt, 64).toString("hex")}`;
-};
-const validPassword = (password, stored) => {
-  const [salt, digest] = stored.split(":");
-  return timingSafeEqual(
-    scryptSync(password, salt, 64),
-    Buffer.from(digest, "hex"),
-  );
-};
 const fail = (status, message) => {
   throw Object.assign(new Error(message), { status });
 };
 export function createApp(options = {}) {
+  const security = createSecurityPolicy(options);
   // An explicit dataDir is for first-time setup and isolated development/test fixtures.
   // Normal startup requires the saved, validated existing database.
   const store = options.dataDir ? null : openConfiguredData(options.storageOptions);
@@ -95,19 +87,20 @@ export function createApp(options = {}) {
         adminEmail.toLowerCase(),
         "Администратор",
         "admin",
-        passwordHash(adminPassword),
+        hashPasswordSync(adminPassword),
         Date.now(),
       );
   }
   const run = (sql, ...args) => db.prepare(sql).run(...args),
     get = (sql, ...args) => db.prepare(sql).get(...args),
     all = (sql, ...args) => db.prepare(sql).all(...args);
-  const recovery = initPasswordRecovery({db, passwordHash, now: options.recoveryNow});
+  const recovery = initPasswordRecovery({db, passwordHash: hashPassword, now: options.recoveryNow});
   const review = initMaterialReview({
     db,
     validatePreview: (file) =>
       previewType(file, readFileSync(join(dataDir, "files", file.path))),
   });
+  const invitations = initInvitations({db, passwordHash: hashPassword, now: options.invitationNow});
   const uploadIntents = createUploadIntents({ now: options.uploadIntentNow });
   const limits = new Map();
   const json = (res, status, value) => {
@@ -152,6 +145,7 @@ export function createApp(options = {}) {
       res.setHeader("X-Content-Type-Options", "nosniff");
       res.setHeader("Referrer-Policy", "same-origin");
       res.setHeader("X-Frame-Options", "DENY");
+      security.apply(req,res);
       const url = new URL(req.url, "http://localhost"),
         path = url.pathname,
         method = req.method;
@@ -165,6 +159,7 @@ export function createApp(options = {}) {
               ["http:", "https:"].includes(o.protocol) &&
               o.host === req.headers.host;
           } catch {}
+          if (security.internetMode) same = security.validOrigin(req);
           if (!same) fail(403, "Недопустимый источник запроса");
           if (path !== "/api/login" && req.headers["x-itd-request"] !== "1")
             fail(403, "Отсутствует защита запроса");
@@ -202,6 +197,8 @@ export function createApp(options = {}) {
             fail(403, "Нет доступа");
           return p;
         };
+        if (path === "/api/runtime" && method === "GET") return json(res,200,{internetMode:security.internetMode,registrationAllowed:security.registrationAllowed});
+        if (await invitations({req,res,path,method,user,body,json,fail,clientIP:req.itdClientIP})) return;
         if (await recovery({req,res,path,method,user,body,json,fail})) return;
         if (
           await workspace.handle({ req, res, path, method, url, user, body, json, fail })
@@ -211,7 +208,7 @@ export function createApp(options = {}) {
         if (await management({req,res,path,method,url,user,body,json,fail})) return;
         if (path === "/api/login" && method === "POST") {
           const now = Date.now(),
-            ip = req.socket.remoteAddress || "unknown";
+            ip = req.itdClientIP;
           for (const [k, v] of limits) if (v.until < now) limits.delete(k);
           const throttle = (key, max) => {
             let entry = limits.get(key);
@@ -240,25 +237,40 @@ export function createApp(options = {}) {
           const stored =
             u?.password ||
             `00000000000000000000000000000000:${"0".repeat(128)}`;
-          if (!validPassword(b.password, stored) || !u || !u.isActive)
+          const verified = await verifyPassword(b.password, stored);
+          const freshUser = u
+            ? get("SELECT * FROM users WHERE id=?", u.id)
+            : null;
+          if (
+            !verified ||
+            !freshUser ||
+            !freshUser.isActive ||
+            freshUser.password !== stored
+          )
             fail(401, "Неверный email или пароль");
           limits.delete(pairKey);
           const token = randomBytes(32).toString("hex");
-          run("DELETE FROM sessions WHERE expires<?", now);
+          const issuedAt = Date.now();
+          run("DELETE FROM sessions WHERE expires<?", issuedAt);
           run(
             "INSERT INTO sessions VALUES(?,?,?)",
             hash(token),
             u.id,
-            now + 86400000,
+            issuedAt + 86400000,
           );
           res.setHeader(
             "Set-Cookie",
-            `itd_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${options.secureCookies ? " ; Secure" : ""}`,
+            `itd_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${security.secureCookies ? " ; Secure" : ""}`,
           );
-          return json(res, 200, { user: safeUser(u) });
+          return json(res, 200, { user: safeUser(freshUser) });
         }
         if (path === "/api/register" && method === "POST") {
-          const key = "register:" + (req.socket.remoteAddress || "unknown"),
+          if (!security.registrationAllowed)
+            fail(
+              403,
+              "Регистрация доступна только по приглашению администратора.",
+            );
+          const key = "register:" + req.itdClientIP,
             now = Date.now();
           let limit = limits.get(key);
           if (!limit || now > limit.until) {
@@ -279,13 +291,16 @@ export function createApp(options = {}) {
             fail(400, "Укажите имя, email и пароль из 12–256 символов");
           if (get("SELECT id FROM users WHERE email=?", b.email.toLowerCase()))
             fail(409, "Этот email уже зарегистрирован");
+          const encoded = await hashPassword(b.password);
+          if (get("SELECT id FROM users WHERE email=?", b.email.toLowerCase()))
+            fail(409, "Этот email уже зарегистрирован");
           const id = Number(
             run(
               "INSERT INTO users(email,name,role,password,createdAt) VALUES(?,?,?,?,?)",
               b.email.toLowerCase(),
               b.name.trim(),
               "client",
-              passwordHash(b.password),
+              encoded,
               now,
             ).lastInsertRowid,
           );
@@ -298,7 +313,7 @@ export function createApp(options = {}) {
           );
           res.setHeader(
             "Set-Cookie",
-            `itd_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${options.secureCookies ? " ; Secure" : ""}`,
+            `itd_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${security.secureCookies ? " ; Secure" : ""}`,
           );
           return json(res, 201, {
             user: safeUser(get("SELECT * FROM users WHERE id=?", id)),
@@ -546,6 +561,7 @@ export function createApp(options = {}) {
             fail(400, "Некорректные данные файла");
           if (!bytes.length || bytes.length > 10 * 1024 * 1024)
             fail(413, "Максимальный размер файла — 10 МБ");
+          validateUploadContent(ext,bytes,fail);
           if (
             b.stageId != null &&
             (!Number.isSafeInteger(b.stageId) ||
@@ -664,6 +680,10 @@ export function createApp(options = {}) {
         "/admin-management.js": "admin-management.js",
         "/admin-workspace.js": "admin-workspace.js",
         "/client-workspace.js": "client-workspace.js",
+        "/invitations.js": "invitations.js",
+        "/invitation-accept.js": "invitation-accept.js",
+        "/accept-invitation": "invitation.html",
+        "/accept-invitation/": "invitation.html",
         "/upload-context.js": "upload-context.js",
         "/material-review.js": "material-review.js",
         "/file-viewer.js": "file-viewer.js",
@@ -680,7 +700,7 @@ export function createApp(options = {}) {
         if (e.code === "ENOENT") fail(404, "Страница не найдена");
         throw e;
       }
-      if (file === "reset-password.html" || file === "recovery.js") {
+      if (["reset-password.html","recovery.js","invitation.html","invitation-accept.js"].includes(file)) {
         res.setHeader("Referrer-Policy", "no-referrer");
         res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
       }
@@ -698,7 +718,7 @@ export function createApp(options = {}) {
             : file.endsWith(".ttf") ? "font/ttf"
             : asset ? "application/octet-stream" : "text/html; charset=utf-8",
         "Content-Length": bytes.length,
-        "Cache-Control": file === "reset-password.html" || file === "recovery.js" ? "no-store" : "no-cache",
+        "Cache-Control": ["reset-password.html","recovery.js","invitation.html","invitation-accept.js"].includes(file) ? "no-store" : "no-cache",
       });
       res.end(method === "HEAD" ? undefined : bytes);
     } catch (e) {

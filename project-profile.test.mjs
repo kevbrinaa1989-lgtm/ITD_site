@@ -1,3 +1,4 @@
+import { fixtures } from "./tests/preview-fixtures.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readdir, rm, readFile } from "node:fs/promises";
@@ -145,7 +146,7 @@ test("unassigned projects create exactly selected ordered stages and remain priv
   const intent = (
     await f.req(`/api/projects/${p.id}/upload-intents`, {}, f.admin, 201)
   ).value;
-  const bytes = Buffer.from("%PDF-demo-not-real");
+  const bytes = fixtures.find((row) => row[1] === "application/pdf")[2];
   const upload = {
     name: "plan.pdf",
     contentType: "application/pdf",
@@ -384,7 +385,9 @@ test("full legacy migration retains every child table and original bytes through
       {
         name: "old.pdf",
         contentType: "application/pdf",
-        data: Buffer.from("%PDF-legacy-original").toString("base64"),
+        data: fixtures
+          .find((row) => row[1] === "application/pdf")[2]
+          .toString("base64"),
         category: "result",
         stageId: stage.id,
         review: true,
@@ -496,6 +499,10 @@ test("full legacy migration retains every child table and original bytes through
   const restored = join(f.root, "restored");
   restoreBackup(backupFolder, restored);
   await f.start(restored);
+  await f.req("/api/me", undefined, f.admin, 401, "GET");
+  f.admin = (
+    await f.req("/api/login", { email: "admin@example.test", password })
+  ).cookie;
   const detail = (
     await f.req(`/api/admin/projects/${p.id}`, undefined, f.admin, 200, "GET")
   ).value.project;

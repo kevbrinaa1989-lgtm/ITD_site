@@ -78,7 +78,7 @@ test('ZIP header-only, truncated archives, corrupt bytes and contradictory sizes
   const length=Buffer.from(bytes);length.writeUInt32LE(999,18);reject('zip',length);
 });
 test('unsafe ZIP names, symlinks, encrypted entries and unsupported compression fail',()=>{
-  for(const name of ['../evil.txt','a/../evil','/tmp/x','C:/evil','a\\evil','./x','a\0b'])reject('zip',zip([[name,'x']]));
+  for(const name of ['../evil.txt','a/../evil','/tmp/x','C:/evil','a\\evil','folder/file:stream','./x','a\0b'])reject('zip',zip([[name,'x']]));
   reject('zip',zip([['link','target']],{mode:0xa1ff}));reject('zip',zip([['secret','x']],{flags:1}));
   const bytes=zip([['a','x']]);bytes.writeUInt16LE(99,8);reject('zip',bytes);
 });
@@ -97,4 +97,14 @@ test('DOCX and XLSX require actual bounded ZIP entries with relevant XML roots',
 test('validation cannot mutate the source bytes and injected fail receives415',()=>{
   const bytes=png(),before=Buffer.from(bytes);accept('png',bytes);assert.deepEqual(bytes,before);
   let observed;assert.throws(()=>validateUploadContent('txt',Buffer.from([0]),(status,message)=>{observed=status;throw Error(message);}));assert.equal(observed,415);
+});
+
+test('deflate payload cannot exceed its advertised bounded size',()=>{
+  const bytes=zip([['compressed.txt','x'.repeat(1024*1024)]],{deflate:true});
+  const central=bytes.indexOf(Buffer.from([0x50,0x4b,0x01,0x02]));
+  bytes.writeUInt32LE(1,22);bytes.writeUInt32LE(1,central+24);reject('zip',bytes);
+});
+test('Office XML accepts explicit UTF16 encoding',()=>{
+  const unicode=Buffer.concat([Buffer.from([255,254]),Buffer.from(docXml,'utf16le')]);
+  accept('docx',zip([['[Content_Types].xml',typesXml],['word/document.xml',unicode]]));
 });

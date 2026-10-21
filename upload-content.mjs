@@ -97,7 +97,7 @@ function zip(bytes) {
     check(offset+46+nameLength+extraLength+commentLength<=eocd && expanded<=50*1024*1024);
     total+=expanded;check(total<=MAX_EXPANDED);
     const nameBytes=bytes.subarray(offset+46,offset+46+nameLength),name=(flags&2048)?utf8.decode(nameBytes):nameBytes.toString('latin1');
-    check(name && !/[\\\x00-\x1f\x7f]/.test(name) && !name.startsWith('/') && !/^[A-Za-z]:/.test(name) && !name.split('/').some(part=>part==='..'||part==='.') && !entries.has(name));
+    check(name && !/[\\:\x00-\x1f\x7f]/.test(name) && !name.startsWith('/') && !/^[A-Za-z]:/.test(name) && !name.split('/').some(part=>part==='..'||part==='.') && !entries.has(name));
     const mode=bytes.readUInt32LE(offset+38)>>>16;check((mode&0xf000)!==0xa000);
     check(local+30<=start && bytes.readUInt32LE(local)===0x04034b50 && bytes.readUInt16LE(local+6)===flags && bytes.readUInt16LE(local+8)===method);
     const localName=bytes.readUInt16LE(local+26),localExtra=bytes.readUInt16LE(local+28),dataStart=local+30+localName+localExtra;

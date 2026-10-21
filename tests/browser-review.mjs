@@ -1,3 +1,4 @@
+import { replaceLegacyFixtureBytes } from "./legacy-file-fixture.mjs";
 import { openProject, openGlobal } from "./browser-navigation.mjs";
 import { prepareFixtureUpload } from "./upload-fixture.mjs";
 import assert from "node:assert/strict";
@@ -113,18 +114,18 @@ try {
     const original = await upload("Планировка-v1.jpg", jpgType, jpg, {
         review: true,
       }),
-      broken = await upload(
-        "Повреждённый.jpg",
-        jpgType,
-        Buffer.from("not a valid image"),
-        { review: true },
-      ),
+      broken = await upload("Повреждённый.jpg", jpgType, jpg, { review: true }),
       text = await upload(
         "Комментарии.txt",
         "text/plain",
         Buffer.from("Download-only file"),
         { review: true },
       );
+    await replaceLegacyFixtureBytes(
+      join(root, "data"),
+      broken.id,
+      Buffer.from("not a valid image"),
+    );
     const mid = original.review.materialId,
       v1 = original.review.versionId;
     const contexts = [],

@@ -600,6 +600,8 @@ test("administrator client and project management preserves access, documents an
         const restored = join(f.root, "restored");
         restoreBackup(backup, restored);
         await f.start(restored);
+        await f.json("/api/me", { cookie: f.admin }, 401);
+        f.admin = await f.login("admin@example.test");
         const { project: p, events } = await f.json(`${AP}/${project.id}`, {
           cookie: f.admin,
         });
@@ -608,6 +610,7 @@ test("administrator client and project management preserves access, documents an
         assert.ok(events.length >= 4);
         const client = await f.json(`${AC}/${empty.id}`, { cookie: f.admin });
         assert.equal(Boolean(client.client.isActive), false);
+        next.cookie = await f.login(next.email);
         const r = await f.request(`/api/files/${file.id}/download`, {
           cookie: next.cookie,
         });
@@ -720,6 +723,9 @@ test("20. legacy client/project migration adds null historical dates without cha
     const restored = join(f.root, "legacy-restored");
     restoreBackup(bound.backupDir, restored);
     await f.start(restored);
+    await f.json("/api/me", { cookie: f.admin }, 401);
+    f.admin = await f.login("admin@example.test");
+    f.clients[0].cookie = await f.login(f.clients[0].email);
     const client = await f.json(`${AC}/${f.clients[0].id}`, {
       cookie: f.admin,
     });

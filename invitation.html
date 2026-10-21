@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Приглашение — ITD Studio</title>
+    <link rel="stylesheet" href="/cabinet.css" />
+    <script src="/invitation-accept.js" defer></script>
+  </head>
+  <body class="reset-page invitation-page">
+    <header class="site-header">
+      <a class="brand" href="/cabinet">ITD<span>STUDIO</span></a
+      ><a class="back-link" href="/cabinet">Войти в кабинет</a>
+    </header>
+    <main class="reset-layout">
+      <section class="panel reset-panel" aria-labelledby="invitation-title">
+        <p class="eyebrow">Доступ в личный кабинет</p>
+        <h1 id="invitation-title">Приглашение в ITD Studio</h1>
+        <p class="muted">
+          Приглашение привязано к email, который указала студия. Создайте свой
+          пароль. Доступ к проектам появится после их назначения
+          администратором.
+        </p>
+        <form id="invitation-accept-form">
+          <label for="invitation-name">Ваше имя</label
+          ><input
+            id="invitation-name"
+            name="name"
+            required
+            maxlength="120"
+            autocomplete="name"
+          /><label for="invitation-password">Пароль</label
+          ><input
+            id="invitation-password"
+            name="password"
+            type="password"
+            required
+            minlength="12"
+            maxlength="256"
+            autocomplete="new-password"
+            aria-describedby="invitation-password-help"
+          /><small id="invitation-password-help">От 12 до 256 символов.</small
+          ><label for="invitation-password-confirm">Повторите пароль</label
+          ><input
+            id="invitation-password-confirm"
+            name="passwordConfirm"
+            type="password"
+            required
+            minlength="12"
+            maxlength="256"
+            autocomplete="new-password"
+          /><button type="submit" class="primary">Создать аккаунт</button>
+        </form>
+        <p
+          id="invitation-accept-message"
+          role="status"
+          aria-live="polite"
+          class="muted"
+        ></p>
+        <p id="invitation-accept-help" class="muted" hidden>
+          Попросите студию выдать новое приглашение. Использованную, отменённую
+          или просроченную ссылку нельзя применить повторно.
+        </p>
+        <a
+          id="invitation-login"
+          class="primary button-link"
+          href="/cabinet"
+          hidden
+          >Перейти ко входу</a
+        ><noscript
+          ><p class="error">
+            Для принятия приглашения включите JavaScript.
+          </p></noscript
+        >
+      </section>
+    </main>
+  </body>
+</html>

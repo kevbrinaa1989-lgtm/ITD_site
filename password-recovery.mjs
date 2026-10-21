@@ -98,7 +98,7 @@ export function initPasswordRecovery({ db, passwordHash, now = Date.now }) {
       return false;
     res.setHeader("Referrer-Policy", "no-referrer");
     let timestamp = now();
-    const ip = digest(req.socket.remoteAddress || "unknown");
+    const ip = digest(req.itdClientIP || req.socket.remoteAddress || "unknown");
     if (path === "/api/password-recovery/requests" && method === "POST") {
       const b = await body(req);
       timestamp = now();
@@ -156,6 +156,18 @@ export function initPasswordRecovery({ db, passwordHash, now = Date.now }) {
       )
         fail(400, "Укажите совпадающие пароли из 12–256 символов");
       expire(timestamp);
+      if (
+        !get(
+          "SELECT r.id FROM password_recovery_requests r JOIN users u ON u.id=r.userId WHERE r.tokenHash=? AND r.status='approved' AND r.expiresAt>? AND u.role='client' AND u.isActive=1",
+          digest(b.token),
+          timestamp,
+        )
+      )
+        fail(400, "Ссылка недействительна или срок её действия истёк");
+      const encoded = await passwordHash(b.password);
+      req.itdRecheckSession?.();
+      timestamp = now();
+      expire(timestamp);
       transaction(() => {
         const r = get(
           "SELECT r.id,r.userId FROM password_recovery_requests r JOIN users u ON u.id=r.userId WHERE r.tokenHash=? AND r.status='approved' AND r.expiresAt>? AND u.role='client' AND u.isActive=1",
@@ -163,7 +175,6 @@ export function initPasswordRecovery({ db, passwordHash, now = Date.now }) {
           timestamp,
         );
         if (!r) fail(400, "Ссылка недействительна или срок её действия истёк");
-        const encoded = passwordHash(b.password);
         run("UPDATE users SET password=? WHERE id=?", encoded, r.userId);
         run("DELETE FROM sessions WHERE userId=?", r.userId);
         run(

@@ -1,6 +1,7 @@
 "use strict";
 (() => {
   const $ = (id) => document.getElementById(id);
+  let registrationAllowed = false;
   const statuses = {
     planned: "Не начат",
     in_progress: "В работе",
@@ -63,6 +64,7 @@
     window.ITDUploads?.reset();
     clearRecovery();
     window.ITDWorkspace?.reset();
+    window.ITDInvitations?.reset();
     window.ITDAdmin?.reset();
     window.ITDReview?.reset();
     window.ITDClientWorkspace?.reset();
@@ -240,6 +242,7 @@
     if (tab === "settings" && admin)
       window.ITDAdmin?.openSettings(selectedId, options);
     window.ITDWorkspace?.onTab(tab);
+    window.ITDInvitations?.onTab(tab);
     window.ITDAdmin?.onTab(tab);
     window.ITDReview?.onTab(tab);
     window.ITDClientWorkspace?.onTab(tab);
@@ -756,6 +759,7 @@
   async function enter(nextUser) {
     window.ITDUploads?.reset();
     window.ITDWorkspace?.reset();
+    window.ITDInvitations?.reset();
     window.ITDAdmin?.reset();
     window.ITDReview?.reset();
     clearRecovery();
@@ -796,6 +800,7 @@
     window.ITDReview?.start();
   }
   function authTab(register) {
+    if (register && !registrationAllowed) register = false;
     $("recovery-auth").hidden = true;
     $("login-form").hidden = register;
     $("register-form").hidden = !register;
@@ -1261,6 +1266,7 @@
       }
     },
   });
+  window.ITDInvitations?.init({ api, getUser: () => user });
   const mobileTabs = window.matchMedia("(max-width: 760px)");
   function orientTabs() {
     document
@@ -1431,6 +1437,7 @@
     window.ITDUploads?.reset();
     clearRecovery();
     window.ITDWorkspace?.reset();
+    window.ITDInvitations?.reset();
     window.ITDAdmin?.reset();
     window.ITDReview?.reset();
     window.ITDClientWorkspace?.reset();
@@ -1442,6 +1449,29 @@
       .then((result) => enter(result.user))
       .catch(() => showAuth());
   });
+  fetch("/api/runtime", { credentials: "same-origin", cache: "no-store" })
+    .then(async (response) => {
+      if (!response.ok) throw new Error("runtime unavailable");
+      return response.json();
+    })
+    .then((runtime) => {
+      registrationAllowed = runtime.registrationAllowed === true;
+      $("show-register").hidden = !registrationAllowed;
+      $("registration-note").hidden = registrationAllowed;
+      if (!registrationAllowed) {
+        $("registration-note").textContent =
+          "Новые клиенты регистрируются по приглашению студии.";
+        $("auth-intro").textContent =
+          "Войдите с данными вашего аккаунта. Для регистрации обратитесь в студию.";
+        if (!$("register-form").hidden) authTab(false);
+      }
+    })
+    .catch(() => {
+      $("show-register").hidden = true;
+      $("registration-note").hidden = false;
+      $("registration-note").textContent =
+        "Регистрация временно недоступна. Для получения доступа обратитесь в студию.";
+    });
   api("/api/me")
     .then((result) => enter(result.user))
     .catch((error) => {

@@ -1,3 +1,4 @@
+import { replaceLegacyFixtureBytes } from "./tests/legacy-file-fixture.mjs";
 import { prepareFixtureUpload } from "./tests/upload-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -800,9 +801,14 @@ test("review workflow and per-user per-version viewing retain immutable history 
         ]) {
           const uploaded = await upload(name, {
             contentType: type,
-            data: data.toString("base64"),
+            data: (type === "image/jpeg"
+              ? fixtures.find((row) => row[1] === type)[2]
+              : data
+            ).toString("base64"),
             review: true,
           });
+          if (type === "image/jpeg")
+            await replaceLegacyFixtureBytes(f.dataDir, uploaded.id, data);
           const d = await f.json(`${MAT}/${uploaded.review.materialId}`, {
             cookie: owner.cookie,
           });
@@ -1009,6 +1015,9 @@ test("review workflow and per-user per-version viewing retain immutable history 
         const restored = join(f.root, "restored");
         restoreBackup(saved, restored);
         await f.start(restored);
+        await f.json("/api/me", { cookie: f.admin }, 401);
+        f.admin = await f.login("admin@example.test");
+        other.cookie = await f.login(other.email);
         assert.deepEqual(await detail(f.admin), before);
         assert.deepEqual(
           await f.json("/api/notifications", { cookie: f.admin }),
@@ -1136,6 +1145,9 @@ test("42. additive migration leaves old rows files and prior audit history uncha
     const restored = join(f.root, "legacy-restored");
     restoreBackup(saved.backupDir, restored);
     await f.start(restored);
+    await f.json("/api/me", { cookie: f.admin }, 401);
+    f.admin = await f.login("admin@example.test");
+    f.clients[0].cookie = await f.login(f.clients[0].email);
     const list = await f.json(`/api/projects/${p.id}/materials`, {
       cookie: f.clients[0].cookie,
     });

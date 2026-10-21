@@ -219,5 +219,30 @@ export function restoreBackup(folder, destination) {
   copyFileSync(join(folder, "itd.sqlite"), join(destination, "itd.sqlite"), constants.COPYFILE_EXCL);
   copyDocuments(folder, destination);
   copyFileSync(join(folder, "backup.json"), join(destination, "backup.json"), constants.COPYFILE_EXCL);
+  // Only the restored copy changes: archived authentication must never become live.
+  const db = new DatabaseSync(join(destination, "itd.sqlite"));
+  try {
+    db.exec("PRAGMA foreign_keys=ON; BEGIN IMMEDIATE");
+    db.exec("DELETE FROM sessions");
+    const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map(row => row.name));
+    if (tables.has("password_recovery_requests"))
+      db.exec("UPDATE password_recovery_requests SET tokenHash=NULL,status=CASE WHEN status IN ('new','approved') THEN 'rejected' ELSE status END");
+    if (tables.has("invitations"))
+      db.prepare("UPDATE invitations SET tokenHash=NULL,processedAt=CASE WHEN status='active' THEN ? ELSE processedAt END,status=CASE WHEN status='active' THEN 'revoked' ELSE status END").run(Date.now());
+    db.exec("COMMIT");
+  } catch (error) {
+    if (db.isTransaction) db.exec("ROLLBACK");
+    throw error;
+  } finally { db.close(); }
+  // Authentication cleanup intentionally changes the restored database's checksum.
+  // Give the restored copy its own valid manifest; never rewrite the source one.
+  const info = inspectData(destination);
+  const manifest = JSON.parse(readFileSync(join(destination, "backup.json"), "utf8"));
+  const hashes = {};
+  for (const name of ["itd.sqlite", ...treeFiles(join(destination, "files"), "files")])
+    hashes[name] = digest(join(destination, name));
+  const pending = join(destination, `.restored-manifest-${randomUUID()}`);
+  writeFileSync(pending, JSON.stringify({ ...manifest, restoredAt: new Date().toISOString(), authenticationRevoked: true, counts: info.counts, hashes }, null, 2), { flag: "wx", mode: 0o600, flush: true });
+  renameSync(pending, join(destination, "backup.json"));
   return verifyBackup(destination);
 }

@@ -496,7 +496,7 @@ test("request/reset throttles persist across restart and store hashed addresses 
   }
 });
 
-test("approved links and recovery history survive restart plus full backup and restore without affecting project data", async () => {
+test("approved links survive normal restart but restore revokes them while preserving recovery history and project data", async () => {
   const f = await fixture();
   try {
     const project = await f.json(
@@ -543,14 +543,16 @@ test("approved links and recovery history survive restart plus full backup and r
     const restored = join(f.root, "restored");
     restoreBackup(saved, restored);
     await f.startAt(restored);
+    await f.json("/api/me", { cookie: f.admin }, 401);
+    f.admin = await f.login("admin@example.test");
     const restoredDetail = await f.json(`${ADMIN}/${recovery.id}`, {
       cookie: f.admin,
     });
-    assert.equal(restoredDetail.request.status, "approved");
+    assert.equal(restoredDetail.request.status, "rejected");
     assert.ok(restoredDetail.events.some((e) => e.type === "approved"));
     const newPassword = secret();
-    await f.reset(approved.token, newPassword);
-    const cookie = await f.login(f.clients[0].email, newPassword);
+    await f.reset(approved.token, newPassword, {}, 400);
+    const cookie = await f.login(f.clients[0].email);
     const { projects } = await f.json("/api/projects", { cookie });
     assert.equal(projects[0].id, project.id);
     assert.equal(projects[0].title, "Existing private project");
@@ -622,6 +624,7 @@ test("legacy five-table stores migrate additively without changing existing rows
         `DROP TABLE admin_tasks; ALTER TABLE stages DROP COLUMN startDate; ALTER TABLE stages DROP COLUMN plannedEndDate;
          DROP TABLE review_views; DROP TABLE review_notifications; DROP TABLE review_events;
          DROP TABLE review_versions; DROP TABLE review_materials;
+         DROP TABLE invitation_events; DROP TABLE invitation_limits; DROP TABLE invitations;
          DROP TABLE password_recovery_events; DROP TABLE password_recovery_requests; DROP TABLE password_recovery_limits;
          DROP TABLE admin_management_events;
          ALTER TABLE users DROP COLUMN createdAt; ALTER TABLE users DROP COLUMN isActive;

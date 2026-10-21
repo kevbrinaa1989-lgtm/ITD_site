@@ -66,7 +66,7 @@ test("pinned storage survives process restarts and restores complete verified ba
   const dataDir=join(root,"original"),settingsFile=join(root,"settings","storage.json"),backups=join(root,"backups");
   const password=randomBytes(24).toString("hex"),adminEmail="admin@example.test",clientEmail="client@example.test";
   let server;
-  const document=Buffer.from("Signed demonstration contract\n\0\xff", "utf8");
+  const document=Buffer.from("Signed demonstration contract\nПример подписанного документа", "utf8");
   try {
     server=await startServer({dataDir,adminEmail,adminPassword:password});
     const admin=await login(server,adminEmail,password);

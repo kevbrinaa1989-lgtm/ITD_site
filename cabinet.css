@@ -3280,3 +3280,85 @@ body > footer {
   background: #fff;
   min-height: 44px;
 }
+
+/* Invitation registration reuses the established forms and protected account flow. */
+.invitations-panel > summary {
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  line-height: 1.7;
+}
+.invitations-panel[open] > summary {
+  margin-bottom: 18px;
+}
+#invitation-form {
+  max-width: 600px;
+}
+#invitation-form .recovery-identity {
+  margin: 16px 0 5px;
+}
+#invitation-message {
+  margin-top: 20px;
+  overflow-wrap: anywhere;
+}
+.invitation-list {
+  display: grid;
+  gap: 12px;
+}
+.invitation-card {
+  border-top: 1px solid var(--line);
+  padding-top: 17px;
+  min-width: 0;
+}
+.invitation-card strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.invitation-card .muted {
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 10px 0;
+}
+.invitation-link:not(:empty) {
+  padding: 18px;
+  border: 1px solid #d9cfbd;
+  background: #f7f3eb;
+  border-radius: 8px;
+  margin: 20px 0;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.invitation-link .primary {
+  justify-self: start;
+  margin: 0;
+}
+.invitation-link input {
+  min-width: 0;
+  width: 100%;
+  font-size: 12px !important;
+}
+.invitation-page .reset-panel h1 {
+  font-family: Arial, system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+#invitation-accept-message {
+  margin: 22px 0 16px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .invitation-link .primary {
+    width: 100%;
+  }
+  .invitation-page .reset-panel h1 {
+    font-size: 26px;
+  }
+  .invitations-panel .section-title {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}

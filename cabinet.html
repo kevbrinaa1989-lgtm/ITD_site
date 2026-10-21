@@ -12,6 +12,7 @@
     <script src="/admin-workspace.js" defer></script>
     <script src="/upload-context.js" defer></script>
     <script src="/client-workspace.js" defer></script>
+    <script src="/invitations.js" defer></script>
     <script src="/cabinet.js" defer></script>
   </head>
   <body>
@@ -55,6 +56,7 @@
               Вход</button
             ><button
               id="show-register"
+              hidden
               type="button"
               class="auth-tab"
               aria-pressed="false"
@@ -63,10 +65,11 @@
             </button>
           </div>
           <h2 id="auth-heading">Вход в проект</h2>
-          <p class="muted">
+          <p id="auth-intro" class="muted">
             Войдите или создайте аккаунт. Студия предоставит доступ к вашему
             проекту.
           </p>
+          <p id="registration-note" class="muted" hidden></p>
           <form id="login-form">
             <label for="login-email">Email</label>
             <input
@@ -936,6 +939,58 @@
                   <p class="muted">Контакты, проекты и доступ к кабинету.</p>
                 </div>
               </div>
+              <details class="panel invitations-panel">
+                <summary>Приглашения клиентов</summary>
+                <p class="muted">
+                  Ссылка действует 24 часа и используется один раз. Она не
+                  назначает проекты автоматически. Проверьте получателя через
+                  известный вам канал связи: получение ссылки само по себе не
+                  подтверждает владение email.
+                </p>
+                <form id="invitation-form">
+                  <label for="invitation-email">Email нового клиента</label
+                  ><input
+                    id="invitation-email"
+                    name="email"
+                    type="email"
+                    required
+                    maxlength="254"
+                    autocomplete="off"
+                  /><label class="recovery-identity"
+                    ><input
+                      id="invitation-verified"
+                      name="verified"
+                      type="checkbox"
+                      value="yes"
+                      required
+                    /><span
+                      >Я проверил(а) получателя по известному каналу связи и
+                      передам ссылку лично. Это не является проверкой владения
+                      email.</span
+                    ></label
+                  ><button class="primary" type="submit">
+                    Создать приглашение на 24 часа
+                  </button>
+                </form>
+                <p
+                  id="invitation-message"
+                  class="muted"
+                  role="status"
+                  aria-live="polite"
+                ></p>
+                <div id="invitation-link" class="invitation-link"></div>
+                <div class="section-title">
+                  <h3>Выданные приглашения</h3>
+                  <button
+                    id="invitation-refresh"
+                    class="text-button"
+                    type="button"
+                  >
+                    Обновить
+                  </button>
+                </div>
+                <div id="invitation-list" class="invitation-list"></div>
+              </details>
               <form id="admin-client-search" class="admin-search">
                 <label for="admin-client-query">Поиск по имени или email</label>
                 <div>

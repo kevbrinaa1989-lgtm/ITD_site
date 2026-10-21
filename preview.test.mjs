@@ -1,3 +1,4 @@
+import { replaceLegacyFixtureBytes } from "./tests/legacy-file-fixture.mjs";
 import { prepareFixtureUpload } from "./tests/upload-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -165,12 +166,20 @@ test("file previews preserve authorization, security headers and original downlo
     const corrupt = [];
     for (const [name, type] of fixtures) {
       const bytes = Buffer.from("<html><script>alert(1)</script></html>");
-      corrupt.push({
-        ...(await upload(`invalid-${name}`, type, bytes)),
-        bytes,
-      });
+      const file = await upload(
+        `invalid-${name}`,
+        type,
+        fixtures.find((row) => row[1] === type)[2],
+      );
+      await replaceLegacyFixtureBytes(dataDir, file.id, bytes);
+      corrupt.push({ ...file, bytes });
     }
-    const mismatch = await upload("mismatched.png", "image/png", jpeg);
+    const mismatch = await upload(
+      "mismatched.png",
+      "image/png",
+      fixtures.find((row) => row[1] === "image/png")[2],
+    );
+    await replaceLegacyFixtureBytes(dataDir, mismatch.id, jpeg);
     corrupt.push({ ...mismatch, bytes: jpeg });
     await t.test(
       "unsupported formats and corrupt or mismatched signatures return415 without damaging downloads",
