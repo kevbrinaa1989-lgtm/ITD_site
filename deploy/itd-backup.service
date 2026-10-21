@@ -1,0 +1,13 @@
+[Unit]
+Description=ITD Studio verified encrypted offsite backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/bin/bash /opt/itd-studio/current/deploy/backup.sh /etc/itd-studio/backup.env
+ExecStopPost=/bin/bash -c 'if test -f /run/itd-studio-backup-restart; then /bin/systemctl start itd-studio.service && /bin/rm -f /run/itd-studio-backup-restart; fi'
+UMask=0077
+TimeoutStartSec=infinity
+# A failed run is visible in systemctl --failed and journalctl -u itd-backup.

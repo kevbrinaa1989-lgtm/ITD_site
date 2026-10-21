@@ -1,0 +1,25 @@
+[Unit]
+Description=ITD Studio private Node application
+After=network.target
+
+[Service]
+Type=simple
+User=itd-studio
+Group=itd-studio
+WorkingDirectory=/opt/itd-studio/current
+Environment=HOME=/var/lib/itd-studio
+EnvironmentFile=/etc/itd-studio/app.env
+ExecStart=/usr/bin/node /opt/itd-studio/current/server.mjs
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/itd-studio
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

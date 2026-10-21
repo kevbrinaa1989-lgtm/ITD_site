@@ -1,0 +1,62 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, readdirSync, existsSync, symlinkSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { DatabaseSync } from 'node:sqlite';
+import { backupData, restoreBackup, verifyBackup } from './data-storage.mjs';
+import { pruneLocalBackups } from './deploy/prune-local.mjs';
+test('restore revokes copied authentication only, preserves source backup and business data, refreshes valid manifest', async () => {
+  const root=mkdtempSync(join(tmpdir(),'itd-restore-auth-'));
+  try {
+    const data=join(root,'data');mkdirSync(data);mkdirSync(join(data,'files'));
+    const db=new DatabaseSync(join(data,'itd.sqlite'));
+    db.exec(`CREATE TABLE users(id INTEGER PRIMARY KEY,email TEXT,name TEXT,role TEXT,password TEXT,phone TEXT);
+      CREATE TABLE projects(id INTEGER PRIMARY KEY,title TEXT,clientId INTEGER REFERENCES users(id),status TEXT);
+      CREATE TABLE stages(id INTEGER PRIMARY KEY,projectId INTEGER REFERENCES projects(id),title TEXT,status TEXT,description TEXT);
+      CREATE TABLE files(id INTEGER PRIMARY KEY,projectId INTEGER,stageId INTEGER,name TEXT,contentType TEXT,category TEXT,path TEXT,size INTEGER);
+      CREATE TABLE sessions(token TEXT PRIMARY KEY,userId INTEGER REFERENCES users(id),expires INTEGER);
+      CREATE TABLE password_recovery_requests(id INTEGER PRIMARY KEY,status TEXT,tokenHash TEXT);
+      CREATE TABLE invitations(id INTEGER PRIMARY KEY,status TEXT,tokenHash TEXT,processedAt INTEGER);
+      INSERT INTO users VALUES(1,'client@example.test','Fictional','client','unchanged-password-hash','123');
+      INSERT INTO projects VALUES(9,'Preserved',1,'В работе');
+      INSERT INTO sessions VALUES('old-session',1,9999999999999);
+      INSERT INTO password_recovery_requests VALUES(1,'approved','old-reset-hash');
+      INSERT INTO password_recovery_requests VALUES(2,'used',NULL);
+      INSERT INTO invitations VALUES(1,'active','old-invitation-hash',NULL);
+      INSERT INTO invitations VALUES(2,'used',NULL,10);`);
+    db.close();
+    const settings=join(root,'storage.json');writeFileSync(settings,JSON.stringify({version:1,dataDir:data}));
+    const backup=await backupData({settingsFile:settings,destination:join(root,'backups')});
+    const unchanged=new DatabaseSync(join(data,'itd.sqlite'),{readOnly:true});
+    assert.equal(unchanged.prepare('SELECT count(*) n FROM sessions').get().n,1);
+    assert.equal(unchanged.prepare('SELECT status FROM password_recovery_requests WHERE id=1').get().status,'approved');
+    unchanged.close();
+    const originalDB=readFileSync(join(backup,'itd.sqlite')),originalManifest=readFileSync(join(backup,'backup.json'));
+    const restored=join(root,'restored');restoreBackup(backup,restored);verifyBackup(restored);verifyBackup(backup);
+    assert.deepEqual(readFileSync(join(backup,'itd.sqlite')),originalDB);
+    assert.deepEqual(readFileSync(join(backup,'backup.json')),originalManifest);
+    const copy=new DatabaseSync(join(restored,'itd.sqlite'),{readOnly:true});
+    try {
+      assert.equal(copy.prepare('SELECT count(*) n FROM sessions').get().n,0);
+      assert.equal(copy.prepare('SELECT status FROM password_recovery_requests WHERE id=1').get().status,'rejected');
+      assert.equal(copy.prepare('SELECT tokenHash FROM password_recovery_requests WHERE id=1').get().tokenHash,null);
+      assert.equal(copy.prepare('SELECT status FROM password_recovery_requests WHERE id=2').get().status,'used');
+      assert.equal(copy.prepare('SELECT status FROM invitations WHERE id=1').get().status,'revoked');
+      assert.equal(copy.prepare('SELECT tokenHash FROM invitations WHERE id=1').get().tokenHash,null);
+      assert.equal(copy.prepare('SELECT processedAt FROM invitations WHERE id=2').get().processedAt,10);
+      assert.equal(copy.prepare('SELECT title FROM projects WHERE id=9').get().title,'Preserved');
+      assert.equal(copy.prepare('SELECT password FROM users WHERE id=1').get().password,'unchanged-password-hash');
+    } finally {copy.close();}
+    const parent=join(root,'backups');
+    await backupData({settingsFile:settings,destination:parent});
+    const latest=await backupData({settingsFile:settings,destination:parent});
+    const unknown=join(parent,'ITD-2020-01-01Tunknown');mkdirSync(unknown);writeFileSync(join(unknown,'keep'),'not-a-backup');
+    const symlink=join(parent,'ITD-2020-01-02Tlink');symlinkSync(data,symlink,'dir');
+    pruneLocalBackups(parent,latest,2,data);
+    assert.equal(readdirSync(parent).filter(name=>name.startsWith('ITD-')&&!['ITD-2020-01-01Tunknown','ITD-2020-01-02Tlink'].includes(name)).length,2);
+    assert.ok(existsSync(unknown));assert.ok(existsSync(symlink));
+    assert.ok(existsSync(join(data,'itd.sqlite')));verifyBackup(latest);
+    assert.throws(()=>pruneLocalBackups(data,data,2,data),/Unsafe/);
+  } finally {rmSync(root,{recursive:true,force:true});}
+});

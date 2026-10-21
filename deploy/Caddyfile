@@ -1,0 +1,10 @@
+# Replace the reserved example domain before enabling the service.
+cabinet.example.test {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8000 {
+        header_up Host {http.request.hostport}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto https
+        header_up -X-Forwarded-For
+    }
+}

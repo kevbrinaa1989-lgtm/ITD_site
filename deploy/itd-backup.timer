@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily ITD Studio backup (adjust time before installation)
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=itd-backup.service
+
+[Install]
+WantedBy=timers.target
