@@ -8,7 +8,7 @@
           projectId: project.id,
           clientId: project.clientId,
           projectTitle: project.title,
-          clientLabel: `${project.clientName} / ${project.clientEmail}`,
+          clientLabel: project.clientId === null ? "Без клиента" : `${project.clientName} / ${project.clientEmail}`,
         }
       : null;
   const same = (a, b) =>

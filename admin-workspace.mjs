@@ -241,7 +241,7 @@ export function initAdminWorkspace({ db, now = Date.now }) {
     const versions =
       all(`SELECT m.id AS materialId,v.id AS versionId,v.versionNumber,m.projectId,p.title AS projectTitle,m.stageId,s.title AS stageTitle,m.title,v.status,v.createdAt,p.clientId,u.name AS clientName,u.email AS clientEmail,w.firstViewedAt,w.lastViewedAt,
       NOT EXISTS(SELECT 1 FROM review_versions n WHERE n.materialId=m.id AND n.versionNumber>v.versionNumber) AS isCurrent
-      FROM review_materials m JOIN review_versions v ON v.materialId=m.id JOIN projects p ON p.id=m.projectId JOIN users u ON u.id=p.clientId JOIN stages s ON s.id=m.stageId LEFT JOIN review_views w ON w.versionId=v.id AND w.userId=p.clientId ORDER BY v.createdAt,v.id`).filter(
+      FROM review_materials m JOIN review_versions v ON v.materialId=m.id JOIN projects p ON p.id=m.projectId LEFT JOIN users u ON u.id=p.clientId JOIN stages s ON s.id=m.stageId LEFT JOIN review_views w ON w.versionId=v.id AND w.userId=p.clientId ORDER BY v.createdAt,v.id`).filter(
         (m) => ids.has(m.projectId),
       );
     const current = versions.filter((v) => v.isCurrent),
@@ -288,7 +288,7 @@ export function initAdminWorkspace({ db, now = Date.now }) {
               }
             : null,
         });
-      if (m.isCurrent && m.status === "pending_approval") {
+      if (m.isCurrent && m.clientId !== null && m.status === "pending_approval") {
         const cycle = get(
           "SELECT createdAt FROM review_events WHERE versionId=? AND type IN ('submitted','version_uploaded','approval_cancelled') ORDER BY id DESC LIMIT 1",
           m.versionId,

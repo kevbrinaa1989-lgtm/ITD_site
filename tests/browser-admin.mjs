@@ -1,3 +1,4 @@
+import { openGlobal, openProject } from "./browser-navigation.mjs";
 import { prepareFixtureUpload } from "./upload-fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir } from "node:fs/promises";
@@ -149,6 +150,7 @@ try {
       await p.locator("#admin-client-search button[type=submit]").click();
     }
     async function searchProjects(p, value) {
+      await openGlobal(p, "projects");
       await p.locator("#admin-project-query").fill(value);
       const response = p.waitForResponse((r) =>
         r.url().includes("/api/admin/projects?"),
@@ -167,9 +169,10 @@ try {
     async function projectDetail(p, title) {
       await searchProjects(p, title);
       await p
-        .locator("#admin-project-list button.admin-record")
+        .locator("#admin-project-list [data-project-id]")
         .filter({ hasText: title })
         .click();
+      await p.locator("#tab-settings").click();
       await p.locator("#admin-project-detail h3").waitFor();
     }
     const oldOwner = await pageFor();
@@ -178,7 +181,7 @@ try {
     assert.equal(await oldOwner.locator("#tab-projects").isVisible(), false);
     const admin = await pageFor();
     await signIn(admin, "admin@example.test");
-    await admin.locator("#tab-clients").click();
+    await openGlobal(admin, "clients");
     await clientDetail(admin, emptyEmail);
     await admin
       .getByText("У клиента пока нет проектов.", { exact: true })
@@ -188,22 +191,17 @@ try {
     assert.equal(await admin.locator("#admin-client-list button").count(), 0);
     await admin.getByText("Клиенты не найдены.", { exact: true }).waitFor();
     await clientDetail(admin, email);
-    assert.equal(
-      await admin
-        .locator(
-          "#admin-client-detail input[type=email],#admin-client-detail input[name=email]",
-        )
-        .count(),
-      0,
-    );
+    const emailField = admin.locator("#admin-client-detail input[name=email]");
+    assert.equal(await emailField.inputValue(), email);
+    assert.equal(await emailField.evaluate((el) => el.readOnly), true);
     await admin
       .locator("#admin-client-detail summary")
-      .filter({ hasText: "Изменить имя" })
+      .filter({ hasText: "Редактировать данные" })
       .click();
     const renamed = "Анна <script>демонстрация</script>";
     await admin.locator("#admin-client-detail input[name=name]").fill(renamed);
     await admin
-      .getByRole("button", { name: "Сохранить имя", exact: true })
+      .getByRole("button", { name: "Сохранить данные", exact: true })
       .click();
     await admin.waitForFunction(
       (expected) =>
@@ -249,9 +247,14 @@ try {
       .waitFor();
     await oldOwner.reload();
     await signIn(oldOwner, email);
-    await admin.locator("#tab-projects").click();
+    await openGlobal(admin, "projects");
     await searchProjects(admin, "missing-project");
-    await admin.getByText("Проекты не найдены.", { exact: true }).waitFor();
+    await admin
+      .getByText(
+        "Проекты не найдены. Измените поиск или фильтр либо создайте проект.",
+        { exact: true },
+      )
+      .waitFor();
     await projectDetail(admin, title);
     await screenshot(admin, "project-detail");
     await admin
@@ -276,6 +279,7 @@ try {
       await admin.locator("#admin-project-detail script").count(),
       0,
     );
+    await openGlobal(admin, "projects");
     await admin.locator("#admin-project-query").fill(email);
     await admin.locator("#admin-project-search button[type=submit]").click();
     await admin
@@ -283,8 +287,13 @@ try {
       .filter({ hasText: edited })
       .waitFor();
     await admin.locator("#admin-project-filter").selectOption("Завершён");
-    await admin.getByText("Проекты не найдены.", { exact: true }).waitFor();
-    await admin.locator("#admin-project-filter").selectOption("active");
+    await admin
+      .getByText(
+        "Проекты не найдены. Измените поиск или фильтр либо создайте проект.",
+        { exact: true },
+      )
+      .waitFor();
+    await admin.locator("#admin-project-filter").selectOption("all");
     await projectDetail(admin, edited);
     const assignDetails = admin
       .locator("#admin-project-detail details")
@@ -372,26 +381,19 @@ try {
     await nextClient.waitForFunction(
       () => !document.getElementById("app-view").dataset.busy,
     );
-    assert.equal(
-      await nextClient
-        .locator("#project-list button")
-        .filter({ hasText: edited })
-        .count(),
-      0,
-    );
-    await nextClient.locator("#sidebar-show-archive").check();
+    await openGlobal(nextClient, "client-projects");
     await nextClient
-      .locator("#project-list button")
-      .filter({ hasText: edited })
+      .locator(`#client-projects-panel button[data-project-id="${project.id}"]`)
       .waitFor();
+    await openProject(nextClient, project.id, { client: true });
+    assert.equal(
+      await nextClient.locator("#project-status").textContent(),
+      "Архив",
+    );
     await screenshot(nextClient, "client-archive");
+    await openGlobal(admin, "projects");
     await admin.locator("#admin-project-filter").selectOption("Архив");
-    await admin.locator("#admin-project-query").fill(nextEmail);
-    await admin.locator("#admin-project-search button[type=submit]").click();
-    await admin
-      .locator("#admin-project-list button.admin-record")
-      .filter({ hasText: edited })
-      .waitFor();
+    await projectDetail(admin, edited);
     admin.once("dialog", (d) => d.accept());
     await admin
       .getByRole("button", { name: "Восстановить из архива", exact: true })
@@ -416,7 +418,8 @@ try {
       ).includes("Клиент проекта изменён"),
     );
     await screenshot(admin, "restored-project");
-    await admin.locator("#tab-management").click();
+    await openGlobal(admin, "workspace");
+    await admin.locator("#workspace-new-project").click();
     await admin.locator("#create-title").fill(`Новый проект ${viewport.width}`);
     await admin.locator("#create-client").selectOption(String(owner.id));
     await admin.locator("#create-status").selectOption("Новый");

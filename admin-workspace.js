@@ -387,7 +387,7 @@
       if (valid(generation) && seq === detailSeq) message(error.message);
     }
   }
-  async function newTask() {
+  async function newTask(projectId = null) {
     const generation = epoch,
       seq = ++detailSeq;
     selected = null;
@@ -395,6 +395,11 @@
     const loaded = await loadTasks();
     if (!loaded || !valid(generation) || seq !== detailSeq) return;
     renderEditor(null);
+    if (typeof projectId === "number") {
+      const select = $("task-edit-form").elements.namedItem("projectId");
+      select.value = String(projectId);
+      select.dispatchEvent(new Event("change"));
+    }
     const host = $("task-detail");
     host.tabIndex = -1;
     host.focus({ preventScroll: true });
@@ -626,7 +631,7 @@
     $("workspace-new-task").addEventListener("click", newTask);
     $("workspace-new-project").addEventListener("click", () => {
       if (hooks.getUser()?.role !== "admin") return;
-      hooks.selectTab("management");
+      hooks.selectTab("create-project");
       const form = $("create-project-form"),
         details = form.closest("details");
       if (details) details.open = true;
@@ -641,5 +646,5 @@
     if (tab === "workspace") loadDashboard();
     if (tab === "tasks") loadTasks();
   }
-  window.ITDWorkspace = { init, reset, onTab, openTask };
+  window.ITDWorkspace = { init, reset, onTab, openTask, newTask };
 })();

@@ -44,6 +44,7 @@
   }
   function notice(kind, text) {
     $("admin-" + kind + "-message").textContent = text;
+    if (kind === "projects" && $("admin-project-settings-message")) $("admin-project-settings-message").textContent = text;
   }
   function fields(host, pairs) {
     const list = node("dl", undefined, "recovery-fields");
@@ -70,6 +71,9 @@
     "material.first_viewed": "Материал впервые просмотрен клиентом",
 
     "client.renamed": "Имя клиента изменено",
+    "client.phone_changed": "Телефон клиента изменён",
+    "client.profile_updated": "Клиент обновил свой профиль",
+    "project.description_changed": "Описание проекта изменено",
     "client.disabled": "Доступ клиента отключён",
     "client.enabled": "Доступ клиента восстановлен",
     "project.created": "Проект создан",
@@ -147,7 +151,7 @@
       event.preventDefault();
       const generation = epoch;
       const values = Object.fromEntries(new FormData(form));
-      const controls = [...form.querySelectorAll("input,select,button")];
+      const controls = [...form.querySelectorAll("input,select,textarea,button")];
       controls.forEach((el) => (el.disabled = true));
       try {
         await action(values);
@@ -206,6 +210,7 @@
     const generation = epoch,
       version = ++clientVersion;
     selectedClient = id;
+    hooks.onClientOpen?.(id);
     renderClients();
     const host = $("admin-client-detail");
     host.replaceChildren(node("p", "Загрузка…", "muted"));
@@ -223,15 +228,20 @@
     host.replaceChildren(node("h3", client.name));
     fields(host, [
       ["Email", client.email],
+      ["Телефон", client.phone || "Не указан"],
       ["Регистрация", date(client.createdAt)],
       ["Доступ", client.isActive === false ? "Отключён" : "Открыт"],
       ["Проектов", client.projectCount ?? projects.length],
     ]);
     const edit = node("details", undefined, "admin-editor");
-    edit.append(node("summary", "Изменить имя"));
+    edit.append(node("summary", "Редактировать данные"));
     const form = node("form");
     input(form, "Имя клиента", "name", client.name);
-    const save = node("button", "Сохранить имя", "primary");
+    const phone = input(form, "Телефон (необязательно)", "phone", client.phone, "tel");
+    phone.required = false; phone.maxLength = 40;
+    const email = input(form, "Email — изменить нельзя", "email", client.email, "email");
+    email.readOnly = true; email.required = false;
+    const save = node("button", "Сохранить данные", "primary");
     save.type = "submit";
     form.append(save);
     formAction(form, "clients", async (values) => {
@@ -239,13 +249,13 @@
         await mutate(
           "clients",
           `/api/admin/clients/${client.id}`,
-          { name: values.name },
+          { name: values.name, phone: values.phone.trim() || null },
           "PATCH",
         )
       ) {
         await loadClients();
         if (selectedClient === client.id) await clientDetail(client.id);
-        notice("clients", "Имя сохранено.");
+        notice("clients", "Данные клиента сохранены.");
       }
     });
     edit.append(form);
@@ -293,7 +303,7 @@
     for (const project of projects)
       projectList.append(
         button(`${project.title} · ${project.status}`, () =>
-          hooks.openProject(project.id),
+          hooks.openProject(project.id, { clientId: client.id }),
         ),
       );
     if (!projects.length)
@@ -308,7 +318,7 @@
     try {
       const query = new URLSearchParams({
         search: $("admin-project-query").value.trim(),
-        status: $("admin-project-filter").value,
+        status: $("admin-project-filter").value || "all",
       });
       const result = await hooks.api(`/api/admin/projects?${query}`);
       if (!valid(generation) || version !== listVersion) return;
@@ -317,7 +327,7 @@
       for (const project of result.projects) {
         const card = button(
           "",
-          () => projectDetail(project.id),
+          () => hooks.openProject(project.id),
           "admin-record",
         );
         card.dataset.projectId = String(project.id);
@@ -333,17 +343,20 @@
           node("strong", project.title),
           node(
             "span",
-            `${project.clientName || "Клиент не указан"} · ${project.clientEmail || ""}`,
+            project.clientId == null ? "Без клиента" : `${project.clientName || "Клиент"} · ${project.clientEmail || ""}`,
           ),
           node(
             "small",
             `${project.status} · ${stages.length ? `${complete} из ${stages.length} этапов` : "Этапы не добавлены"}`,
           ),
         );
+        const currentStage = stages.find(stage => stage.status === "in_progress") || stages.find(stage => stage.status !== "completed");
+        card.append(node("span", stages.length ? `Прогресс: ${Math.round(complete / stages.length * 100)}%` : "Нет этапов"),
+          node("span", currentStage ? `Текущий этап: ${currentStage.title}` : stages.length ? "Все этапы завершены" : "Этапы пока не выбраны", "project-card-stage"));
         list.append(card);
       }
       if (!list.childElementCount)
-        list.append(node("p", "Проекты не найдены.", "empty-note"));
+        list.append(node("p", "Проекты не найдены. Измените поиск или фильтр либо создайте проект.", "empty-note"));
       notice("projects", "");
     } catch (error) {
       if (valid(generation) && version === listVersion)
@@ -379,13 +392,14 @@
   function renderProject({ project, events }, availableClients) {
     const host = $("admin-project-detail");
     host.replaceChildren(node("h3", project.title));
+    const feedback = node("p", "", "muted"); feedback.id = "admin-project-settings-message"; feedback.setAttribute("role", "status"); host.append(feedback);
     const stages = project.stages || [],
       files = project.files || [],
       completed = stages.filter((stage) => stage.status === "completed").length;
     fields(host, [
       [
         "Клиент",
-        `${project.clientName || "Не указан"} · ${project.clientEmail || ""}`,
+        project.clientId == null ? "Без клиента" : `${project.clientName || "Клиент"} · ${project.clientEmail || ""}`,
       ],
       ["Статус", project.status],
       ["Создан", date(project.createdAt)],
@@ -400,6 +414,7 @@
         `${files.filter((file) => file.category === "result").length} результатов · ${files.filter((file) => file.category === "document").length} документов`,
       ],
     ]);
+    if (project.clientId != null) host.append(button("Открыть карточку клиента →", () => openClient(project.clientId)));
     host.append(
       button("Открыть этапы и материалы →", () =>
         hooks.openProject(project.id),
@@ -409,6 +424,9 @@
     edit.append(node("summary", "Изменить название и статус"));
     const form = node("form");
     input(form, "Название проекта", "title", project.title);
+    const descriptionLabel = node("label", "Описание проекта (необязательно)"), description = node("textarea");
+    description.name = "description"; description.value = project.description || ""; description.maxLength = 4000;
+    description.rows = 4; descriptionLabel.append(description); form.append(descriptionLabel);
     const label = node("label", "Статус проекта"),
       select = node("select");
     select.name = "status";
@@ -423,7 +441,7 @@
     save.type = "submit";
     form.append(save);
     formAction(form, "projects", async (values) => {
-      const payload = { title: values.title };
+      const payload = { title: values.title, description: values.description };
       if (
         project.status !== "Архив" &&
         values.status !== project.status &&
@@ -446,7 +464,7 @@
     edit.append(form);
     host.append(edit);
     const ownership = node("details", undefined, "admin-editor");
-    ownership.append(node("summary", "Назначить другого клиента"));
+    ownership.append(node("summary", project.clientId == null ? "Назначить клиента" : "Назначить другого клиента"));
     const assign = node("form"),
       clientSelect = node("select");
     clientSelect.name = "clientId";
@@ -464,7 +482,7 @@
     }
     const warning = node(
       "p",
-      "После переназначения прежний клиент потеряет доступ к проекту и всем его файлам. Новый клиент получит доступ ко всем материалам проекта.",
+      project.clientId == null ? "Назначенный клиент получит доступ ко всем уже загруженным материалам и документам проекта." : "После переназначения прежний клиент потеряет доступ к проекту и всем его файлам. Новый клиент получит доступ ко всем материалам проекта.",
       "admin-warning",
     );
     const identity = node("label", undefined, "recovery-identity"),
@@ -478,7 +496,7 @@
         "Я проверил(а) клиента и подтверждаю передачу доступа ко всем файлам.",
       ),
     );
-    const move = node("button", "Переназначить проект", "primary");
+    const move = node("button", project.clientId == null ? "Назначить клиента" : "Переназначить проект", "primary");
     move.type = "submit";
     assign.append(warning, clientSelect, identity, move);
     formAction(assign, "projects", async (values) => {
@@ -488,14 +506,14 @@
       if (!client || client.isActive === false) return;
       if (
         !window.confirm(
-          `Передать проект «${project.title}» клиенту ${client.name} (${client.email})? Прежний клиент потеряет доступ ко всем файлам проекта.`,
+          project.clientId == null ? `Назначить проект «${project.title}» клиенту ${client.name} (${client.email})? Клиент получит доступ ко всем уже загруженным материалам и документам.` : `Передать проект «${project.title}» клиенту ${client.name} (${client.email})? Прежний клиент потеряет доступ ко всем файлам проекта.`,
         )
       )
         return;
       if (
         await mutate("projects", `/api/admin/projects/${project.id}/assign`, {
           clientId: Number(values.clientId),
-          expectedClientId: project.clientId,
+          expectedClientId: project.clientId ?? null,
           confirm: true,
         })
       ) {
@@ -559,6 +577,8 @@
       loadProjects();
     });
     $("admin-project-filter").addEventListener("change", loadProjects);
+    $("admin-project-query").addEventListener("input", loadProjects);
+    $("admin-client-query").addEventListener("input", renderClients);
   }
   function onTab(tab) {
     active = tab;
@@ -566,5 +586,23 @@
     if (tab === "clients") loadClients();
     if (tab === "projects") loadProjects();
   }
-  window.ITDAdmin = { init, reset, onTab };
+  async function openClient(id) {
+    const generation = epoch;
+    hooks.selectTab?.("clients");
+    await loadClients();
+    if (!valid(generation)) return;
+    await clientDetail(Number(id));
+    if (!valid(generation)) return;
+    const host = $("admin-client-detail"); host.tabIndex = -1; host.focus({ preventScroll: true }); host.scrollIntoView({ block: "start" });
+  }
+  async function openSettings(id, options = {}) {
+    if (hooks.getUser()?.role !== "admin") return;
+    active = "settings";
+    await projectDetail(Number(id));
+    if (options.assign && active === "settings" && selectedProject === Number(id)) {
+      const select = $("admin-project-detail").querySelector('select[name="clientId"]');
+      if (select) { select.closest("details").open = true; select.focus(); }
+    }
+  }
+  window.ITDAdmin = { init, reset, onTab, openClient, openSettings };
 })();

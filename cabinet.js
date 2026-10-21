@@ -20,8 +20,26 @@
     "recovery",
     "clients",
     "projects",
+    "settings",
+    "create-project",
   ];
-  let showArchive = false;
+  const clientTabs = [
+    "client-home",
+    "client-projects",
+    "client-review",
+    "profile",
+  ];
+  const projectTabNames = [
+    "overview",
+    "stages",
+    "results",
+    "review",
+    "documents",
+    "settings",
+    "management",
+  ];
+  let returnClientId = null,
+    selectedStageId = null;
   let activeTab = "overview";
   const node = (tag, text, className) => {
     const el = document.createElement(tag);
@@ -47,8 +65,10 @@
     window.ITDWorkspace?.reset();
     window.ITDAdmin?.reset();
     window.ITDReview?.reset();
-    showArchive = false;
-    $("sidebar-show-archive").checked = false;
+    window.ITDClientWorkspace?.reset();
+    returnClientId = null;
+    selectedStageId = null;
+    document.body.classList.remove("menu-open");
     window.ITDViewer?.invalidate();
     clearTimeout(messageTimer);
     user = null;
@@ -81,18 +101,13 @@
     $("app-view").hidden = true;
     $("user-name").textContent = "";
     $("user-role").textContent = "";
-    for (const id of [
-      "project-list",
-      "stage-list",
-      "result-list",
-      "document-list",
-    ])
+    for (const id of ["stage-list", "result-list", "document-list"])
       $(id).replaceChildren();
     for (const id of ["project-title", "project-client", "project-status"])
       $(id).textContent = "";
     $("create-project-form")
       .elements.namedItem("clientId")
-      .replaceChildren(new Option("Выберите клиента", ""));
+      .replaceChildren(new Option("Без клиента — назначить позже", ""));
     $("upload-file-form")
       .elements.namedItem("stageId")
       .replaceChildren(new Option("Без привязки к этапу", ""));
@@ -161,45 +176,122 @@
   function empty(list, text) {
     list.replaceChildren(node("p", text, "empty-note"));
   }
-  function selectTab(tab) {
+  function selectTab(tab, options = {}) {
+    const admin = user?.role === "admin";
+    const home = admin ? "workspace" : "client-home";
     const hasProject = projects.some((project) => project.id === selectedId);
-    if (adminTabs.includes(tab) && user?.role !== "admin") tab = "overview";
+    if (
+      (adminTabs.includes(tab) && !admin) ||
+      (clientTabs.includes(tab) && admin)
+    )
+      tab = home;
+    if (projectTabNames.includes(tab) && !hasProject) tab = home;
     activeTab = tab;
-    if (selectedId !== null) projectTabs.set(selectedId, tab);
+    const inProject = projectTabNames.includes(tab) && hasProject;
+    if (inProject) projectTabs.set(selectedId, tab);
     document.querySelectorAll("[data-tab]").forEach((button) => {
-      const adminOnly = adminTabs.includes(button.dataset.tab);
-      button.hidden = adminOnly
-        ? user?.role !== "admin"
-        : button.dataset.tab === "notifications"
-          ? false
-          : !hasProject;
-      const selected = button.dataset.tab === tab;
+      const value = button.dataset.tab;
+      button.hidden =
+        value === "management" ||
+        (adminTabs.includes(value) && !admin) ||
+        (clientTabs.includes(value) && admin) ||
+        (projectTabNames.includes(value) && !inProject);
+      const selected =
+        value === tab ||
+        (inProject && value === (admin ? "projects" : "client-projects"));
       button.setAttribute("aria-selected", String(selected));
-      button.tabIndex = selected ? 0 : -1;
+      button.tabIndex =
+        selected || button.closest("#studio-navigation") ? 0 : -1;
       button.classList.toggle("is-active", selected);
     });
     document.querySelectorAll("[data-tab-panel]").forEach((panel) => {
-      panel.hidden =
-        panel.dataset.tabPanel !== tab ||
-        (adminTabs.includes(tab) && user?.role !== "admin");
+      panel.hidden = panel.dataset.tabPanel !== tab;
     });
-    $("admin-panel").hidden = tab !== "management" || user?.role !== "admin";
-    if (tab === "recovery" && user?.role === "admin") refreshRecovery();
+    $("project-content").hidden = !inProject;
+    $("project-heading").hidden = !inProject;
+    $("project-navigation").hidden = !inProject;
+    $("admin-panel").hidden = tab !== "management" || !admin;
+    $("empty-state").hidden = true;
+    $("shell-back").hidden = !inProject && tab !== "create-project";
+    $("shell-back").textContent =
+      inProject && returnClientId ? "← К карточке клиента" : "← К проектам";
+    const titles = {
+      workspace: "Главная",
+      projects: "Проекты",
+      clients: "Клиенты",
+      tasks: "Задачи",
+      recovery: "Запросы на восстановление",
+      notifications: "Уведомления",
+      "create-project": "Новый проект",
+      "client-home": "Главная",
+      "client-projects": "Мои проекты",
+      "client-review": "На согласование",
+      profile: "Мой профиль",
+    };
+    $("shell-location").textContent = inProject
+      ? "Проекты / " + (projects.find((p) => p.id === selectedId)?.title || "")
+      : titles[tab] || "Главная";
+    $("shell-role-label").textContent = admin
+      ? "Рабочее пространство студии"
+      : "Личный кабинет";
+    document.body.classList.remove("menu-open");
+    $("mobile-menu-button")?.setAttribute("aria-expanded", "false");
+    if (tab === "recovery" && admin) refreshRecovery();
+    if (tab === "settings" && admin)
+      window.ITDAdmin?.openSettings(selectedId, options);
     window.ITDWorkspace?.onTab(tab);
     window.ITDAdmin?.onTab(tab);
     window.ITDReview?.onTab(tab);
-    $("project-content").hidden =
-      !hasProject ||
-      [
-        "workspace",
-        "tasks",
-        "recovery",
-        "clients",
-        "projects",
-        "notifications",
-      ].includes(tab);
-    $("empty-state").hidden =
-      hasProject || user?.role === "admin" || tab === "notifications";
+    window.ITDClientWorkspace?.onTab(tab);
+  }
+  async function openProject(id, options = {}) {
+    id = Number(id);
+    if (!(await window.ITDUploads.allowSwitch(id)))
+      throw new Error("Переход отменён. Подготовленная загрузка сохранена.");
+    const currentUser = user;
+    await refresh();
+    if (!user || user !== currentUser) throw new Error("Сессия изменилась.");
+    if (!projects.some((project) => project.id === id))
+      throw new Error("Проект недоступен.");
+    if (selectedId !== id) selectedStageId = null;
+    selectedId = id;
+    returnClientId = options.clientId || null;
+    activeTab = options.tab || "overview";
+    render();
+  }
+  function projectAction(label, action) {
+    const button = node("button", label, "text-button");
+    button.type = "button";
+    button.addEventListener("click", () =>
+      Promise.resolve()
+        .then(action)
+        .catch((error) => message(error.message, true)),
+    );
+    return button;
+  }
+  function openUpload(stageId = null, category = "result") {
+    const form = $("upload-file-form");
+    // Never silently retarget a file already prepared for another stage/category.
+    if (
+      form.querySelector('input[type="file"]').files.length &&
+      (form.elements.stageId.value !== String(stageId ?? "") ||
+        form.elements.category.value !== category)
+    ) {
+      selectTab("management");
+      form.closest("details").open = true;
+      form.scrollIntoView({ block: "start" });
+      message(
+        "В форме уже выбран файл. Сохранены его проект и этап: сначала завершите эту загрузку или выберите другой файл.",
+        true,
+      );
+      return;
+    }
+    selectTab("management");
+    form.elements.stageId.value = String(stageId ?? "");
+    form.elements.category.value = category;
+    form.closest("details").open = true;
+    form.scrollIntoView({ block: "start" });
+    form.querySelector('input[type="file"]').focus({ preventScroll: true });
   }
   function download(file, label = "Скачать") {
     const link = node("a", label, "file-download");
@@ -334,65 +426,52 @@
         .map((part) => part[0])
         .join("")
         .toUpperCase();
-    if ($("project-count"))
-      $("project-count").textContent = String(
-        projects.filter((p) => showArchive || p.status !== "Архив").length,
-      );
-    $("project-list").replaceChildren();
-    for (const p of projects.filter(
-      (p) => showArchive || p.status !== "Архив",
-    )) {
-      const button = node("button", undefined, "project-item");
-      button.type = "button";
-      button.append(
-        node("span", p.title, "project-item-title"),
-        node(
-          "span",
-          `${p.status} · Этапов: ${p.stages.length}`,
-          "project-item-meta",
-        ),
-      );
-      button.setAttribute("aria-pressed", String(p.id === selectedId));
-      button.addEventListener("click", async () => {
-        if (!(await window.ITDUploads.allowSwitch(p.id))) return;
-        if (!user) return;
-        window.ITDViewer?.invalidate();
-        selectedId = p.id;
-        activeTab = projectTabs.get(p.id) || "overview";
-        render();
-      });
-      $("project-list").append(button);
-    }
+    $("user-name").textContent = user.name;
     const project = projects.find((p) => p.id === selectedId);
     window.ITDUploads?.reconcile();
     $("empty-state").hidden = !!project || admin;
     $("project-content").hidden = !project;
     for (const id of ["add-stage-form", "upload-file-form"])
       $(id).hidden = !project;
-    selectTab(
-      !project &&
-        admin &&
-        !adminTabs.includes(activeTab) &&
-        activeTab !== "notifications"
-        ? "management"
-        : activeTab,
-    );
+    selectTab(activeTab);
     if (!project) {
       window.ITDReview?.setProject(null);
-      document.querySelectorAll("[data-tab]").forEach((button) => {
-        button.hidden =
-          button.dataset.tab === "notifications"
-            ? false
-            : !adminTabs.includes(button.dataset.tab) || !admin;
-      });
       return;
     }
-    document.querySelectorAll("[data-tab]").forEach((button) => {
-      button.hidden = adminTabs.includes(button.dataset.tab) && !admin;
-    });
     $("project-title").textContent = project.title;
-    $("project-client").textContent =
-      `${project.clientName} · ${project.clientEmail}`;
+    $("project-client").replaceChildren();
+    if (admin && project.clientId !== null)
+      $("project-client").append(
+        projectAction(`${project.clientName} · ${project.clientEmail}`, () =>
+          window.ITDAdmin.openClient(project.clientId),
+        ),
+      );
+    else
+      $("project-client").textContent =
+        project.clientId === null
+          ? "Без клиента"
+          : `${project.clientName} · ${project.clientEmail}`;
+    $("project-actions").replaceChildren();
+    if (admin) {
+      if (project.clientId === null)
+        $("project-actions").append(
+          projectAction("Назначить клиента", () =>
+            selectTab("settings", { assign: true }),
+          ),
+        );
+      $("project-actions").append(
+        projectAction("Добавить этап", () => {
+          selectTab("management");
+          $("add-stage-form").closest("details").open = true;
+          $("stage-title").focus();
+        }),
+        projectAction("Загрузить материал", () => openUpload()),
+        projectAction("Добавить документ", () => openUpload(null, "document")),
+        projectAction("Создать задачу", () =>
+          window.ITDWorkspace.newTask(project.id),
+        ),
+      );
+    }
     $("project-status").textContent = project.status;
     const completed = project.stages.filter(
       (stage) => stage.status === "completed",
@@ -400,6 +479,11 @@
     const progress = project.stages.length
       ? Math.round((completed / project.stages.length) * 100)
       : 0;
+    $("project-header-progress").value = progress;
+    $("project-header-progress").hidden = !project.stages.length;
+    $("project-header-progress-text").textContent = project.stages.length
+      ? `${progress}% · ${completed} из ${project.stages.length} этапов`
+      : "Нет этапов";
     const current =
       project.stages.find((stage) => stage.status === "in_progress") ||
       project.stages.find((stage) => stage.status === "planned") ||
@@ -431,12 +515,12 @@
       "overview-next-action",
       current
         ? admin
-          ? "Следите за решениями в разделе «Согласования». Материалы добавляются в «Управлении»."
+          ? "Следите за решениями в разделе «Согласования». Добавляйте материалы из этапа проекта."
           : "Посмотрите материалы этапа. Решения и комментарии доступны в разделе «Согласования»."
         : project.stages.length
           ? "Все этапы завершены. Доступные результаты и документы можно скачать в соответствующих разделах."
           : admin
-            ? "Добавьте этап проекта в разделе «Управление»."
+            ? "Нажмите «Добавить этап», чтобы составить план проекта."
             : "Новые этапы и материалы появятся здесь после публикации студией.",
     );
     const preview = $("overview-stage-preview");
@@ -456,6 +540,18 @@
       if (!project.files.length) empty(recent, "Материалы пока не загружены.");
     }
     $("stage-list").replaceChildren();
+    if (
+      selectedStageId &&
+      !project.stages.some((stage) => stage.id === selectedStageId)
+    )
+      selectedStageId = null;
+    if (selectedStageId)
+      $("stage-list").append(
+        projectAction("← Все этапы", () => {
+          selectedStageId = null;
+          render();
+        }),
+      );
     const stageSelect = $("upload-file-form").elements.namedItem("stageId");
     const previousStage = stageSelect.value;
     stageSelect.replaceChildren(new Option("Без привязки к этапу", ""));
@@ -467,6 +563,7 @@
         `stage-card stage-${stage.status}`,
       );
       item.dataset.stageId = String(stage.id);
+      item.hidden = selectedStageId !== null && selectedStageId !== stage.id;
       const number = node("span", String(index + 1), "stage-number");
       number.setAttribute("aria-hidden", "true");
       const content = node("div", undefined, "stage-body");
@@ -506,6 +603,29 @@
         }
         content.append(links);
       }
+      content.append(
+        node(
+          "p",
+          `Материалов: ${project.files.filter((file) => file.stageId === stage.id).length}`,
+          "muted",
+        ),
+      );
+      content.append(
+        projectAction(
+          selectedStageId === stage.id ? "Все этапы" : "Открыть этап",
+          () => {
+            selectedStageId = selectedStageId === stage.id ? null : stage.id;
+            selectTab("stages");
+            render();
+          },
+        ),
+      );
+      if (admin)
+        content.append(
+          projectAction("Загрузить материал в этап", () =>
+            openUpload(stage.id),
+          ),
+        );
       const reviewHost = node("div", undefined, "stage-review-materials");
       reviewHost.dataset.reviewStage = String(stage.id);
       content.append(reviewHost);
@@ -568,7 +688,9 @@
             : "Документы пока не загружены.",
         );
     }
-    if ([...stageSelect.options].some(option => option.value === previousStage))
+    if (
+      [...stageSelect.options].some((option) => option.value === previousStage)
+    )
       stageSelect.value = previousStage;
     window.ITDReview?.setProject(project);
     window.ITDUploads?.reconcile();
@@ -579,30 +701,43 @@
     const result = await api("/api/projects");
     if (!user || user !== currentUser) return;
     projects = result.projects;
-    if (
-      !projects.some(
-        (p) => p.id === selectedId && (showArchive || p.status !== "Архив"),
-      )
-    )
-      selectedId =
-        projects.find((p) => showArchive || p.status !== "Архив")?.id ?? null;
+    if (!projects.some((project) => project.id === selectedId))
+      selectedId = null;
     render();
   }
   async function refreshClients() {
     if (user?.role !== "admin") return;
     const currentUser = user;
-    const { clients } = await api("/api/clients");
+    const { clients, stageTemplates } = await api("/api/clients");
     if (!user || user !== currentUser) return;
     const select = $("create-project-form").elements.namedItem("clientId");
     const previous = select.value;
-    select.replaceChildren(
-      new Option(
-        clients.length
-          ? "Выберите клиента"
-          : "Пока нет зарегистрированных клиентов",
-        "",
-      ),
-    );
+    select.replaceChildren(new Option("Без клиента — назначить позже", ""));
+    if (stageTemplates) {
+      const checked = new Set(
+        [...$("create-project-stages").querySelectorAll("input:checked")].map(
+          (input) => input.value,
+        ),
+      );
+      $("create-project-stages").replaceChildren(
+        node("legend", "Этапы проекта"),
+        node(
+          "p",
+          "Отметьте только нужные этапы. Остальные можно добавить позже.",
+          "muted",
+        ),
+      );
+      for (const template of stageTemplates) {
+        const label = node("label", undefined, "stage-template-option"),
+          input = node("input");
+        input.type = "checkbox";
+        input.name = "stages";
+        input.value = template.key;
+        input.checked = checked.has(template.key);
+        label.append(input, node("span", template.title));
+        $("create-project-stages").append(label);
+      }
+    }
     for (const client of clients) {
       const option = new Option(
         `${client.name} (${client.email})${client.isActive === false ? " — доступ отключён" : ""}`,
@@ -624,8 +759,12 @@
     window.ITDAdmin?.reset();
     window.ITDReview?.reset();
     clearRecovery();
+    window.ITDClientWorkspace?.reset();
     user = nextUser;
-    activeTab = user.role === "admin" ? "workspace" : "overview";
+    selectedId = null;
+    selectedStageId = null;
+    returnClientId = null;
+    activeTab = user.role === "admin" ? "workspace" : "client-home";
     $("project-overview-label").textContent =
       user.role === "admin" ? "Обзор проекта" : "Обзор";
     if (user.role === "admin")
@@ -1041,52 +1180,29 @@
   });
 
   window.ITDUploads.init({
-    api, getUser: () => user,
-    getProject: () => projects.find(p => p.id === selectedId),
-    encodeFile: encodeUploadFile, message,
+    api,
+    getUser: () => user,
+    getProject: () => projects.find((p) => p.id === selectedId),
+    encodeFile: encodeUploadFile,
+    message,
   });
   window.ITDUploads.register($("upload-file-form"), {
-    context: () => window.ITDUploads.contextOf(projects.find(p => p.id === selectedId)),
+    context: () =>
+      window.ITDUploads.contextOf(projects.find((p) => p.id === selectedId)),
     receiver: $("upload-recipient"),
   });
   window.ITDAdmin?.init({
     api,
     getUser: () => user,
+    selectTab,
     refresh: async () => {
       await refresh();
       await refreshClients();
     },
-    openProject: async (id) => {
-      if (!(await window.ITDUploads.allowSwitch(Number(id)))) return;
-      await refresh();
-      const project = projects.find((p) => p.id === Number(id));
-      if (!project) throw new Error("Проект больше не доступен.");
-      showArchive = project.status === "Архив";
-      $("sidebar-show-archive").checked = showArchive;
-      selectedId = project.id;
-      activeTab = "overview";
-      render();
+    openProject,
+    onClientOpen: (id) => {
+      returnClientId = id;
     },
-  });
-  $("sidebar-show-archive").addEventListener("change", async () => {
-    const requested = $("sidebar-show-archive").checked;
-    const nextId = !requested && projects.find(p => p.id === selectedId)?.status === "Архив"
-      ? projects.find(p => p.status !== "Архив")?.id ?? null
-      : selectedId === null && requested ? projects[0]?.id ?? null : selectedId;
-    if (!(await window.ITDUploads.allowSwitch(nextId))) {
-      $("sidebar-show-archive").checked = showArchive;
-      return;
-    }
-    if (!user) return;
-    showArchive = requested;
-    if (
-      !showArchive &&
-      projects.find((p) => p.id === selectedId)?.status === "Архив"
-    )
-      selectedId = projects.find((p) => p.status !== "Архив")?.id ?? null;
-    if (selectedId === null && showArchive)
-      selectedId = projects[0]?.id ?? null;
-    render();
   });
   window.ITDReview?.init({
     api,
@@ -1094,35 +1210,37 @@
     selectTab,
     encodeFile: encodeUploadFile,
     refresh,
-    openProject: async (id) => {
-      if (!(await window.ITDUploads.allowSwitch(Number(id))))
-        throw new Error("Переход отменён. Подготовленная загрузка сохранена.");
-      const currentUser = user;
-      await refresh();
-      if (user !== currentUser) throw new Error("Сессия изменилась.");
-      const project = projects.find((item) => item.id === Number(id));
-      if (!project) throw new Error("Проект недоступен.");
-      showArchive = project.status === "Архив";
-      $("sidebar-show-archive").checked = showArchive;
-      selectedId = project.id;
-      activeTab = "review";
-      render();
+    openProject: (id) => openProject(id, { tab: "review" }),
+  });
+  const openWorkspaceProject = (id, tab) => openProject(id, { tab });
+  window.ITDClientWorkspace?.init({
+    api,
+    getUser: () => user,
+    getProjects: () => projects,
+    selectTab,
+    openProject,
+    message,
+    openMaterial: async (pid, mid, vid) => {
+      await openProject(pid, { tab: "review" });
+      await window.ITDReview.open(mid, vid);
+    },
+    updateUser: (next) => {
+      if (user && next.id === user.id) {
+        Object.assign(user, next);
+        $("user-name").textContent = user.name;
+        render();
+      }
     },
   });
-  const openWorkspaceProject = async (id, tab) => {
-    if (!(await window.ITDUploads.allowSwitch(Number(id))))
-      throw new Error("Переход отменён. Подготовленная загрузка сохранена.");
-    const currentUser = user;
-    await refresh();
-    if (user !== currentUser) throw new Error("Сессия изменилась.");
-    const project = projects.find((item) => item.id === Number(id));
-    if (!project) throw new Error("Проект недоступен.");
-    showArchive = project.status === "Архив";
-    $("sidebar-show-archive").checked = showArchive;
-    selectedId = project.id;
-    activeTab = tab;
-    render();
-  };
+  $("mobile-menu-button")?.addEventListener("click", () => {
+    const expanded = document.body.classList.toggle("menu-open");
+    $("mobile-menu-button").setAttribute("aria-expanded", String(expanded));
+  });
+  $("shell-back").addEventListener("click", () => {
+    if (returnClientId && user?.role === "admin")
+      window.ITDAdmin.openClient(returnClientId);
+    else selectTab(user?.role === "admin" ? "projects" : "client-projects");
+  });
   window.ITDWorkspace?.init({
     api,
     getUser: () => user,
@@ -1133,6 +1251,8 @@
     },
     openStage: async (pid, sid) => {
       await openWorkspaceProject(pid, "stages");
+      selectedStageId = Number(sid);
+      render();
       const target = document.querySelector(`[data-stage-id="${Number(sid)}"]`);
       if (target) {
         target.tabIndex = -1;
@@ -1148,7 +1268,7 @@
       .forEach((list) =>
         list.setAttribute(
           "aria-orientation",
-          mobileTabs.matches ? "horizontal" : "vertical",
+          list.id === "project-navigation" ? "horizontal" : "vertical",
         ),
       );
   }
@@ -1174,9 +1294,9 @@
         ].includes(event.key)
       )
         return;
-      const tabs = [...document.querySelectorAll("[data-tab]")].filter(
-        (tab) => !tab.hidden,
-      );
+      const tabs = [
+        ...button.closest('[role="tablist"]').querySelectorAll("[data-tab]"),
+      ].filter((tab) => !tab.hidden);
       const index = tabs.indexOf(button);
       const next =
         event.key === "Home"
@@ -1232,10 +1352,17 @@
     if (!(await window.ITDUploads.allowSwitch(null))) return;
     const result = await api("/api/projects", "POST", {
       title: values.title,
-      clientId: Number(values.clientId),
+      clientId: values.clientId ? Number(values.clientId) : null,
       status: values.status,
+      description: values.description || null,
+      stageTemplates: [
+        ...form.querySelectorAll('input[name="stages"]:checked'),
+      ].map((input) => input.value),
     });
     selectedId = result.id;
+    selectedStageId = null;
+    returnClientId = null;
+    activeTab = "overview";
     form.reset();
     await refresh();
     message("Проект создан");
@@ -1306,6 +1433,7 @@
     window.ITDWorkspace?.reset();
     window.ITDAdmin?.reset();
     window.ITDReview?.reset();
+    window.ITDClientWorkspace?.reset();
   });
   window.addEventListener("pageshow", (event) => {
     if (!event.persisted) return;

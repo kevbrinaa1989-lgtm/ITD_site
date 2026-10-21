@@ -1,3 +1,4 @@
+import { openProject, openUpload } from "./browser-navigation.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -157,11 +158,8 @@ try {
     await page.locator("#app-view").waitFor({ state: "visible" });
     const form = page.locator("#upload-file-form");
     async function select(project) {
-      await page
-        .locator("#project-list button")
-        .filter({ hasText: project.title })
-        .click();
-      await page.locator("#tab-management").click();
+      await openProject(page, project.id);
+      await openUpload(page);
       const details = form.locator("..");
       if (await details.evaluate((el) => el.tagName === "DETAILS" && !el.open))
         await details.locator("summary").click();
@@ -236,18 +234,13 @@ try {
         await route.continue();
       } catch {}
     });
-    await form
-      .locator("input[type=file]")
-      .setInputFiles({
-        name: "Смета-Анны.txt",
-        mimeType: "text/plain",
-        buffer: Buffer.from("Synthetic draft for Anna"),
-      });
+    await form.locator("input[type=file]").setInputFiles({
+      name: "Смета-Анны.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("Synthetic draft for Anna"),
+    });
     await intentIntercepted;
-    await page
-      .locator("#project-list button")
-      .filter({ hasText: pb.title })
-      .click();
+    await openProject(page, pb.id, { wait: false });
     await page.locator("#upload-switch-dialog[open]").waitFor();
     assert.equal(
       await page.evaluate(() => document.activeElement.id),
@@ -261,15 +254,12 @@ try {
       await form.locator("input[type=file]").evaluate((el) => el.files[0].name),
       "Смета-Анны.txt",
     );
-    await page
-      .locator("#project-list button")
-      .filter({ hasText: pb.title })
-      .click();
+    await openProject(page, pb.id, { wait: false });
     await page.locator("#upload-switch-dialog[open]").waitFor();
     await page.locator("#upload-discard").click();
     releaseIntent();
     await page.unroute(intentRoute);
-    await page.locator("#tab-management").click();
+    await openUpload(page);
     await waitCleared();
     assert.equal(await page.locator("#project-title").textContent(), pb.title);
     assert.equal(
@@ -349,10 +339,7 @@ try {
     );
     await form.locator("button[type=submit]").click();
     await fileIntercepted;
-    await page
-      .locator("#project-list button")
-      .filter({ hasText: pb.title })
-      .click();
+    await openProject(page, pb.id, { wait: false });
     assert.equal(await page.locator("#project-title").textContent(), pa.title);
     assert.equal(await page.locator("#upload-switch-dialog[open]").count(), 0);
     assert.ok(
@@ -366,6 +353,8 @@ try {
     await page.unroute(fileRoute);
     await waitCleared();
     // The server saves the first request, but the browser loses its response. Retry must reuse the receipt.
+    await openProject(page, pa.id);
+    await openUpload(page);
     const retryName = "Повтор-Анна.txt";
     await choose({
       name: retryName,
@@ -392,12 +381,11 @@ try {
       retryName,
     );
     await page.unroute(fileRoute);
-    await page
-      .locator("#project-list button")
-      .filter({ hasText: pb.title })
-      .click();
+    await openProject(page, pb.id, { wait: false });
     await page.locator("#upload-stay").click();
     assert.equal(await page.locator("#project-title").textContent(), pa.title);
+    await openProject(page, pa.id);
+    await openUpload(page);
     const retry = await send();
     await waitCleared();
     assert.equal(retry.id, savedReceipt.id);
@@ -446,10 +434,7 @@ try {
         a.email,
       ),
     );
-    await page
-      .locator("#project-list button")
-      .filter({ hasText: pb.title })
-      .click();
+    await openProject(page, pb.id, { wait: false });
     await page.locator("#upload-switch-dialog[open]").waitFor();
     await page.locator("#upload-stay").click();
     assert.equal(
@@ -458,10 +443,7 @@ try {
         .evaluate((el) => el.files.length),
       1,
     );
-    await page
-      .locator("#project-list button")
-      .filter({ hasText: pb.title })
-      .click();
+    await openProject(page, pb.id, { wait: false });
     await page.locator("#upload-discard").click();
     assert.equal(
       (
@@ -495,7 +477,9 @@ try {
     assert.deepEqual(await fileBytes(uploadedVersion, a), pdf);
     await fileBytes(uploadedVersion, b, 403);
     await page.waitForFunction(() =>
-      document.querySelector("#review-message").textContent.includes("Новая версия отправлена"),
+      document
+        .querySelector("#review-message")
+        .textContent.includes("Новая версия отправлена"),
     );
     // A project can be reassigned in another administrator tab. Both prepared
     // forms must be cleared and show the actual recipient after refreshing.
@@ -518,12 +502,27 @@ try {
     });
     await page.locator("#refresh-button").click();
     await page.waitForFunction(
-      email => document.querySelector("#upload-client-name").textContent.includes(email),
+      (email) =>
+        document
+          .querySelector("#upload-client-name")
+          .textContent.includes(email),
       b.email,
     );
-    assert.equal(await form.locator("input[type=file]").evaluate(el => el.files.length), 0);
-    assert.equal(await version.locator("input[type=file]").evaluate(el => el.files.length), 0);
-    assert.ok((await version.locator(".upload-recipient").textContent()).includes(b.email));
+    assert.equal(
+      await form.locator("input[type=file]").evaluate((el) => el.files.length),
+      0,
+    );
+    assert.equal(
+      await version
+        .locator("input[type=file]")
+        .evaluate((el) => el.files.length),
+      0,
+    );
+    assert.ok(
+      (await version.locator(".upload-recipient").textContent()).includes(
+        b.email,
+      ),
+    );
     assert.equal(posts.length, beforeAssignment);
     await page.locator("#tab-review").click();
     await choose(
@@ -531,8 +530,10 @@ try {
       pa,
       version,
     );
-    const reassignedResponse = page.waitForResponse(r =>
-      r.url().endsWith(`/api/projects/${pa.id}/files`) && r.request().method() === "POST",
+    const reassignedResponse = page.waitForResponse(
+      (r) =>
+        r.url().endsWith(`/api/projects/${pa.id}/files`) &&
+        r.request().method() === "POST",
     );
     await version.locator("button[type=submit]").click();
     const reassigned = await (await reassignedResponse).json();

@@ -113,7 +113,7 @@
     n.append(
       el(
         "p",
-        `${stage?.title || "Этап"}${admin() ? ` · ${project.title} · ${project.clientName}` : ""}`,
+        `${stage?.title || "Этап"}${admin() ? ` · ${project.title} · ${project.clientName || "Без клиента"}` : ""}`,
         "review-context",
       ),
       el("h3", material.title),
@@ -305,7 +305,7 @@
     host.append(
       el(
         "p",
-        `${project.title} · ${stage?.title || "Этап"}${admin() ? ` · ${project.clientName} (${project.clientEmail})` : ""}`,
+        `${project.title} · ${stage?.title || "Этап"}${admin() ? ` · ${project.clientId === null ? "Без клиента" : `${project.clientName} (${project.clientEmail})`}` : ""}`,
         "review-context",
       ),
       el("h2", material.title),

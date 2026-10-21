@@ -1,3 +1,4 @@
+import { openProject, openGlobal } from "./browser-navigation.mjs";
 import { prepareFixtureUpload } from "./upload-fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir, readFile } from "node:fs/promises";
@@ -224,6 +225,7 @@ try {
     }
     const admin = await pageFor();
     await signIn(admin, "admin@example.test");
+    await openProject(admin, title);
     await open(admin);
     assert.ok(
       (
@@ -238,6 +240,7 @@ try {
     assert.equal((await state()).material.currentVersion.view.viewed, false);
     const client = await pageFor();
     await signIn(client, email);
+    await openProject(client, title, { client: true });
     assert.equal(
       (await client.locator("#overview-next-stage").textContent()).includes(
         "Все этапы завершены",
@@ -534,7 +537,7 @@ try {
       (await state(text.review.materialId)).material.currentVersion.view.viewed,
       false,
     );
-    await client.locator("#tab-notifications").click();
+    await openGlobal(client, "notifications");
     await client.locator("#notifications-refresh").click();
     const notice = client
       .locator("#notification-list .notification-card")

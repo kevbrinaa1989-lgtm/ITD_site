@@ -1,3 +1,4 @@
+import { openProject, openGlobal } from "./browser-navigation.mjs";
 import { prepareFixtureUpload } from "./upload-fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
@@ -177,6 +178,7 @@ try {
 
   for (const viewport of [
     { width: 1440, height: 1000 },
+    { width: 768, height: 1024 },
     { width: 390, height: 844 },
     { width: 375, height: 812 },
     { width: 430, height: 932 },
@@ -203,6 +205,9 @@ try {
       );
     await page.locator("#login-password").fill(password);
     await page.locator("#login-form button[type=submit]").click();
+    await openProject(page, "Квартира · тест просмотра", {
+      client: viewport.width !== 1440,
+    });
     await page.locator("#tab-results").click();
     for (const card of await page.locator(".gallery-card").all()) {
       await card.scrollIntoViewIfNeeded();
@@ -637,7 +642,13 @@ try {
     await page.locator("#login-email").fill("other@example.test");
     await page.locator("#login-password").fill(password);
     await page.locator("#login-form button[type=submit]").click();
-    await page.locator("#empty-state").waitFor({ state: "visible" });
+    await openGlobal(page, "client-projects");
+    assert.equal(
+      await page
+        .locator("#client-projects-panel button[data-project-id]")
+        .count(),
+      0,
+    );
     assert.equal(
       (
         await context.request.get(base + `/api/files/${pdfFile.id}/preview`)

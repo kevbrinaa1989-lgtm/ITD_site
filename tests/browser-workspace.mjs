@@ -1,3 +1,4 @@
+import { openGlobal, openProject } from "./browser-navigation.mjs";
 import { prepareFixtureUpload } from "./upload-fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir } from "node:fs/promises";
@@ -205,7 +206,7 @@ try {
       await p.locator("#app-view").waitFor({ state: "visible" });
     }
     async function dashboard(p) {
-      await p.locator("#tab-workspace").click();
+      await openGlobal(p, "workspace");
       await p.waitForFunction(
         () =>
           document.querySelectorAll("#workspace-metrics [data-metric]")
@@ -540,27 +541,21 @@ try {
       ["Клиенты →", "clients"],
       ["Открыть проекты →", "projects"],
       ["Запросы на восстановление →", "recovery"],
-      ["Создать проект →", "management"],
+      ["Создать проект →", "create-project"],
     ]) {
       await admin
         .locator(".workspace-quick-actions")
         .getByRole("button", { name: target, exact: true })
         .click();
-      assert.equal(
-        await admin.locator(`#tab-${key}`).getAttribute("aria-selected"),
-        "true",
-      );
-      if (key === "management") {
+      if (key !== "create-project")
+        assert.equal(
+          await admin.locator(`#tab-${key}`).getAttribute("aria-selected"),
+          "true",
+        );
+      if (key === "create-project") {
         await admin
           .locator("#create-project-form")
           .waitFor({ state: "visible" });
-        assert.equal(
-          await admin
-            .locator("#create-project-form")
-            .locator("..")
-            .evaluate((el) => el.open),
-          true,
-        );
         assert.equal(
           await admin
             .locator('#create-project-form input[name="title"]')
@@ -570,11 +565,11 @@ try {
       }
       await dashboard(admin);
     }
+    await openProject(admin, title);
     await admin
-      .locator("#project-list button")
-      .filter({ hasText: title })
+      .locator("#project-actions")
+      .getByRole("button", { name: "Добавить этап", exact: true })
       .click();
-    await admin.locator("#tab-management").click();
     const addDetails = admin.locator("#add-stage-form").locator("..");
     if (await addDetails.evaluate((e) => e.tagName === "DETAILS" && !e.open))
       await addDetails.locator("summary").click();
@@ -593,6 +588,10 @@ try {
         "Этап добавлен",
     );
     await admin.locator("#tab-stages").click();
+    const allStages = admin
+      .locator("#stage-list")
+      .getByRole("button", { name: "← Все этапы", exact: true });
+    if (await allStages.isVisible()) await allStages.click();
     const datesStage = admin
       .locator("#stage-list .stage-card")
       .filter({ hasText: "Этап с проверенными датами" });
@@ -625,7 +624,7 @@ try {
         .count(),
       0,
     );
-    await admin.locator("#tab-tasks").click();
+    await openGlobal(admin, "tasks");
     await admin
       .locator("#task-search")
       .fill(`Проверить чертежи ${viewport.width}`);
@@ -660,6 +659,7 @@ try {
     await admin.locator(`#task-list [data-task-id="${late.id}"]`).waitFor();
     const client = await pageFor();
     await signIn(client, email);
+    await openProject(client, project.id, { client: true });
     assert.equal(await client.locator("#tab-workspace").isVisible(), false);
     assert.equal(await client.locator("#tab-tasks").isVisible(), false);
     assert.equal(

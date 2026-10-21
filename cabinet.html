@@ -11,6 +11,7 @@
     <script src="/material-review.js" defer></script>
     <script src="/admin-workspace.js" defer></script>
     <script src="/upload-context.js" defer></script>
+    <script src="/client-workspace.js" defer></script>
     <script src="/cabinet.js" defer></script>
   </head>
   <body>
@@ -167,26 +168,14 @@
             aria-label="ITD Studio — на главную"
             >ITD<span>STUDIO</span></a
           >
-          <p class="sidebar-caption">ПРОСТРАНСТВО КЛИЕНТА</p>
-          <div class="project-switcher">
-            <label class="sidebar-archive"
-              ><input type="checkbox" id="sidebar-show-archive" />Показать
-              архив</label
-            >
-            <h2 id="projects-heading">
-              Ваши проекты <span id="project-count"></span>
-            </h2>
-            <div
-              id="project-list"
-              class="project-list"
-              aria-labelledby="projects-heading"
-            ></div>
-          </div>
+          <p id="shell-role-label" class="sidebar-caption">Личный кабинет</p>
+
           <nav
+            id="studio-navigation"
             class="workspace-nav"
             role="tablist"
             aria-orientation="vertical"
-            aria-label="Разделы проекта"
+            aria-label="Общие разделы"
           >
             <button
               id="tab-workspace"
@@ -197,7 +186,27 @@
               data-tab="workspace"
               hidden
             >
-              <span aria-hidden="true">◫</span>Обзор</button
+              <span aria-hidden="true">◫</span>Главная</button
+            ><button
+              id="tab-projects"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="admin-projects-panel"
+              data-tab="projects"
+              hidden
+            >
+              <span aria-hidden="true">▦</span>Проекты</button
+            ><button
+              id="tab-clients"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="admin-clients-panel"
+              data-tab="clients"
+              hidden
+            >
+              <span aria-hidden="true">♙</span>Клиенты</button
             ><button
               id="tab-tasks"
               type="button"
@@ -207,104 +216,38 @@
               data-tab="tasks"
               hidden
             >
-              <span aria-hidden="true">≡</span>Задачи
-            </button>
-            <button
-              id="tab-overview"
-              type="button"
-              role="tab"
-              aria-selected="true"
-              aria-controls="panel-overview"
-              data-tab="overview"
-            >
-              <span aria-hidden="true">◫</span
-              ><span id="project-overview-label">Обзор</span>
-            </button>
-            <button
-              id="tab-stages"
+              <span aria-hidden="true">≡</span>Задачи</button
+            ><button
+              id="tab-client-home"
               type="button"
               role="tab"
               aria-selected="false"
-              aria-controls="panel-stages"
-              data-tab="stages"
-            >
-              <span aria-hidden="true">≡</span>Этапы проекта
-            </button>
-            <button
-              id="tab-results"
-              type="button"
-              role="tab"
-              aria-selected="false"
-              aria-controls="panel-results"
-              data-tab="results"
-            >
-              <span aria-hidden="true">▧</span>Результаты
-            </button>
-            <button
-              id="tab-documents"
-              type="button"
-              role="tab"
-              aria-selected="false"
-              aria-controls="panel-documents"
-              data-tab="documents"
-            >
-              <span aria-hidden="true">▤</span>Документы
-            </button>
-            <button
-              id="tab-management"
-              type="button"
-              role="tab"
-              aria-selected="false"
-              aria-controls="admin-panel"
-              data-tab="management"
+              aria-controls="client-home-panel"
+              data-tab="client-home"
               hidden
             >
-              <span aria-hidden="true">⊞</span>Управление
-            </button>
-            <button
-              id="tab-recovery"
+              Главная</button
+            ><button
+              id="tab-client-projects"
               type="button"
               role="tab"
               aria-selected="false"
-              aria-controls="password-recovery-panel"
-              data-tab="recovery"
+              aria-controls="client-projects-panel"
+              data-tab="client-projects"
               hidden
             >
-              <span aria-hidden="true">⌑</span>Запросы на восстановление
-            </button>
-            <button
-              id="tab-clients"
+              Мои проекты</button
+            ><button
+              id="tab-client-review"
               type="button"
               role="tab"
               aria-selected="false"
-              aria-controls="admin-clients-panel"
-              data-tab="clients"
+              aria-controls="client-review-panel"
+              data-tab="client-review"
               hidden
             >
-              <span aria-hidden="true">♙</span>Клиенты
-            </button>
-            <button
-              id="tab-projects"
-              type="button"
-              role="tab"
-              aria-selected="false"
-              aria-controls="admin-projects-panel"
-              data-tab="projects"
-              hidden
-            >
-              <span aria-hidden="true">▦</span>Проекты
-            </button>
-            <button
-              id="tab-review"
-              type="button"
-              role="tab"
-              aria-selected="false"
-              aria-controls="panel-review"
-              data-tab="review"
-            >
-              <span aria-hidden="true">✓</span>Согласования
-            </button>
-            <button
+              На согласование</button
+            ><button
               id="tab-notifications"
               type="button"
               role="tab"
@@ -315,7 +258,27 @@
               <span aria-hidden="true">◉</span>Уведомления
               <span id="notification-count" class="notification-count" hidden
                 >0</span
-              >
+              ></button
+            ><button
+              id="tab-profile"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="profile-panel"
+              data-tab="profile"
+              hidden
+            >
+              Мой профиль</button
+            ><button
+              id="tab-recovery"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="password-recovery-panel"
+              data-tab="recovery"
+              hidden
+            >
+              <span aria-hidden="true">⌑</span>Запросы на восстановление
             </button>
           </nav>
           <div class="sidebar-bottom">
@@ -334,10 +297,19 @@
         </aside>
         <div class="workspace-body">
           <div class="workspace-topbar">
-            <span
-              >ITD Studio <span class="topbar-divider">/</span> Личный
-              кабинет</span
-            >
+            <div class="shell-location-row">
+              <button
+                id="mobile-menu-button"
+                type="button"
+                class="shell-menu-button"
+                aria-controls="studio-navigation"
+                aria-expanded="false"
+              >
+                ☰ Меню</button
+              ><button id="shell-back" type="button" class="text-button" hidden>
+                ← Назад</button
+              ><span id="shell-location">Главная</span>
+            </div>
             <div class="topbar-actions">
               <button id="refresh-button" type="button" class="text-button">
                 <span aria-hidden="true">↻</span> Обновить</button
@@ -367,14 +339,89 @@
               >
             </div>
             <article id="project-content" hidden>
-              <div class="project-heading">
+              <div id="project-heading" class="project-heading" hidden>
                 <div>
-                  <p class="eyebrow">Дизайн, продуманный до мелочей</p>
+                  <p class="eyebrow">Рабочее пространство проекта</p>
                   <h1 id="project-title"></h1>
                   <p id="project-client" class="muted"></p>
                 </div>
                 <span id="project-status" class="badge"></span>
+                <div class="project-heading-progress">
+                  <p id="project-header-progress-text" class="muted"></p>
+                  <progress
+                    id="project-header-progress"
+                    max="100"
+                    value="0"
+                    aria-label="Прогресс по этапам"
+                  ></progress>
+                </div>
+                <div id="project-actions" class="project-actions"></div>
               </div>
+              <nav
+                id="project-navigation"
+                class="project-navigation"
+                role="tablist"
+                aria-label="Разделы проекта"
+                hidden
+              >
+                <button
+                  id="tab-overview"
+                  type="button"
+                  role="tab"
+                  aria-selected="true"
+                  aria-controls="panel-overview"
+                  data-tab="overview"
+                >
+                  <span aria-hidden="true">◫</span
+                  ><span id="project-overview-label">Обзор</span></button
+                ><button
+                  id="tab-stages"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="panel-stages"
+                  data-tab="stages"
+                >
+                  <span aria-hidden="true">≡</span>Этапы</button
+                ><button
+                  id="tab-results"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="panel-results"
+                  data-tab="results"
+                >
+                  <span aria-hidden="true">▧</span>Материалы</button
+                ><button
+                  id="tab-review"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="panel-review"
+                  data-tab="review"
+                >
+                  <span aria-hidden="true">✓</span>Согласования</button
+                ><button
+                  id="tab-documents"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="panel-documents"
+                  data-tab="documents"
+                >
+                  <span aria-hidden="true">▤</span>Документы</button
+                ><button
+                  id="tab-settings"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="project-settings-panel"
+                  data-tab="settings"
+                  hidden
+                >
+                  Настройки
+                </button>
+              </nav>
               <section
                 id="panel-overview"
                 data-tab-panel="overview"
@@ -544,22 +591,41 @@
                 </div>
                 <div id="document-list" class="file-list"></div>
               </section>
+              <section
+                id="project-settings-panel"
+                data-tab-panel="settings"
+                role="tabpanel"
+                tabindex="0"
+                aria-labelledby="tab-settings"
+                hidden
+              >
+                <section
+                  id="admin-project-detail"
+                  class="panel admin-detail"
+                  aria-label="Карточка проекта"
+                >
+                  <p class="muted">Выберите проект.</p>
+                </section>
+              </section>
             </article>
             <section
-              id="admin-panel"
-              class="admin-panel"
-              data-tab-panel="management"
+              id="panel-create-project"
+              data-tab-panel="create-project"
               role="tabpanel"
               tabindex="0"
               hidden
-              aria-labelledby="tab-management"
+              aria-labelledby="create-project-heading"
             >
-              <div class="section-heading">
-                <p class="eyebrow">Студия</p>
-                <h2 id="admin-heading">Управление проектами</h2>
+              <div class="section-title">
+                <div>
+                  <h1 id="create-project-heading">Новый проект</h1>
+                  <p class="muted">
+                    Клиента можно назначить позже. До этого проект доступен
+                    только студии.
+                  </p>
+                </div>
               </div>
-              <details class="panel admin-details" open>
-                <summary>Создать проект и назначить клиента</summary>
+              <div class="panel">
                 <form id="create-project-form" class="admin-form">
                   <label for="create-title">Название проекта</label
                   ><input
@@ -576,14 +642,160 @@
                     <option>Завершён</option>
                   </select>
                   <label for="create-client">Клиент</label
-                  ><select id="create-client" name="clientId" required>
-                    <option value="">
-                      Выберите зарегистрированного клиента
-                    </option>
+                  ><select id="create-client" name="clientId">
+                    <option value="">Без клиента — назначить позже</option>
                   </select>
+                  <label for="create-description"
+                    >Описание (необязательно)</label
+                  ><textarea
+                    id="create-description"
+                    name="description"
+                    rows="3"
+                    maxlength="4000"
+                  ></textarea>
+                  <fieldset
+                    id="create-project-stages"
+                    class="create-project-stages"
+                  >
+                    <legend>Этапы проекта</legend>
+                    <p class="muted">
+                      Отметьте только нужные этапы. Остальные можно добавить
+                      позже.
+                    </p>
+                    <label class="stage-template-option"
+                      ><input type="checkbox" name="stages" value="0" /><span
+                        >Обмеры</span
+                      ></label
+                    ><label class="stage-template-option"
+                      ><input type="checkbox" name="stages" value="1" /><span
+                        >Планировочное решение</span
+                      ></label
+                    ><label class="stage-template-option"
+                      ><input type="checkbox" name="stages" value="2" /><span
+                        >Концепция</span
+                      ></label
+                    ><label class="stage-template-option"
+                      ><input type="checkbox" name="stages" value="3" /><span
+                        >Визуализации</span
+                      ></label
+                    ><label class="stage-template-option"
+                      ><input type="checkbox" name="stages" value="4" /><span
+                        >Техническое описание дизайн-проекта</span
+                      ></label
+                    ><label class="stage-template-option"
+                      ><input type="checkbox" name="stages" value="5" /><span
+                        >Спецификация отделочных материалов, мебели и
+                        оборудования</span
+                      ></label
+                    ><label class="stage-template-option"
+                      ><input type="checkbox" name="stages" value="6" /><span
+                        >Авторский надзор</span
+                      ></label
+                    >
+                  </fieldset>
                   <button type="submit" class="primary">Создать проект</button>
                 </form>
-              </details>
+              </div>
+            </section>
+            <section
+              id="client-home-panel"
+              data-tab-panel="client-home"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-client-home"
+              hidden
+            ></section>
+            <section
+              id="client-projects-panel"
+              data-tab-panel="client-projects"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-client-projects"
+              hidden
+            ></section>
+            <section
+              id="client-review-panel"
+              data-tab-panel="client-review"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-client-review"
+              hidden
+            ></section>
+            <section
+              id="profile-panel"
+              data-tab-panel="profile"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-profile"
+              hidden
+            >
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">Личный кабинет</p>
+                  <h1>Мой профиль</h1>
+                  <p class="muted">Здесь можно обновить контактные данные.</p>
+                </div>
+              </div>
+              <div class="panel profile-card">
+                <form id="profile-form">
+                  <label for="profile-name">Имя и фамилия</label
+                  ><input
+                    id="profile-name"
+                    name="name"
+                    autocomplete="name"
+                    required
+                    maxlength="120"
+                  /><label for="profile-phone">Телефон (необязательно)</label
+                  ><input
+                    id="profile-phone"
+                    name="phone"
+                    type="tel"
+                    autocomplete="tel"
+                    maxlength="40"
+                  /><label for="profile-email">Email</label
+                  ><input
+                    id="profile-email"
+                    type="email"
+                    readonly
+                    autocomplete="email"
+                  />
+                  <p class="muted">
+                    Email нельзя изменить здесь. Для смены пароля используйте
+                    восстановление доступа на странице входа.
+                  </p>
+                  <p id="profile-error" class="error" role="alert"></p>
+                  <p id="profile-message" role="status" class="muted"></p>
+                  <button type="submit" class="primary">
+                    Сохранить изменения
+                  </button>
+                </form>
+              </div>
+            </section>
+            <button
+              id="tab-management"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="admin-panel"
+              data-tab="management"
+              hidden
+            >
+              <span aria-hidden="true">⊞</span>Управление
+            </button>
+            <section
+              id="admin-panel"
+              class="admin-panel"
+              data-tab-panel="management"
+              role="tabpanel"
+              tabindex="0"
+              hidden
+              aria-labelledby="tab-management"
+            >
+              <div class="section-heading">
+                <p class="eyebrow">Студия</p>
+                <h2 id="admin-heading">Действия проекта</h2>
+              </div>
+
               <details class="panel admin-details">
                 <summary>Добавить этап в выбранный проект</summary>
                 <form id="add-stage-form" class="admin-form">
@@ -766,7 +978,7 @@
                 <button
                   type="button"
                   class="text-button"
-                  data-open-tab="management"
+                  data-open-tab="create-project"
                 >
                   Создать проект →
                 </button>
@@ -786,7 +998,7 @@
                     name="status"
                     aria-label="Статус проекта"
                   >
-                    <option value="active">Все активные</option>
+                    <option value="all">Все проекты</option>
                     <option>Новый</option>
                     <option>В работе</option>
                     <option>На паузе</option>
@@ -798,13 +1010,6 @@
               <p id="admin-projects-message" role="status" class="muted"></p>
               <div class="admin-management-grid">
                 <div id="admin-project-list" class="admin-card-list"></div>
-                <section
-                  id="admin-project-detail"
-                  class="panel admin-detail"
-                  aria-label="Карточка проекта"
-                >
-                  <p class="muted">Выберите проект.</p>
-                </section>
               </div>
             </section>
             <section

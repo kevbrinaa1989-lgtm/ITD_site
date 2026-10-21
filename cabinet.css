@@ -2574,3 +2574,709 @@ body > footer {
   color: var(--ink);
   font-size: 13px;
 }
+
+/* Approved application shell: studio navigation and project workspace are separate. */
+:root {
+  --ivory: #f6f5f2;
+  --paper: #ffffff;
+  --ink: #272a27;
+  --muted: #767970;
+  --line: #e2dfd8;
+  --dark: #292d28;
+  --copper: #aa9171;
+}
+#app-view {
+  font-family: Arial, system-ui, sans-serif;
+  grid-template-columns: 228px minmax(0, 1fr);
+}
+#app-view h1,
+#app-view h2,
+#app-view h3 {
+  font-family: Arial, system-ui, sans-serif;
+  letter-spacing: normal;
+}
+#app-view h1 {
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+#app-view h2 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+#app-view .project-sidebar {
+  background: #eae8e2;
+  color: var(--ink);
+  padding: 25px 12px 0;
+}
+#app-view .sidebar-brand {
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: 2px;
+  line-height: 1.4;
+  padding-left: 10px;
+  gap: 7px;
+}
+#app-view .sidebar-brand span {
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: 2px;
+}
+#app-view .sidebar-caption {
+  margin: 32px 10px 10px;
+  padding: 0;
+  color: #747770;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+#studio-navigation {
+  gap: 4px;
+}
+#studio-navigation button {
+  color: #292d29;
+  font-size: 14px;
+  padding: 12px;
+  gap: 10px;
+  min-height: 44px;
+  border-radius: 8px;
+  white-space: normal;
+}
+#studio-navigation button > span {
+  color: #77766c;
+  font-size: 16px;
+}
+#studio-navigation button[aria-selected="true"] {
+  background: #dcd6cc;
+  color: #272a27;
+  box-shadow: none;
+}
+#studio-navigation button:hover {
+  background: #e0dcd3;
+}
+#studio-navigation button[aria-selected="true"] > span {
+  color: #4f4b41;
+}
+#studio-navigation #tab-recovery {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #d9d6ce;
+  border-radius: 0;
+  font-size: 12px;
+}
+#app-view .sidebar-bottom {
+  padding-top: 25px;
+}
+#app-view .studio-contact {
+  color: #655d50;
+  border-color: #d9d5cb;
+  font-size: 12px;
+  white-space: normal;
+  gap: 10px;
+}
+#app-view .account-person strong {
+  font-size: 12px;
+}
+#app-view .account-person span {
+  color: #777a73;
+  font-size: 11px;
+}
+#app-view .account-avatar {
+  color: #68634f;
+  background: #ded9ca;
+}
+#app-view .workspace-topbar {
+  background: #fff;
+  border-color: #e1dfd8;
+  min-height: 65px;
+  height: auto;
+  padding: 12px 30px;
+}
+.shell-location-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  min-width: 0;
+}
+#shell-location {
+  font-size: 14px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+#shell-back {
+  font-size: 13px;
+  min-height: 44px;
+  white-space: nowrap;
+}
+.shell-menu-button {
+  display: none;
+}
+#app-view .project-area {
+  padding: 28px 32px;
+  max-width: 1250px;
+}
+#app-view .workspace-footer {
+  margin-inline: 32px;
+  color: #777a73;
+  font-size: 11px;
+}
+#project-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 25px;
+  margin: 0 0 18px;
+}
+#project-heading .eyebrow {
+  color: #8b8174;
+  font-size: 11px;
+  letter-spacing: 1.3px;
+  margin-bottom: 9px;
+}
+#project-heading h1 {
+  margin-bottom: 9px;
+  font-size: 27px;
+}
+#project-heading .muted {
+  font-size: 13px;
+}
+#project-heading .badge {
+  background: #efece6;
+  color: #56574e;
+  border: 0;
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 12px;
+  align-self: start;
+}
+.project-heading-progress {
+  grid-column: 1 / -1;
+  max-width: 650px;
+}
+.project-heading-progress .muted {
+  margin-bottom: 9px;
+}
+.project-heading-progress progress {
+  height: 6px;
+}
+.project-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+#project-navigation {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 0;
+  margin: 16px 0 24px;
+  border: 0;
+}
+#project-navigation button {
+  background: #fff;
+  border: 1px solid #dedbd5;
+  color: #40433d;
+  border-radius: 7px;
+  min-height: 44px;
+  padding: 10px 13px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+#project-navigation button > span[aria-hidden="true"] {
+  display: none;
+}
+#project-navigation button[aria-selected="true"] {
+  background: #dcd6cc;
+  border-color: #cec6b9;
+}
+#project-navigation button:hover {
+  border-color: #aa9171;
+}
+#tab-management {
+  display: none !important;
+}
+#app-view .panel,
+#app-view .review-card,
+#app-view .stage-card,
+#app-view .file-item,
+#app-view .workspace-attention-card,
+#app-view .workspace-task-card,
+#app-view .notification-card,
+#app-view .admin-record,
+#app-view .workspace-metric {
+  background: #fff;
+  border-color: #e2dfd8;
+  border-radius: 12px;
+  box-shadow: none;
+}
+#app-view .panel {
+  padding: 21px;
+}
+#app-view .primary {
+  border-radius: 8px;
+  background: #292d28;
+  color: #fff;
+  border: 1px solid #292d28;
+  font-size: 13px;
+  min-height: 44px;
+}
+#app-view .primary:hover {
+  background: #41463f;
+}
+#app-view input,
+#app-view select,
+#app-view textarea {
+  border-color: #d8d6d0;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+}
+#app-view form label {
+  font-size: 13px;
+}
+#app-view .text-button {
+  font-size: 13px;
+  color: #756349;
+  min-height: 44px;
+}
+#app-view .muted {
+  font-size: 13px;
+}
+#app-view .eyebrow {
+  color: #8b8174;
+  font-size: 11px;
+  letter-spacing: 1.3px;
+}
+#app-view .file-meta,
+#app-view .workspace-context,
+#app-view .review-context,
+#app-view .review-view-status {
+  font-size: 12px;
+  line-height: 1.7;
+}
+#app-view .review-status,
+#app-view .stage-status,
+#app-view .recovery-meta {
+  font-size: 12px;
+}
+#app-view .stage-card h3 {
+  font-size: 16px;
+}
+#app-view .stage-card p {
+  font-size: 13px;
+}
+#app-view .stage-number {
+  background: #efece6;
+  color: #857151;
+}
+#app-view .metric strong,
+#app-view .workspace-metric strong {
+  font-family: Arial, system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+}
+#app-view .workspace-metric span {
+  font-size: 12px;
+}
+#app-view .section-title h2,
+#app-view .section-heading h2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+#app-view .admin-management-grid:has(#admin-project-list) {
+  grid-template-columns: 1fr;
+}
+#admin-project-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 15px;
+  max-height: none;
+  overflow: visible;
+}
+#app-view .admin-record {
+  padding: 21px;
+}
+#app-view .admin-record strong {
+  font-size: 16px;
+}
+#app-view .admin-record > span {
+  font-size: 13px;
+}
+#app-view .admin-record small {
+  font-size: 12px;
+}
+#app-view .client-home,
+#client-home-panel,
+#client-projects-panel,
+#client-review-panel,
+#profile-panel {
+  min-width: 0;
+}
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 15px;
+  margin: 18px 0 25px;
+}
+.project-card {
+  min-width: 0;
+  padding: 21px;
+  border: 1px solid #e2dfd8;
+  border-radius: 12px;
+  background: #fff;
+  overflow-wrap: anywhere;
+}
+.project-card h2,
+.project-card h3 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 12px 0;
+}
+.project-card p {
+  font-size: 13px;
+  color: #767970;
+  line-height: 1.7;
+}
+.project-card .primary {
+  margin-top: 12px;
+}
+.project-card progress {
+  margin: 13px 0;
+  height: 6px;
+}
+.client-attention,
+.client-notice {
+  padding: 18px 21px;
+  border: 1px solid #dfd4c2;
+  border-left: 4px solid #aa9171;
+  border-radius: 9px;
+  background: #fff;
+  margin: 20px 0;
+}
+.client-attention h2,
+.client-notice h2 {
+  font-size: 18px;
+}
+.client-attention p,
+.client-notice p {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.profile-card {
+  max-width: 650px;
+}
+#profile-form {
+  max-width: 480px;
+}
+#profile-email {
+  color: #686d64;
+  background: #f7f7f4 !important;
+}
+.create-project-stages {
+  padding: 18px;
+  border: 1px solid #e2dfd8;
+  border-radius: 9px;
+  margin: 19px 0 7px;
+  min-width: 0;
+}
+.create-project-stages legend {
+  font-size: 14px;
+  padding: 0 6px;
+}
+.create-project-stages .stage-template-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  line-height: 1.7;
+  font-size: 13px;
+  margin-top: 12px;
+}
+#app-view .stage-template-option input {
+  width: 17px;
+  height: 17px;
+  min-height: 17px;
+  flex: 0 0 17px;
+  margin-top: 3px;
+  accent-color: #9b8668;
+}
+#app-view .stage-template-option span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#project-settings-panel {
+  min-width: 0;
+}
+#project-settings-panel .admin-detail {
+  max-width: 850px;
+}
+#app-view .review-detail h2 {
+  font-size: 24px;
+}
+#app-view .review-history,
+#app-view .recovery-history {
+  font-size: 12px;
+}
+#app-view .notification-count {
+  background: #b19b78;
+  color: #fff;
+}
+@media (max-width: 1000px) {
+  #app-view {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+  #app-view .project-area {
+    padding: 25px;
+  }
+  #app-view .workspace-topbar {
+    padding-inline: 25px;
+  }
+}
+@media (max-width: 760px) {
+  #app-view {
+    display: block;
+  }
+  #app-view .project-sidebar {
+    position: relative;
+    height: auto;
+    padding: 18px 15px;
+    display: none;
+    overflow: visible;
+  }
+  body.menu-open #app-view .project-sidebar {
+    display: flex;
+  }
+  #app-view .sidebar-brand {
+    display: none;
+  }
+  #app-view .sidebar-caption {
+    margin-top: 4px;
+  }
+  #studio-navigation {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow: visible;
+    gap: 4px;
+  }
+  #studio-navigation button {
+    font-size: 15px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+  }
+  #app-view .sidebar-bottom {
+    display: block;
+    margin-top: 20px;
+    padding-top: 0;
+  }
+  #app-view .account-bar {
+    padding: 15px 7px 0;
+  }
+  #app-view .account-person strong {
+    font-size: 13px;
+  }
+  #app-view .account-person span {
+    font-size: 12px;
+  }
+  #app-view .studio-contact {
+    padding: 12px 7px;
+  }
+  #app-view .workspace-topbar {
+    min-height: 64px;
+    padding: 10px 15px;
+    gap: 10px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .shell-location-row {
+    flex: 1 1 100%;
+    gap: 12px;
+  }
+  .shell-menu-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 11px;
+    border: 1px solid #d8d6d0;
+    border-radius: 8px;
+    background: #fff;
+    min-height: 44px;
+    color: #292d29;
+    font-size: 14px;
+  }
+  #shell-location {
+    font-size: 14px;
+    flex: 1;
+  }
+  #app-view .topbar-actions {
+    margin-left: auto;
+    gap: 14px;
+  }
+  #app-view .topbar-actions a {
+    font-size: 12px;
+  }
+  #app-view .project-area {
+    padding: 21px 15px;
+  }
+  #app-view .workspace-footer {
+    margin-inline: 15px;
+    font-size: 11px;
+  }
+  #app-view h1,
+  #project-heading h1 {
+    font-size: 25px;
+  }
+  #project-heading {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  #project-heading .badge {
+    justify-self: start;
+  }
+  #project-heading .muted {
+    font-size: 13px;
+  }
+  #project-navigation {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    margin: 17px 0 23px;
+  }
+  #project-navigation button {
+    padding: 10px 6px;
+    font-size: 12px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  #project-actions {
+    gap: 8px;
+  }
+  #project-actions button {
+    flex: 1 1 140px;
+  }
+  #app-view .panel,
+  #app-view .review-card,
+  #app-view .stage-card,
+  #app-view .file-item {
+    padding: 18px;
+  }
+  #app-view input,
+  #app-view select,
+  #app-view textarea {
+    font-size: 16px;
+    min-height: 46px;
+  }
+  #app-view .primary {
+    font-size: 14px;
+    min-height: 46px;
+  }
+  #app-view .file-meta,
+  #app-view .workspace-context,
+  #app-view .review-context,
+  #app-view .review-view-status {
+    font-size: 12px;
+  }
+  #app-view .review-comment-body {
+    font-size: 14px;
+  }
+  #admin-project-list,
+  .project-grid {
+    grid-template-columns: 1fr;
+  }
+  .create-project-stages {
+    padding: 14px;
+  }
+  .create-project-stages .stage-template-option {
+    font-size: 14px;
+  }
+}
+@media (max-width: 390px) {
+  #app-view .project-area {
+    padding: 19px 12px;
+  }
+  #app-view .workspace-topbar {
+    padding-inline: 12px;
+  }
+  #app-view h1,
+  #project-heading h1 {
+    font-size: 24px;
+  }
+  #project-navigation {
+    gap: 5px;
+  }
+  #project-navigation button {
+    font-size: 11px;
+    padding-inline: 4px;
+  }
+}
+@media (max-width: 760px) {
+  #app-view {
+    display: flex;
+    flex-direction: column;
+  }
+  #app-view .workspace-body {
+    display: contents;
+  }
+  #app-view .workspace-topbar {
+    order: -1;
+    width: 100%;
+  }
+  #app-view .project-sidebar {
+    width: 100%;
+  }
+  #app-view .project-area {
+    width: 100%;
+  }
+}
+#app-view .stage-card .stage-status {
+  display: inline-block;
+  font-size: 12px !important;
+  line-height: 1.7;
+  padding: 5px 9px;
+  border-radius: 5px;
+  background: #efece6;
+  color: #625f53 !important;
+}
+#app-view .stage-pending_approval .stage-status,
+#app-view .stage-changes_requested .stage-status {
+  background: #f8ede0;
+  color: #926932 !important;
+}
+#app-view .stage-approved .stage-status,
+#app-view .stage-completed .stage-status {
+  background: #e5eee5;
+  color: #41744c !important;
+}
+#project-actions button,
+#project-client button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+  line-height: 1.7;
+}
+#app-view .project-card { display: block; text-align: left; }
+#app-view #project-actions button {
+  padding: 10px 13px;
+  min-height: 44px;
+  background: #fff;
+  color: #292d29;
+  border: 1px solid #d8d6d0;
+  border-radius: 8px;
+}
+#app-view #project-actions button:hover {
+  border-color: #aa9171;
+  background: #f8f7f3;
+}
+#app-view .review-file-actions .file-preview {
+  padding: 10px 13px;
+  border: 1px solid #d8d6d0;
+  border-radius: 8px;
+  color: #292d29;
+  background: #fff;
+  min-height: 44px;
+}

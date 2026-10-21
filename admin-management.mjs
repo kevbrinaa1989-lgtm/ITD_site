@@ -1,4 +1,20 @@
+import { validateProfile } from "./profile.mjs";
 import { decorateReviewFiles } from "./material-review.mjs";
+export const STAGE_TEMPLATES = [
+  { key: "measurements", title: "Обмеры" },
+  { key: "planning", title: "Планировочное решение" },
+  { key: "concept", title: "Концепция" },
+  { key: "visualizations", title: "Визуализации" },
+  {
+    key: "technical_description",
+    title: "Техническое описание дизайн-проекта",
+  },
+  {
+    key: "specification",
+    title: "Спецификация отделочных материалов, мебели и оборудования",
+  },
+  { key: "supervision", title: "Авторский надзор" },
+];
 const STATUSES = ["Новый", "В работе", "На паузе", "Завершён", "Архив"];
 const iso = (value) => (value == null ? null : new Date(value).toISOString());
 export function initAdminManagement({ db, now = Date.now }) {
@@ -58,16 +74,17 @@ export function initAdminManagement({ db, now = Date.now }) {
       JSON.stringify(payload),
       now(),
     );
-  const clientsSelect = `SELECT u.id,u.name,u.email,u.createdAt,u.isActive,(SELECT count(*) FROM projects p WHERE p.clientId=u.id) AS projectCount FROM users u WHERE u.role='client'`;
+  const clientsSelect = `SELECT u.id,u.name,u.email,u.phone,u.createdAt,u.isActive,(SELECT count(*) FROM projects p WHERE p.clientId=u.id) AS projectCount FROM users u WHERE u.role='client'`;
   const client = (row) =>
     row && { ...row, createdAt: iso(row.createdAt), isActive: !!row.isActive };
-  const projectsSelect = `SELECT p.id,p.title,p.clientId,p.status,p.createdAt,p.archivedFrom,u.name AS clientName,u.email AS clientEmail,
+  const projectsSelect = `SELECT p.id,p.title,p.description,p.clientId,p.status,p.createdAt,p.archivedFrom,u.name AS clientName,u.email AS clientEmail,
     (SELECT count(*) FROM stages s WHERE s.projectId=p.id) AS stageCount,
-    (SELECT count(*) FROM stages s WHERE s.projectId=p.id AND s.status='completed') AS completedStageCount FROM projects p JOIN users u ON u.id=p.clientId`;
+    (SELECT count(*) FROM stages s WHERE s.projectId=p.id AND s.status='completed') AS completedStageCount FROM projects p LEFT JOIN users u ON u.id=p.clientId`;
   const project = (row) =>
     row && {
       ...row,
       createdAt: iso(row.createdAt),
+      currentStage: get("SELECT id,title,status FROM stages WHERE projectId=? AND status<>'completed' ORDER BY id LIMIT 1",row.id) ?? null,
       progress: row.stageCount
         ? Math.round((row.completedStageCount / row.stageCount) * 100)
         : null,
@@ -152,40 +169,61 @@ export function initAdminManagement({ db, now = Date.now }) {
     if (path === "/api/clients" && method === "GET") {
       json(res, 200, {
         clients: all(clientsSelect + " ORDER BY u.name,u.id").map(client),
+        stageTemplates: STAGE_TEMPLATES,
       });
       return true;
     }
     if (path === "/api/projects" && method === "POST") {
       const b = await body(req);
-      checkBody(b, ["title", "clientId", "status"], fail);
-      const status = b.status ?? "Новый";
+      checkBody(b, ["title", "clientId", "status", "description", "stageTemplates"], fail);
+      const status = b.status ?? "Новый",
+        clientId = b.clientId ?? null,
+        description = b.description ?? null,
+        selected = b.stageTemplates ?? [];
       if (
         !titleValid(b.title) ||
-        !Number.isSafeInteger(b.clientId) ||
-        !STATUSES.slice(0, 4).includes(status)
+        (clientId !== null && !Number.isSafeInteger(clientId)) ||
+        !STATUSES.slice(0, 4).includes(status) ||
+        (description !== null &&
+          (typeof description !== "string" || description.length > 4000)) ||
+        !Array.isArray(selected) ||
+        selected.length > 7 ||
+        new Set(selected).size !== selected.length ||
+        selected.some((key) => !STAGE_TEMPLATES.some((t) => t.key === key))
       )
-        fail(400, "Укажите название, клиента и допустимый статус");
+        fail(400, "Укажите название, допустимый статус и выбранные этапы");
       const id = tx(() => {
         if (
+          clientId !== null &&
           !get(
             "SELECT id FROM users WHERE id=? AND role='client' AND isActive=1",
-            b.clientId,
+            clientId,
           )
         )
           fail(400, "Активный клиент не найден");
         const id = Number(
           run(
-            "INSERT INTO projects(title,clientId,status,createdAt) VALUES(?,?,?,?)",
+            "INSERT INTO projects(title,clientId,status,createdAt,description) VALUES(?,?,?,?,?)",
             b.title.trim(),
-            b.clientId,
+            clientId,
             status,
             now(),
+            description,
           ).lastInsertRowid,
         );
-        audit("project.created", user.id, b.clientId, id, {
+        for (const template of STAGE_TEMPLATES.filter((t) =>
+          selected.includes(t.key),
+        ))
+          run(
+            "INSERT INTO stages(projectId,title,status,description) VALUES(?,?,'planned','')",
+            id,
+            template.title,
+          );
+        audit("project.created", user.id, clientId, id, {
           title: b.title.trim(),
-          clientId: b.clientId,
+          clientId,
           status,
+          stageTemplates: selected,
         });
         return id;
       });
@@ -197,22 +235,22 @@ export function initAdminManagement({ db, now = Date.now }) {
         status = url.searchParams.get("status") ?? "active";
       if (
         search.length > 200 ||
-        !(status === "active" || STATUSES.includes(status))
+        !(status === "active" || status === "all" || STATUSES.includes(status))
       )
         fail(400, "Некорректный фильтр");
       const rows = all(
         projectsSelect +
           " WHERE " +
-          (status === "active" ? "p.status<>'Архив'" : "p.status=?") +
+          (status === "all" ? "1=1" : status === "active" ? "p.status<>'Архив'" : "p.status=?") +
           " ORDER BY p.id DESC",
-        ...(status === "active" ? [] : [status]),
+        ...(["active","all"].includes(status) ? [] : [status]),
       );
       const q = search.toLocaleLowerCase("ru");
       json(res, 200, {
         projects: rows
           .filter((p) =>
             [p.title, p.clientName, p.clientEmail].some((v) =>
-              v.toLocaleLowerCase("ru").includes(q),
+              (v ?? "").toLocaleLowerCase("ru").includes(q),
             ),
           )
           .map(project),
@@ -241,28 +279,33 @@ export function initAdminManagement({ db, now = Date.now }) {
       }
       if (method === "PATCH") {
         const b = await body(req);
-        checkBody(b, ["name", "isActive", "confirm"], fail);
-        if ("name" in b) {
-          if (Object.keys(b).length !== 1 || !titleValid(b.name))
-            fail(400, "Укажите корректное имя");
-        } else if (
-          typeof b.isActive !== "boolean" ||
-          b.confirm !== true ||
-          Object.keys(b).some((k) => !["isActive", "confirm"].includes(k))
+        checkBody(b, ["name", "phone", "isActive", "confirm"], fail);
+        const editingProfile = "name" in b || "phone" in b;
+        const profile = editingProfile ? validateProfile(b, fail) : null;
+        if (
+          !editingProfile &&
+          (typeof b.isActive !== "boolean" ||
+            b.confirm !== true ||
+            Object.keys(b).some((k) => !["isActive", "confirm"].includes(k)))
         )
           fail(400, "Подтвердите изменение доступа");
         tx(() => {
           c = client(get(clientsSelect + " AND u.id=?", id));
           if (!c) fail(404, "Клиент не найден");
-          if ("name" in b) {
-            const name = b.name.trim();
-            if (name !== c.name) {
-              run("UPDATE users SET name=? WHERE id=?", name, id);
+          if (editingProfile) {
+            const name = profile.name ?? c.name,
+              phone = "phone" in profile ? profile.phone : c.phone;
+            run("UPDATE users SET name=?,phone=? WHERE id=?", name, phone, id);
+            if (name !== c.name)
               audit("client.renamed", user.id, id, null, {
                 oldName: c.name,
                 newName: name,
               });
-            }
+            if (phone !== c.phone)
+              audit("client.phone_updated", user.id, id, null, {
+                oldPhone: c.phone,
+                newPhone: phone,
+              });
           } else if (b.isActive !== c.isActive) {
             run(
               "UPDATE users SET isActive=? WHERE id=?",
@@ -321,14 +364,15 @@ export function initAdminManagement({ db, now = Date.now }) {
       }
       if (!match[2] && method === "PATCH") {
         const b = await body(req);
-        checkBody(b, ["title", "status", "confirm"], fail);
-        if (!("title" in b) && !("status" in b))
+        checkBody(b, ["title", "status", "description", "confirm"], fail);
+        if (!("title" in b) && !("status" in b) && !("description" in b))
           fail(400, "Укажите изменение проекта");
         if (
           ("title" in b && !titleValid(b.title)) ||
           ("status" in b && !STATUSES.includes(b.status))
         )
           fail(400, "Некорректное название или статус");
+        if ("description" in b && b.description !== null && (typeof b.description !== "string" || b.description.length > 4000)) fail(400,"Описание должно содержать до 4000 символов");
         if ("confirm" in b && b.confirm !== true)
           fail(400, "Подтвердите изменение");
         tx(() => {
@@ -338,6 +382,16 @@ export function initAdminManagement({ db, now = Date.now }) {
             audit("project.renamed", user.id, p.clientId, id, {
               oldTitle: p.title,
               newTitle: b.title.trim(),
+            });
+          }
+          if ("description" in b && b.description !== p.description) {
+            run(
+              "UPDATE projects SET description=? WHERE id=?",
+              b.description,
+              id,
+            );
+            audit("project.description_updated", user.id, p.clientId, id, {
+              changed: true,
             });
           }
           if ("status" in b && b.status !== p.status) {
@@ -401,7 +455,7 @@ export function initAdminManagement({ db, now = Date.now }) {
           } else {
             if (
               !Number.isSafeInteger(b.clientId) ||
-              !Number.isSafeInteger(b.expectedClientId)
+              !("expectedClientId" in b) || (b.expectedClientId !== null && !Number.isSafeInteger(b.expectedClientId))
             )
               fail(400, "Укажите текущего и нового клиента");
             if (p.clientId !== b.expectedClientId)

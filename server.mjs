@@ -1,4 +1,6 @@
 import http from "node:http";
+import { migrateProjectProfile } from "./project-profile-migration.mjs";
+import { validateProfile } from "./profile.mjs";
 import { DatabaseSync } from "node:sqlite";
 import {
   randomBytes,
@@ -55,8 +57,9 @@ export function createApp(options = {}) {
   db = new DatabaseSync(join(dataDir, "itd.sqlite"));
   db.exec("PRAGMA foreign_keys=ON");
   if (!store) db.exec(
-    `PRAGMA foreign_keys=ON; CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT NOT NULL,role TEXT NOT NULL,password TEXT NOT NULL); CREATE TABLE IF NOT EXISTS projects(id INTEGER PRIMARY KEY,title TEXT NOT NULL,clientId INTEGER NOT NULL REFERENCES users(id),status TEXT NOT NULL DEFAULT 'В работе'); CREATE TABLE IF NOT EXISTS stages(id INTEGER PRIMARY KEY,projectId INTEGER NOT NULL REFERENCES projects(id),title TEXT NOT NULL,status TEXT NOT NULL,description TEXT NOT NULL); CREATE TABLE IF NOT EXISTS files(id INTEGER PRIMARY KEY,projectId INTEGER NOT NULL REFERENCES projects(id),stageId INTEGER REFERENCES stages(id),name TEXT NOT NULL,contentType TEXT NOT NULL,category TEXT NOT NULL,path TEXT NOT NULL,size INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,userId INTEGER NOT NULL REFERENCES users(id),expires INTEGER NOT NULL);`,
+    `PRAGMA foreign_keys=ON; CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT NOT NULL,role TEXT NOT NULL,password TEXT NOT NULL); CREATE TABLE IF NOT EXISTS projects(id INTEGER PRIMARY KEY,title TEXT NOT NULL,clientId INTEGER REFERENCES users(id),status TEXT NOT NULL DEFAULT 'В работе'); CREATE TABLE IF NOT EXISTS stages(id INTEGER PRIMARY KEY,projectId INTEGER NOT NULL REFERENCES projects(id),title TEXT NOT NULL,status TEXT NOT NULL,description TEXT NOT NULL); CREATE TABLE IF NOT EXISTS files(id INTEGER PRIMARY KEY,projectId INTEGER NOT NULL REFERENCES projects(id),stageId INTEGER REFERENCES stages(id),name TEXT NOT NULL,contentType TEXT NOT NULL,category TEXT NOT NULL,path TEXT NOT NULL,size INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,userId INTEGER NOT NULL REFERENCES users(id),expires INTEGER NOT NULL);`,
   );
+  migrateProjectProfile(db, {dataDir});
   const management = initAdminManagement({db});
   const workspace = initAdminWorkspace({
     db,
@@ -140,6 +143,8 @@ export function createApp(options = {}) {
     id: u.id,
     email: u.email,
     name: u.name,
+    phone: u.phone ?? null,
+    createdAt: u.createdAt ?? null,
     role: u.role,
   });
   const server = http.createServer(async (req, res) => {
@@ -300,6 +305,37 @@ export function createApp(options = {}) {
           });
         }
         if (!user) fail(401, "Войдите в кабинет");
+        if (path === "/api/me/profile" && method === "PATCH") {
+          if (user.role !== "client")
+            fail(403, "Редактирование профиля доступно клиенту");
+          const fields = validateProfile(await body(req), fail);
+          workspace.transaction(() => {
+            const old = get(
+              "SELECT name,phone FROM users WHERE id=? AND isActive=1",
+              user.id,
+            );
+            if (!old) fail(401, "Войдите в кабинет");
+            const name = fields.name ?? old.name,
+              phone = "phone" in fields ? fields.phone : old.phone;
+            run(
+              "UPDATE users SET name=?,phone=? WHERE id=?",
+              name,
+              phone,
+              user.id,
+            );
+            run(
+              "INSERT INTO admin_management_events(type,actorId,clientId,payload,createdAt) VALUES(?,?,?,?,?)",
+              "client.profile_updated",
+              user.id,
+              user.id,
+              JSON.stringify({ changedFields: Object.keys(fields) }),
+              Date.now(),
+            );
+          });
+          return json(res, 200, {
+            user: safeUser(get("SELECT * FROM users WHERE id=?", user.id)),
+          });
+        }
         if (path === "/api/me" && method === "GET")
           return json(res, 200, { user: safeUser(user) });
         if (path === "/api/logout" && method === "POST") {
@@ -627,6 +663,7 @@ export function createApp(options = {}) {
         "/cabinet.js": "cabinet.js",
         "/admin-management.js": "admin-management.js",
         "/admin-workspace.js": "admin-workspace.js",
+        "/client-workspace.js": "client-workspace.js",
         "/upload-context.js": "upload-context.js",
         "/material-review.js": "material-review.js",
         "/file-viewer.js": "file-viewer.js",

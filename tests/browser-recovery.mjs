@@ -1,3 +1,4 @@
+import { openGlobal } from "./browser-navigation.mjs";
 import { prepareFixtureUpload } from "./upload-fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir } from "node:fs/promises";
@@ -63,6 +64,7 @@ try {
   await loginResponse.json();
   for (const viewport of [
     { width: 1440, height: 1000 },
+    { width: 768, height: 1024 },
     { width: 375, height: 812 },
     { width: 430, height: 932 },
   ]) {
@@ -148,7 +150,7 @@ try {
     assert.equal(await oldOwner.locator("#tab-recovery").isVisible(), false);
     const admin = await pageFor();
     await login(admin, "admin@example.test");
-    await admin.locator("#tab-recovery").click();
+    await openGlobal(admin, "recovery");
     await admin
       .locator("#recovery-list button")
       .filter({ hasText: email })
@@ -210,7 +212,7 @@ try {
       assert.equal(storage.includes(firstToken), false);
     }
     await admin.reload();
-    await admin.locator("#tab-recovery").click();
+    await openGlobal(admin, "recovery");
     await admin
       .locator("#recovery-list button")
       .filter({ hasText: email })
