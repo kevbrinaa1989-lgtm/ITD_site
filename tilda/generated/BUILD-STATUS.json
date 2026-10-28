@@ -1,0 +1,19 @@
+{
+  "readyForPublication": false,
+  "assetsConfigured": false,
+  "formsConfigured": false,
+  "pages": {
+    "home": {
+      "page": "/",
+      "title": "ITD Studio — Интерьеры и детали",
+      "description": "",
+      "fragmentBytes": 48489
+    },
+    "anketa": {
+      "page": "/anketa",
+      "title": "Анкета на дизайн-проект | ITD Studio",
+      "description": "Расскажите о вашем пространстве — анкета ITD Studio для подготовки предложения по дизайн-проекту.",
+      "fragmentBytes": 22692
+    }
+  }
+}

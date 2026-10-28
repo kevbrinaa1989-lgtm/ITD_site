@@ -1,0 +1,11 @@
+# Отдельный HTTPS-адрес обработчика. Заменить только после выбора размещения.
+# Не заменяет конфигурацию сайта Tilda и личного кабинета.
+forms.example.test {
+    request_body {
+        max_size 1MB
+    }
+    reverse_proxy 127.0.0.1:8081 {
+        header_up X-Real-IP {remote_host}
+        header_up -X-Forwarded-For
+    }
+}
