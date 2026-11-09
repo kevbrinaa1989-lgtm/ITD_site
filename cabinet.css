@@ -3383,3 +3383,318 @@ body > footer {
     height: 34px;
   }
 }
+
+/* ITD approval page redesign 2026-11-09: visual-only treatment. */
+#panel-review .review-library-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 30px 0 15px;
+}
+#panel-review .review-library-heading h3 {
+  margin: 0;
+  font: 400 clamp(21px, 2.5vw, 29px)/1.2 Georgia, "Times New Roman", serif;
+  color: #2c302b;
+}
+#panel-review .review-library-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 12px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: #615d4e;
+  border-radius: 40px;
+  background: #e7e6d9;
+}
+#app-view #review-material-list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  margin: 0 0 22px;
+}
+#app-view .review-material-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 37%);
+  gap: 24px;
+  align-items: center;
+  padding: 24px 28px;
+  border: 1px solid #e2ded6;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 5px 18px rgba(30,31,26,.035);
+}
+#app-view .review-material-card.is-selected {
+  border-color: #9a9a81;
+  box-shadow: 0 0 0 1px rgba(118,118,91,.25), 0 8px 20px rgba(30,31,26,.04);
+}
+#app-view .review-card-main {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  min-width: 0;
+}
+#app-view .review-card-copy { min-width: 0; flex: 1; }
+#app-view .review-card-copy .review-context {
+  color: #83776a;
+  font-size: 12px;
+  margin: 0 0 5px;
+}
+#app-view .review-material-card h3 {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: clamp(16px, 1.7vw, 20px);
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -.01em;
+  margin: 0 0 5px;
+  color: #252923;
+}
+#app-view .review-card-copy .file-meta {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #787870;
+  line-height: 1.65;
+}
+#app-view .review-file-tile {
+  flex: 0 0 75px;
+  width: 75px;
+  height: 89px;
+  border-radius: 12px;
+  background: #f2eee8;
+  color: #796448;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+#app-view .review-file-tile-icon {
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 300;
+}
+#app-view .review-file-tile-type {
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+#app-view .review-material-card .review-status,
+#app-view .review-detail .review-status {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 11px;
+  border-radius: 5px;
+  background: #f4eddf;
+  color: #795e37;
+  margin: 4px 0 0;
+}
+#app-view .review-status[data-status="approved"] {
+  color: #43624b;
+  background: #eaf0e9;
+}
+#app-view .review-status[data-status="changes_requested"] {
+  color: #934c3b;
+  background: #f9ede8;
+}
+#app-view .review-status[data-status="in_progress"],
+#app-view .review-status[data-status="planned"] {
+  color: #626a6b;
+  background: #edf0f0;
+}
+#app-view .review-card-copy .review-view-status {
+  margin: 8px 0 0;
+  color: #7d8079;
+  font-size: 11px;
+}
+#app-view .review-card-action-area {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+#app-view .review-card-action-area .review-file-actions {
+  margin: 0;
+  gap: 10px;
+}
+#app-view .review-card-action-area .review-file-actions > * { flex: 1 1 110px; }
+#app-view .review-file-actions .file-download,
+#app-view .review-file-actions .file-preview {
+  background: #fff;
+  color: #2c302b;
+  font-size: 12px;
+  font-weight: 500;
+  min-height: 40px;
+  border: 1px solid #d6d1c9;
+  border-radius: 7px;
+  text-decoration: none;
+  text-align: center;
+  padding: 9px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  box-shadow: none;
+}
+#app-view .review-file-actions .file-preview::before { content: "◉"; font-size: 15px; }
+#app-view .review-file-actions .file-download::before { content: "↓"; font-size: 18px; }
+#app-view .review-file-actions .file-download:hover,
+#app-view .review-file-actions .file-preview:hover { background: #f7f5f1; border-color: #a99b8b; }
+#app-view .review-material-card .review-open-button {
+  width: 100%;
+  margin: 0;
+  font-size: 12px;
+  min-height: 46px;
+  padding: 10px 18px;
+  white-space: normal;
+}
+#app-view .review-open-button::after { content: " →"; margin-left: 5px; }
+#app-view .review-detail {
+  margin-top: 24px;
+  padding: clamp(20px, 2.8vw, 32px);
+  border-radius: 13px;
+  border: 1px solid #d9d5cc;
+  background: #fff;
+  scroll-margin-top: 20px;
+}
+#app-view .review-detail::before {
+  content: "ВЫБРАННЫЙ МАТЕРИАЛ / СОГЛАСОВАНИЕ";
+  display: block;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #907b60;
+  margin-bottom: 20px;
+}
+#app-view .review-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  min-width: 0;
+  padding: 0 0 20px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #e5e1d9;
+}
+#app-view .review-detail-heading { min-width: 0; flex: 1; }
+#app-view .review-detail-heading h2 {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: clamp(19px, 2.3vw, 26px);
+  font-weight: 650;
+  margin: 0 0 7px;
+  color: #252923;
+}
+#app-view .review-detail-heading .review-context { margin: 0 0 5px; }
+#app-view .review-detail-heading .file-meta { margin: 0 0 8px; }
+#app-view .review-version-tools {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding-bottom: 12px;
+}
+#app-view .review-version-tools > label {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+  color: #6b6d65;
+  margin: 0;
+  width: min(100%, 410px);
+  flex: 1 1 240px;
+}
+#app-view .review-version-tools select { width: 100%; }
+#app-view .review-version-tools .review-file-actions { margin: 0; }
+#app-view .review-technical { margin: 8px 0 18px; color: #89877c; }
+#app-view .review-technical summary {
+  display: inline-block;
+  cursor: pointer;
+  font-size: 11px;
+  border-bottom: 1px dotted currentColor;
+}
+#app-view .review-technical .file-meta { padding-top: 6px; font-size: 11px; word-break: break-all; }
+#app-view .review-detail .review-decision-actions {
+  max-width: none;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin: 18px 0 24px;
+}
+#app-view .review-detail .review-decision-actions button { min-height: 46px; border-radius: 7px; }
+#app-view .review-detail .review-secondary {
+  background: #fff;
+  border-color: #ac917b;
+  color: #815b41;
+}
+#app-view .review-comments-pane,
+#app-view .review-history-pane {
+  border: 1px solid #ece6dc;
+  border-radius: 8px;
+  background: #f9f7f4;
+  margin-top: 10px;
+  overflow: hidden;
+}
+#app-view .review-comments-pane > summary,
+#app-view .review-history-pane > summary {
+  display: flex;
+  list-style: none;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 13px 16px;
+  font-size: 13px;
+  font-weight: 550;
+  color: #3b3e37;
+  background: #f2eee9;
+}
+#app-view .review-comments-pane > summary::-webkit-details-marker,
+#app-view .review-history-pane > summary::-webkit-details-marker { display: none; }
+#app-view .review-comments-pane > summary::before,
+#app-view .review-history-pane > summary::before { content: "›"; font-size: 21px; line-height: .8; color: #8b806e; transition: transform .15s; }
+#app-view .review-comments-pane[open] > summary::before,
+#app-view .review-history-pane[open] > summary::before { transform: rotate(90deg); }
+#app-view .review-comments-pane .review-comments,
+#app-view .review-history-pane .review-history { max-width: none; margin: 12px 16px; }
+#app-view .review-comments-pane .review-comment {
+  background: #fff;
+  border-radius: 7px;
+}
+#app-view .review-comments-pane .review-form {
+  max-width: none;
+  padding: 4px 16px 16px;
+  margin: 0;
+}
+#app-view .review-comments-pane textarea { width: 100%; min-height: 96px; }
+#app-view .review-comments-pane .review-form .primary { margin-top: 8px; }
+#app-view .review-history-pane .review-history { padding: 12px 18px 6px 28px; }
+#app-view .review-history-pane .review-history li { padding: 0 0 16px; }
+#app-view .review-history-pane .review-history span { font-size: 11px; }
+#app-view .stage-review-materials .review-material-card {
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding: 18px;
+}
+#app-view .stage-review-materials .review-file-tile { flex-basis: 53px; width: 53px; height: 65px; }
+#app-view .stage-review-materials .review-file-tile-icon { font-size: 23px; }
+#app-view .stage-review-materials .review-card-main { gap: 13px; }
+#app-view .stage-review-materials .review-card-action-area { width: 100%; }
+@media (max-width: 1000px) {
+  #app-view .review-material-card { grid-template-columns: 1fr; gap: 16px; }
+  #app-view .review-card-action-area { width: 100%; }
+}
+@media (max-width: 760px) {
+  #app-view .review-material-card, #app-view .stage-review-materials .review-material-card { padding: 18px; }
+  #app-view .review-card-main { align-items: flex-start; gap: 13px; }
+  #app-view .review-file-tile { flex-basis: 54px; width: 54px; height: 68px; }
+  #app-view .review-file-tile-icon { font-size: 22px; }
+  #app-view .review-file-tile-type { font-size: 10px; }
+  #app-view .review-material-card h3 { font-size: 17px; overflow-wrap: anywhere; }
+  #app-view .review-card-action-area .review-file-actions > * { flex: 1 1 120px; }
+  #app-view .review-detail { padding: 20px 16px; }
+  #app-view .review-detail-header { gap: 13px; }
+  #app-view .review-version-tools { align-items: stretch; }
+  #app-view .review-version-tools > label { flex-basis: 100%; }
+  #app-view .review-detail .review-decision-actions { grid-template-columns: 1fr; }
+  #app-view .review-comments-pane .review-form { padding: 4px 13px 15px; }
+}
