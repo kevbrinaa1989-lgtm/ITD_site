@@ -105,38 +105,43 @@
     if (!view?.viewed) return "Не просмотрено";
     return `Просмотрено ${date(view.lastViewedAt)}`;
   }
+  function fileTile(file) {
+    const name = String(file?.name || "");
+    const extension = name.match(/\.([A-Za-z0-9]{2,5})$/)?.[1]?.toUpperCase() || "ФАЙЛ";
+    const type = ["PDF", "DWG", "DXF", "JPG", "JPEG", "PNG", "WEBP", "DOC", "DOCX", "XLS", "XLSX"].includes(extension) ? extension : "ФАЙЛ";
+    const badge = el("div", undefined, "review-file-tile");
+    badge.setAttribute("aria-hidden", "true");
+    badge.append(el("span", "▤", "review-file-tile-icon"), el("span", type === "JPEG" ? "JPG" : type, "review-file-tile-type"));
+    return badge;
+  }
+  function statusTag(value) {
+    const item = el("span", labels[value] || value, "review-status");
+    item.dataset.status = value;
+    return item;
+  }
   function card(material) {
     const v = material.currentVersion,
-      n = el("article", undefined, "review-card"),
+      n = el("article", undefined, "review-card review-material-card"),
       stage = project.stages.find((s) => s.id === material.stageId);
     n.dataset.materialId = String(material.id);
-    n.append(
-      el(
-        "p",
-        `${stage?.title || "Этап"}${admin() ? ` · ${project.title} · ${project.clientName || "Без клиента"}` : ""}`,
-        "review-context",
-      ),
+    if (selection === material.id) n.classList.add("is-selected");
+    const main = el("div", undefined, "review-card-main");
+    const copy = el("div", undefined, "review-card-copy");
+    copy.append(
+      el("p", `${stage?.title || "Этап"}${admin() ? ` · ${project.title} · ${project.clientName || "Без клиента"}` : ""}`, "review-context"),
       el("h3", material.title),
-      el("p", `Версия ${v.versionNumber} · ${date(v.createdAt)}`, "file-meta"),
-      el("p", labels[v.status] || v.status, "review-status"),
+      el("p", `Версия ${v.versionNumber} · ${date(v.createdAt)} · ${v.uploadedByName || "Студия"}`, "file-meta"),
+      statusTag(v.status),
     );
-    if (admin()) n.append(el("p", viewLabel(v), "review-view-status"));
-    n.append(fileControls(v.file));
-    if (v.decisionAt)
-      n.append(
-        el(
-          "p",
-          `${v.decisionByName || "Клиент"} · ${date(v.decisionAt)}`,
-          "file-meta",
-        ),
-      );
-    n.append(
-      button(
-        "Открыть согласование и комментарии",
-        () => open(material.id, v.id),
-        "primary",
-      ),
+    if (admin()) copy.append(el("p", viewLabel(v), "review-view-status"));
+    if (v.decisionAt) copy.append(el("p", `${v.decisionByName || "Клиент"} · ${date(v.decisionAt)}`, "file-meta"));
+    main.append(fileTile(v.file), copy);
+    const actions = el("div", undefined, "review-card-action-area");
+    actions.append(
+      fileControls(v.file),
+      button("Открыть согласование и комментарии", () => open(material.id, v.id), "primary review-open-button"),
     );
+    n.append(main, actions);
     return n;
   }
   function matches(material) {
@@ -148,7 +153,9 @@
   function renderList() {
     const n = $("review-material-list");
     n.replaceChildren();
-    for (const m of materials.filter(matches)) n.append(card(m));
+    const shown = materials.filter(matches);
+    for (const m of shown) n.append(card(m));
+    if ($("review-material-count")) $("review-material-count").textContent = `${shown.length} ${shown.length === 1 ? "материал" : shown.length >= 2 && shown.length <= 4 ? "материала" : "материалов"}`;
     if (!n.childElementCount)
       n.append(
         el("p", "Материалы по выбранному фильтру отсутствуют.", "empty-note"),
@@ -302,14 +309,20 @@
     }
     const current = v.id === material.currentVersion.id,
       stage = project.stages.find((s) => s.id === material.stageId);
-    host.append(
-      el(
-        "p",
-        `${project.title} · ${stage?.title || "Этап"}${admin() ? ` · ${project.clientId === null ? "Без клиента" : `${project.clientName} (${project.clientEmail})`}` : ""}`,
-        "review-context",
-      ),
+
+    document.querySelectorAll(".review-material-card[data-material-id]").forEach((node) => {
+      node.classList.toggle("is-selected", Number(node.dataset.materialId) === material.id);
+    });
+    const summary = el("div", undefined, "review-detail-header");
+    const description = el("div", undefined, "review-detail-heading");
+    description.append(
+      el("p", `${project.title} / ${stage?.title || "Этап"} / Версия ${v.versionNumber}`, "review-context"),
       el("h2", material.title),
+      el("p", `Версия ${v.versionNumber} · ${date(v.createdAt)} · ${v.uploadedByName || "Студия"}`, "file-meta"),
+      statusTag(v.status),
     );
+    summary.append(fileTile(v.file), description);
+    host.append(summary);
     const label = el("label", "Версия материала"),
       picker = el("select");
     picker.id = "review-version-select";
@@ -325,16 +338,15 @@
       open(material.id, Number(picker.value)),
     );
     label.append(picker);
-    host.append(
-      label,
-      el(
-        "p",
-        `${v.file.name} · ${date(v.createdAt)} · ${v.uploadedByName || "Студия"}`,
-        "file-meta",
-      ),
-      el("p", labels[v.status] || v.status, "review-status"),
-      fileControls(v.file),
-    );
+
+    const versionTools = el("div", undefined, "review-version-tools");
+    versionTools.append(label, fileControls(v.file));
+    host.append(versionTools);
+    if (v.file.name && v.file.name !== material.title) {
+      const technical = el("details", undefined, "review-technical");
+      technical.append(el("summary", "Сведения о файле"), el("p", v.file.name, "file-meta"));
+      host.append(technical);
+    }
     if (admin()) {
       host.append(el("p", viewLabel(v), "review-view-status"));
       const views = el("dl", undefined, "recovery-fields");
@@ -496,9 +508,12 @@
       upload.append(form);
       host.append(upload);
     }
-    host.append(el("h3", "Комментарии к этой версии"));
+    const comments = el("details", undefined, "review-comments-pane");
+    const entries = events.filter((e) => e.versionId === v.id && e.body);
+    comments.append(el("summary", `Комментарии (${entries.length})`));
+    comments.open = true;
     const thread = el("div", undefined, "review-comments");
-    for (const event of events.filter((e) => e.versionId === v.id && e.body)) {
+    for (const event of entries) {
       const entry = el("article", undefined, "review-comment");
       entry.append(
         el(
@@ -512,7 +527,7 @@
     }
     if (!thread.childElementCount)
       thread.append(el("p", "Комментариев пока нет.", "muted"));
-    host.append(
+    comments.append(
       thread,
       textForm(
         "review-comment-form",
@@ -525,8 +540,9 @@
           }),
       ),
     );
-    const history = el("details", undefined, "admin-history");
-    history.append(el("summary", "История всех версий"));
+    host.append(comments);
+    const history = el("details", undefined, "review-history-pane");
+    history.append(el("summary", `История всех версий (${versions.length})`));
     const list = el("ol", undefined, "review-history");
     for (const event of events) {
       const item = el("li");
