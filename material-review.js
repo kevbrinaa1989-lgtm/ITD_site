@@ -105,6 +105,24 @@
     if (!view?.viewed) return "Не просмотрено";
     return `Просмотрено ${date(view.lastViewedAt)}`;
   }
+
+  // The material title is set when version 1 is uploaded; later versions may
+  // have a different file type. Keep the readable title, but derive its file
+  // extension from the selected version rather than the original upload.
+  function versionFileName(material, version) {
+    const actual = String(version?.file?.name || "").trim();
+    const title = String(material?.title || "").trim() || actual || "Материал";
+    const match = actual.match(/\.([A-Za-z0-9]{2,10})$/);
+    if (!match) return title;
+    const ext = match[1].toLowerCase();
+    const base = title.replace(/\.(?:pdf|jpe?g|png|webp|gif|svg|dwg|dxf|docx?|xlsx?|pptx?|txt|zip|rar|7z)$/i, "");
+    return `${base || title}.${ext}`;
+  }
+  function presentedFile(material, version) {
+    // Only the label used by the viewer/download changes; the stored file ID,
+    // content type and original name in the database are untouched.
+    return { ...version.file, name: versionFileName(material, version) };
+  }
   function fileTile(file) {
     const name = String(file?.name || "");
     const extension = name.match(/\.([A-Za-z0-9]{2,5})$/)?.[1]?.toUpperCase() || "ФАЙЛ";
@@ -129,7 +147,7 @@
     const copy = el("div", undefined, "review-card-copy");
     copy.append(
       el("p", `${stage?.title || "Этап"}${admin() ? ` · ${project.title} · ${project.clientName || "Без клиента"}` : ""}`, "review-context"),
-      el("h3", material.title),
+      el("h3", versionFileName(material, v)),
       el("p", `Версия ${v.versionNumber} · ${date(v.createdAt)} · ${v.uploadedByName || "Студия"}`, "file-meta"),
       statusTag(v.status),
     );
@@ -138,7 +156,7 @@
     main.append(fileTile(v.file), copy);
     const actions = el("div", undefined, "review-card-action-area");
     actions.append(
-      fileControls(v.file),
+      fileControls(presentedFile(material, v)),
       button("Открыть согласование и комментарии", () => open(material.id, v.id), "primary review-open-button"),
     );
     n.append(main, actions);
@@ -317,7 +335,7 @@
     const description = el("div", undefined, "review-detail-heading");
     description.append(
       el("p", `${project.title} / ${stage?.title || "Этап"} / Версия ${v.versionNumber}`, "review-context"),
-      el("h2", material.title),
+      el("h2", versionFileName(material, v)),
       el("p", `Версия ${v.versionNumber} · ${date(v.createdAt)} · ${v.uploadedByName || "Студия"}`, "file-meta"),
       statusTag(v.status),
     );
@@ -340,9 +358,9 @@
     label.append(picker);
 
     const versionTools = el("div", undefined, "review-version-tools");
-    versionTools.append(label, fileControls(v.file));
+    versionTools.append(label, fileControls(presentedFile(material, v)));
     host.append(versionTools);
-    if (v.file.name && v.file.name !== material.title) {
+    if (v.file.name && v.file.name !== versionFileName(material, v)) {
       const technical = el("details", undefined, "review-technical");
       technical.append(el("summary", "Сведения о файле"), el("p", v.file.name, "file-meta"));
       host.append(technical);
@@ -408,7 +426,7 @@
           () => {
             if (
               window.confirm(
-                `Вы подтверждаете согласование версии ${v.versionNumber} материала «${material.title}»?`,
+                `Вы подтверждаете согласование версии ${v.versionNumber} файла «${versionFileName(material, v)}»?`,
               )
             )
               return mutate(`/api/material-versions/${v.id}/decision`, {
