@@ -124,7 +124,7 @@
       n = el("article", undefined, "review-card review-material-card"),
       stage = project.stages.find((s) => s.id === material.stageId);
     n.dataset.materialId = String(material.id);
-    if (selection === material.id) n.classList.add("is-selected");
+    if (selection === Number(material.id)) n.classList.add("is-selected");
     const main = el("div", undefined, "review-card-main");
     const copy = el("div", undefined, "review-card-copy");
     copy.append(
@@ -311,7 +311,7 @@
       stage = project.stages.find((s) => s.id === material.stageId);
 
     document.querySelectorAll(".review-material-card[data-material-id]").forEach((node) => {
-      node.classList.toggle("is-selected", Number(node.dataset.materialId) === material.id);
+      node.classList.toggle("is-selected", Number(node.dataset.materialId) === Number(material.id));
     });
     const summary = el("div", undefined, "review-detail-header");
     const description = el("div", undefined, "review-detail-heading");
