@@ -707,7 +707,7 @@ export function createApp(options = {}) {
       if (file === "cabinet.html")
         res.setHeader(
           "Content-Security-Policy",
-          "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; font-src 'self' blob:; worker-src 'self'; connect-src 'self'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+          "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' https://forms.itdstudio.ru data: blob:; font-src 'self' blob:; worker-src 'self'; connect-src 'self'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
         );
       res.writeHead(200, {
         "Content-Type": /\.m?js$/.test(file)
