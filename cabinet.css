@@ -3362,3 +3362,24 @@ body > footer {
     flex-wrap: wrap;
   }
 }
+
+/* ITD Studio: use the same official logo asset as the live Tilda website.
+   The source SVG is light on transparent; recolor it dark for the light
+   cabinet header and sidebar without changing its artwork. */
+.brand .brand-logo {
+  display: block;
+  width: auto;
+  height: 42px;
+  max-width: 100%;
+  object-fit: contain;
+  filter: brightness(0);
+  opacity: 0.92;
+}
+#app-view .sidebar-brand .brand-logo {
+  height: 38px;
+}
+@media (max-width: 760px) {
+  .site-header .brand-logo {
+    height: 34px;
+  }
+}
