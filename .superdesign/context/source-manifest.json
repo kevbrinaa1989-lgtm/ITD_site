@@ -1,0 +1,32 @@
+{
+  "sourceCommit": "99b7555fad5a5c9996391ca85e6f3ba0486c75e8",
+  "artifacts": {
+    "baseline-material.md": {
+      "bytes": 19769,
+      "lines": 480,
+      "sha256": "a1d9b1960af38ac9af454097bb78d1b11e74eb9990dee8d4a5add091f22069da"
+    },
+    "baseline-admin.md": {
+      "bytes": 9024,
+      "lines": 248,
+      "sha256": "d6f77a6b36dd468726f9f4cbbd596e6947a88442ddbcb60d3730bbd035795f1a"
+    },
+    "baseline-shell.md": {
+      "bytes": 15126,
+      "lines": 304,
+      "sha256": "a872487bb7c022465760bf4d3e2416c0e406a778c1e39167bb25eea80ebf52ca"
+    },
+    "baseline-client.md": {
+      "bytes": 8419,
+      "lines": 237,
+      "sha256": "42efe7098eab1f44253d9f904aa109060140a4fb1328b466f214f1a12f1bfa68"
+    },
+    "baseline.css": {
+      "bytes": 40227,
+      "lines": 496,
+      "sha256": "05e096a789c19172fa473de6ef069d583a5f0014b48c10efcf64ee75474a1b5f"
+    }
+  },
+  "cssRulesKept": 459,
+  "cssRulesDropped": 327
+}

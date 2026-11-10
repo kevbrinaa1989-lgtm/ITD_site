@@ -1,0 +1,92 @@
+[
+  {
+    "concept": "a",
+    "width": 1440,
+    "result": "passed",
+    "checks": [
+      "version metadata/preview",
+      "historical decision prohibition",
+      "confirmation",
+      "required change comment",
+      "local decision/count update",
+      "admin filter/search",
+      "mobile menu/list/detail",
+      "no script errors/overflow"
+    ]
+  },
+  {
+    "concept": "a",
+    "width": 360,
+    "result": "passed",
+    "checks": [
+      "version metadata/preview",
+      "historical decision prohibition",
+      "confirmation",
+      "required change comment",
+      "local decision/count update",
+      "admin filter/search",
+      "mobile menu/list/detail",
+      "no script errors/overflow"
+    ]
+  },
+  {
+    "concept": "b",
+    "width": 1440,
+    "result": "passed",
+    "checks": [
+      "version metadata/preview",
+      "historical decision prohibition",
+      "confirmation",
+      "required change comment",
+      "local decision/count update",
+      "admin filter/search",
+      "mobile menu/list/detail",
+      "no script errors/overflow"
+    ]
+  },
+  {
+    "concept": "b",
+    "width": 360,
+    "result": "passed",
+    "checks": [
+      "version metadata/preview",
+      "historical decision prohibition",
+      "confirmation",
+      "required change comment",
+      "local decision/count update",
+      "admin filter/search",
+      "mobile menu/list/detail",
+      "no script errors/overflow"
+    ]
+  },
+  {
+    "concept": "c",
+    "width": 1440,
+    "result": "passed",
+    "checks": [
+      "version metadata/preview",
+      "historical decision prohibition",
+      "confirmation",
+      "required change comment",
+      "local decision/count update",
+      "admin filter/search",
+      "mobile menu/list/detail",
+      "no script errors/overflow"
+    ]
+  },
+  {
+    "concept": "c",
+    "width": 360,
+    "result": "passed",
+    "checks": [
+      "version metadata/preview",
+      "historical decision prohibition",
+      "confirmation",
+      "required change comment",
+      "local decision/count update",
+      "admin filter/search",
+      "mobile menu/list/detail",
+      "no script errors/overflow"
+    ]
+  }
+]
