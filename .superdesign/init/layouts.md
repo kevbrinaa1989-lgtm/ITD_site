@@ -1,0 +1,1289 @@
+# Общая оболочка
+
+Исследовано по коду 99b7555fad5a5c9996391ca85e6f3ba0486c75e8, ветка feature/itd-superdesign-redesign. Это контекст существующей реализации, не утверждённый новый дизайн. Реальные данные и сервер не исследовались.
+
+`cabinet.html` — единственный общий layout: гостевой вход/регистрация/восстановление; авторизованная оболочка с sidebar, topbar, меню пользователя, проектной навигацией, контейнерами role-specific панелей и модальными элементами. Разметка не разложена по компонентам, поэтому ниже полный файл, включая контейнеры экранов. Поведение переключения — `cabinet.js`, см. routes.md.
+
+Официальный логотип в текущем коде: `https://forms.itdstudio.ru/itd/assets/logo.svg`. Это ссылка исходника, доступность и актуальность визуального ориентира отдельно проверяются перед генерацией; не заменять логотип придуманной монограммой.
+
+## cabinet.html
+
+```html
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Личный кабинет — ITD Studio</title>
+    <link rel="stylesheet" href="/cabinet.css" />
+    <script src="/file-viewer.js" defer></script>
+    <script src="/admin-management.js" defer></script>
+    <script src="/material-review.js" defer></script>
+    <script src="/admin-workspace.js" defer></script>
+    <script src="/upload-context.js" defer></script>
+    <script src="/client-workspace.js" defer></script>
+    <script src="/invitations.js" defer></script>
+    <script src="/cabinet.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">К содержимому</a>
+    <header class="site-header">
+      <a class="brand" href="https://itdstudio.ru/" aria-label="ITD Studio — на основной сайт">
+        <img class="brand-logo" src="https://forms.itdstudio.ru/itd/assets/logo.svg" alt="ITD Studio" />
+      </a>
+      <a class="back-link" href="https://itdstudio.ru/"
+        >На сайт <span aria-hidden="true">→</span></a
+      >
+    </header>
+    <main id="main">
+      <section
+        id="login-view"
+        class="login-layout"
+        aria-labelledby="login-heading"
+      >
+        <div class="intro">
+          <div class="interior-art" aria-hidden="true">
+            <div class="art-arch"></div>
+            <div class="art-sun"></div>
+            <div class="art-plinth"></div>
+            <div class="art-line"></div>
+            <span>ITD / ПРОСТРАНСТВО ДЛЯ ЖИЗНИ</span>
+          </div>
+          <p class="eyebrow">Ваш интерьер. Всё по порядку.</p>
+          <h1 id="login-heading">Ваш проект.<br /><em>В деталях.</em></h1>
+          <p class="intro-copy">
+            Этапы проекта, результаты работы и документы — в одном месте.
+          </p>
+        </div>
+        <div class="panel login-panel">
+          <div class="auth-tabs" aria-label="Доступ в кабинет">
+            <button
+              id="show-login"
+              type="button"
+              class="auth-tab"
+              aria-pressed="true"
+            >
+              Вход</button
+            ><button
+              id="show-register"
+              hidden
+              type="button"
+              class="auth-tab"
+              aria-pressed="false"
+            >
+              Регистрация
+            </button>
+          </div>
+          <h2 id="auth-heading">Вход в проект</h2>
+          <p id="auth-intro" class="muted">
+            Войдите или создайте аккаунт. Студия предоставит доступ к вашему
+            проекту.
+          </p>
+          <p id="registration-note" class="muted" hidden></p>
+          <form id="login-form">
+            <label for="login-email">Email</label>
+            <input
+              id="login-email"
+              name="email"
+              type="email"
+              autocomplete="username"
+              required
+              maxlength="254"
+            />
+            <label for="login-password">Пароль</label>
+            <input
+              id="login-password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              maxlength="256"
+            />
+            <p id="login-error" class="error" role="alert"></p>
+            <button
+              id="show-recovery"
+              type="button"
+              class="text-button forgot-password"
+            >
+              Забыли пароль?
+            </button>
+            <button type="submit" class="primary">Войти</button>
+          </form>
+          <form id="register-form" hidden>
+            <label for="register-name">Ваше имя</label
+            ><input
+              id="register-name"
+              name="name"
+              autocomplete="name"
+              required
+              maxlength="120"
+            />
+            <label for="register-email">Email</label
+            ><input
+              id="register-email"
+              name="email"
+              type="email"
+              autocomplete="username"
+              required
+              maxlength="254"
+            />
+            <label for="register-password">Пароль</label
+            ><input
+              id="register-password"
+              name="password"
+              type="password"
+              autocomplete="new-password"
+              required
+              minlength="12"
+              maxlength="256"
+              aria-describedby="register-password-help"
+            /><small id="register-password-help">Не менее 12 символов.</small>
+            <p id="register-error" class="error" role="alert"></p>
+            <button type="submit" class="primary">Зарегистрироваться</button>
+          </form>
+          <section
+            id="recovery-auth"
+            hidden
+            aria-labelledby="recovery-auth-heading"
+          >
+            <h3 id="recovery-auth-heading">Восстановление доступа</h3>
+            <p class="muted">
+              Укажите email вашего аккаунта. Администратор проверит запрос и
+              свяжется с вами.
+            </p>
+            <form id="recovery-request-form">
+              <label for="recovery-email">Email</label
+              ><input
+                id="recovery-email"
+                name="email"
+                type="email"
+                autocomplete="email"
+                required
+                maxlength="254"
+              /><button class="primary" type="submit">Отправить запрос</button>
+            </form>
+            <p id="recovery-request-message" role="status" class="muted"></p>
+            <button id="recovery-back" type="button" class="text-button">
+              Вернуться ко входу
+            </button>
+          </section>
+          <p class="login-help">
+            Не получается войти?
+            <a href="https://t.me/Kevbrina_Diana">Напишите в студию</a>.
+          </p>
+        </div>
+      </section>
+      <section id="app-view" class="workspace" hidden aria-label="Ваши проекты">
+        <aside class="project-sidebar" aria-label="Навигация кабинета">
+          <a
+            class="brand sidebar-brand"
+            href="https://itdstudio.ru/"
+            aria-label="ITD Studio — на основной сайт"
+          ><img class="brand-logo" src="https://forms.itdstudio.ru/itd/assets/logo.svg" alt="ITD Studio" /></a>
+          <p id="shell-role-label" class="sidebar-caption">Личный кабинет</p>
+
+          <nav
+            id="studio-navigation"
+            class="workspace-nav"
+            role="tablist"
+            aria-orientation="vertical"
+            aria-label="Общие разделы"
+          >
+            <button
+              id="tab-workspace"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="panel-workspace"
+              data-tab="workspace"
+              hidden
+            >
+              <span aria-hidden="true">◫</span>Главная</button
+            ><button
+              id="tab-projects"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="admin-projects-panel"
+              data-tab="projects"
+              hidden
+            >
+              <span aria-hidden="true">▦</span>Проекты</button
+            ><button
+              id="tab-clients"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="admin-clients-panel"
+              data-tab="clients"
+              hidden
+            >
+              <span aria-hidden="true">♙</span>Клиенты</button
+            ><button
+              id="tab-tasks"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="panel-tasks"
+              data-tab="tasks"
+              hidden
+            >
+              <span aria-hidden="true">≡</span>Задачи</button
+            ><button
+              id="tab-client-home"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="client-home-panel"
+              data-tab="client-home"
+              hidden
+            >
+              Главная</button
+            ><button
+              id="tab-client-projects"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="client-projects-panel"
+              data-tab="client-projects"
+              hidden
+            >
+              Мои проекты</button
+            ><button
+              id="tab-client-review"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="client-review-panel"
+              data-tab="client-review"
+              hidden
+            >
+              На согласование</button
+            ><button
+              id="tab-notifications"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="panel-notifications"
+              data-tab="notifications"
+            >
+              <span aria-hidden="true">◉</span>Уведомления
+              <span id="notification-count" class="notification-count" hidden
+                >0</span
+              ></button
+            ><button
+              id="tab-profile"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="profile-panel"
+              data-tab="profile"
+              hidden
+            >
+              Мой профиль</button
+            ><button
+              id="tab-recovery"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="password-recovery-panel"
+              data-tab="recovery"
+              hidden
+            >
+              <span aria-hidden="true">⌑</span>Запросы на восстановление
+            </button>
+          </nav>
+          <div class="sidebar-bottom">
+            <a class="studio-contact" href="https://t.me/Kevbrina_Diana"
+              >Связаться со студией <span aria-hidden="true">→</span></a
+            >
+            <div class="account-bar">
+              <div id="user-avatar" class="account-avatar" aria-hidden="true">
+                ITD
+              </div>
+              <div class="account-person">
+                <strong id="user-name"></strong><span id="user-role"></span>
+              </div>
+            </div>
+          </div>
+        </aside>
+        <div class="workspace-body">
+          <div class="workspace-topbar">
+            <div class="shell-location-row">
+              <button
+                id="mobile-menu-button"
+                type="button"
+                class="shell-menu-button"
+                aria-controls="studio-navigation"
+                aria-expanded="false"
+              >
+                ☰ Меню</button
+              ><button id="shell-back" type="button" class="text-button" hidden>
+                ← Назад</button
+              ><span id="shell-location">Главная</span>
+            </div>
+            <div class="topbar-actions">
+              <button id="refresh-button" type="button" class="text-button">
+                <span aria-hidden="true">↻</span> Обновить</button
+              ><a href="https://itdstudio.ru/">На сайт →</a>
+              <button
+                id="logout-button"
+                type="button"
+                aria-label="Выйти из кабинета"
+                title="Выйти"
+              >
+                Выйти
+              </button>
+            </div>
+          </div>
+          <div class="project-area">
+            <div id="empty-state" class="empty-state panel">
+              <span class="empty-symbol" aria-hidden="true">◫</span>
+              <p class="eyebrow">Всё начинается с идеи</p>
+              <h1>Ваше пространство<br />для будущего проекта</h1>
+              <p class="muted">
+                После назначения проекта здесь появятся этапы работы,<br />материалы
+                и документы. Если проект уже в работе,<br />свяжитесь со
+                студией.
+              </p>
+              <a class="primary button-link" href="https://t.me/Kevbrina_Diana"
+                >Связаться со студией →</a
+              >
+            </div>
+            <article id="project-content" hidden>
+              <div id="project-heading" class="project-heading" hidden>
+                <div>
+                  <p class="eyebrow">Рабочее пространство проекта</p>
+                  <h1 id="project-title"></h1>
+                  <p id="project-client" class="muted"></p>
+                </div>
+                <span id="project-status" class="badge"></span>
+                <div class="project-heading-progress">
+                  <p id="project-header-progress-text" class="muted"></p>
+                  <progress
+                    id="project-header-progress"
+                    max="100"
+                    value="0"
+                    aria-label="Прогресс по этапам"
+                  ></progress>
+                </div>
+                <div id="project-actions" class="project-actions"></div>
+              </div>
+              <nav
+                id="project-navigation"
+                class="project-navigation"
+                role="tablist"
+                aria-label="Разделы проекта"
+                hidden
+              >
+                <button
+                  id="tab-overview"
+                  type="button"
+                  role="tab"
+                  aria-selected="true"
+                  aria-controls="panel-overview"
+                  data-tab="overview"
+                >
+                  <span aria-hidden="true">◫</span
+                  ><span id="project-overview-label">Обзор</span></button
+                ><button
+                  id="tab-stages"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="panel-stages"
+                  data-tab="stages"
+                >
+                  <span aria-hidden="true">≡</span>Этапы</button
+                ><button
+                  id="tab-results"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="panel-results"
+                  data-tab="results"
+                >
+                  <span aria-hidden="true">▧</span>Материалы</button
+                ><button
+                  id="tab-review"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="panel-review"
+                  data-tab="review"
+                >
+                  <span aria-hidden="true">✓</span>Согласования</button
+                ><button
+                  id="tab-documents"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="panel-documents"
+                  data-tab="documents"
+                >
+                  <span aria-hidden="true">▤</span>Документы</button
+                ><button
+                  id="tab-settings"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="project-settings-panel"
+                  data-tab="settings"
+                  hidden
+                >
+                  Настройки
+                </button>
+              </nav>
+              <section
+                id="panel-overview"
+                data-tab-panel="overview"
+                role="tabpanel"
+                tabindex="0"
+                aria-labelledby="tab-overview"
+              >
+                <div class="overview-grid">
+                  <section class="panel progress-card">
+                    <div class="section-topline">
+                      <span class="eyebrow">Движение проекта</span
+                      ><span class="small-label">Этап за этапом</span>
+                    </div>
+                    <h2>От идеи к вашему интерьеру</h2>
+                    <div class="progress-label">
+                      <span>Прогресс по этапам</span
+                      ><strong id="overview-progress-text">—</strong>
+                    </div>
+                    <progress
+                      id="project-progress"
+                      max="100"
+                      value="0"
+                      aria-label="Прогресс по этапам"
+                    ></progress>
+                    <p id="overview-next-stage" class="muted"></p>
+                  </section>
+                  <section class="panel materials-card">
+                    <p class="eyebrow">Всё под рукой</p>
+                    <div class="metric">
+                      <strong id="overview-stage-count">—</strong
+                      ><span>этапов завершено</span>
+                    </div>
+                    <div class="metric">
+                      <strong id="overview-file-count">—</strong
+                      ><span>файлов и документов</span>
+                    </div>
+                  </section>
+                </div>
+                <div class="section-title">
+                  <h2>План работы</h2>
+                  <button
+                    type="button"
+                    class="text-button"
+                    data-open-tab="stages"
+                  >
+                    Все этапы <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+                <div id="overview-stage-preview" class="overview-preview"></div>
+                <p id="overview-next-action" class="muted"></p>
+                <div class="section-title recent-materials-heading">
+                  <h2>Последние материалы</h2>
+                  <button
+                    type="button"
+                    class="text-button"
+                    data-open-tab="results"
+                  >
+                    Все результаты <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+                <div
+                  id="overview-recent-files"
+                  class="file-list overview-recent-files"
+                ></div>
+                <div class="studio-note">
+                  <div class="note-monogram" aria-hidden="true">И т.д.</div>
+                  <div>
+                    <h3>Важна каждая деталь</h3>
+                    <p>
+                      Результаты работы и документы вашего проекта собраны
+                      здесь. Если остались вопросы, мы всегда на связи.
+                    </p>
+                  </div>
+                  <a href="https://t.me/Kevbrina_Diana">Написать студии →</a>
+                </div>
+              </section>
+              <section
+                id="panel-review"
+                data-tab-panel="review"
+                role="tabpanel"
+                tabindex="0"
+                aria-labelledby="tab-review"
+                hidden
+              >
+                <div class="section-title">
+                  <div>
+                    <h2>Согласования материалов</h2>
+                    <p class="muted">
+                      Решение относится к конкретной версии. Старые версии и
+                      история сохраняются.
+                    </p>
+                  </div>
+                  <select id="review-filter" aria-label="Фильтр согласований">
+                    <option value="">Все материалы</option>
+                    <option value="pending_approval">
+                      Ожидает согласования
+                    </option>
+                    <option value="changes_requested">Нужны изменения</option>
+                    <option value="approved">Согласован</option>
+                    <option value="unviewed">Не просмотрено</option>
+                    <option value="viewed">Просмотрено</option>
+                  </select>
+                </div>
+                <p id="review-message" role="status" class="muted"></p>
+                <div class="review-library-heading">
+                  <h3>Материалы проекта</h3>
+                  <span id="review-material-count" class="review-library-count" aria-live="polite"></span>
+                </div>
+                <div
+                  id="review-material-list"
+                  class="review-material-list"
+                ></div>
+                <section
+                  id="review-material-detail"
+                  class="panel review-detail"
+                  aria-label="Версия материала"
+                  hidden
+                ></section>
+              </section>
+              <section
+                id="panel-stages"
+                data-tab-panel="stages"
+                role="tabpanel"
+                tabindex="0"
+                aria-labelledby="tab-stages"
+                hidden
+              >
+                <div class="section-title">
+                  <div>
+                    <h2>Этапы проекта</h2>
+                    <p class="muted">
+                      План работы и текущий статус каждого этапа.
+                    </p>
+                  </div>
+                </div>
+                <div id="stage-list" class="stage-list"></div>
+              </section>
+              <section
+                id="panel-results"
+                data-tab-panel="results"
+                role="tabpanel"
+                tabindex="0"
+                aria-labelledby="tab-results"
+                hidden
+              >
+                <div class="section-title">
+                  <div>
+                    <h2>Результаты работы</h2>
+                    <p class="muted">
+                      Чертежи, визуализации и другие материалы проекта.
+                    </p>
+                  </div>
+                </div>
+                <div id="result-list" class="file-list"></div>
+              </section>
+              <section
+                id="panel-documents"
+                data-tab-panel="documents"
+                role="tabpanel"
+                tabindex="0"
+                aria-labelledby="tab-documents"
+                hidden
+              >
+                <div class="section-title">
+                  <div>
+                    <h2>Документы</h2>
+                    <p class="muted">
+                      Скачайте нужный документ в удобное время.
+                    </p>
+                  </div>
+                </div>
+                <div id="document-list" class="file-list"></div>
+              </section>
+              <section
+                id="project-settings-panel"
+                data-tab-panel="settings"
+                role="tabpanel"
+                tabindex="0"
+                aria-labelledby="tab-settings"
+                hidden
+              >
+                <section
+                  id="admin-project-detail"
+                  class="panel admin-detail"
+                  aria-label="Карточка проекта"
+                >
+                  <p class="muted">Выберите проект.</p>
+                </section>
+              </section>
+            </article>
+            <section
+              id="panel-create-project"
+              data-tab-panel="create-project"
+              role="tabpanel"
+              tabindex="0"
+              hidden
+              aria-labelledby="create-project-heading"
+            >
+              <div class="section-title">
+                <div>
+                  <h1 id="create-project-heading">Новый проект</h1>
+                  <p class="muted">
+                    Клиента можно назначить позже. До этого проект доступен
+                    только студии.
+                  </p>
+                </div>
+              </div>
+              <div class="panel">
+                <form id="create-project-form" class="admin-form">
+                  <label for="create-title">Название проекта</label
+                  ><input
+                    id="create-title"
+                    name="title"
+                    required
+                    maxlength="200"
+                  />
+                  <label for="create-status">Статус проекта</label
+                  ><select id="create-status" name="status">
+                    <option>Новый</option>
+                    <option>В работе</option>
+                    <option>На паузе</option>
+                    <option>Завершён</option>
+                  </select>
+                  <label for="create-client">Клиент</label
+                  ><select id="create-client" name="clientId">
+                    <option value="">Без клиента — назначить позже</option>
+                  </select>
+                  <label for="create-description"
+                    >Описание (необязательно)</label
+                  ><textarea
+                    id="create-description"
+                    name="description"
+                    rows="3"
+                    maxlength="4000"
+                  ></textarea>
+                  <fieldset
+                    id="create-project-stages"
+                    class="create-project-stages"
+                  >
+                    <legend>Этапы проекта</legend>
+                    <p class="muted">
+                      Отметьте только нужные этапы. Остальные можно добавить
+                      позже.
+                    </p>
+                    <label class="stage-template-option"
+                      ><input type="checkbox" name="stages" value="0" /><span
+                        >Обмеры</span
+                      ></label
+                    ><label class="stage-template-option"
+                      ><input type="checkbox" name="stages" value="1" /><span
+                        >Планировочное решение</span
+                      ></label
+                    ><label class="stage-template-option"
+                      ><input type="checkbox" name="stages" value="2" /><span
+                        >Концепция</span
+                      ></label
+                    ><label class="stage-template-option"
+                      ><input type="checkbox" name="stages" value="3" /><span
+                        >Визуализации</span
+                      ></label
+                    ><label class="stage-template-option"
+                      ><input type="checkbox" name="stages" value="4" /><span
+                        >Техническое описание дизайн-проекта</span
+                      ></label
+                    ><label class="stage-template-option"
+                      ><input type="checkbox" name="stages" value="5" /><span
+                        >Спецификация отделочных материалов, мебели и
+                        оборудования</span
+                      ></label
+                    ><label class="stage-template-option"
+                      ><input type="checkbox" name="stages" value="6" /><span
+                        >Авторский надзор</span
+                      ></label
+                    >
+                  </fieldset>
+                  <button type="submit" class="primary">Создать проект</button>
+                </form>
+              </div>
+            </section>
+            <section
+              id="client-home-panel"
+              data-tab-panel="client-home"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-client-home"
+              hidden
+            ></section>
+            <section
+              id="client-projects-panel"
+              data-tab-panel="client-projects"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-client-projects"
+              hidden
+            ></section>
+            <section
+              id="client-review-panel"
+              data-tab-panel="client-review"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-client-review"
+              hidden
+            ></section>
+            <section
+              id="profile-panel"
+              data-tab-panel="profile"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-profile"
+              hidden
+            >
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">Личный кабинет</p>
+                  <h1>Мой профиль</h1>
+                  <p class="muted">Здесь можно обновить контактные данные.</p>
+                </div>
+              </div>
+              <div class="panel profile-card">
+                <form id="profile-form">
+                  <label for="profile-name">Имя и фамилия</label
+                  ><input
+                    id="profile-name"
+                    name="name"
+                    autocomplete="name"
+                    required
+                    maxlength="120"
+                  /><label for="profile-phone">Телефон (необязательно)</label
+                  ><input
+                    id="profile-phone"
+                    name="phone"
+                    type="tel"
+                    autocomplete="tel"
+                    maxlength="40"
+                  /><label for="profile-email">Email</label
+                  ><input
+                    id="profile-email"
+                    type="email"
+                    readonly
+                    autocomplete="email"
+                  />
+                  <p class="muted">
+                    Email нельзя изменить здесь. Для смены пароля используйте
+                    восстановление доступа на странице входа.
+                  </p>
+                  <p id="profile-error" class="error" role="alert"></p>
+                  <p id="profile-message" role="status" class="muted"></p>
+                  <button type="submit" class="primary">
+                    Сохранить изменения
+                  </button>
+                </form>
+              </div>
+            </section>
+            <button
+              id="tab-management"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="admin-panel"
+              data-tab="management"
+              hidden
+            >
+              <span aria-hidden="true">⊞</span>Управление
+            </button>
+            <section
+              id="admin-panel"
+              class="admin-panel"
+              data-tab-panel="management"
+              role="tabpanel"
+              tabindex="0"
+              hidden
+              aria-labelledby="tab-management"
+            >
+              <div class="section-heading">
+                <p class="eyebrow">Студия</p>
+                <h2 id="admin-heading">Действия проекта</h2>
+              </div>
+
+              <details class="panel admin-details">
+                <summary>Добавить этап в выбранный проект</summary>
+                <form id="add-stage-form" class="admin-form">
+                  <label for="stage-title">Название этапа</label
+                  ><input
+                    id="stage-title"
+                    name="title"
+                    required
+                    maxlength="200"
+                  />
+                  <label for="stage-status">Статус</label
+                  ><select id="stage-status" name="status">
+                    <option value="planned">Не начат</option>
+                    <option value="in_progress">В работе</option>
+                    <option value="pending_approval">
+                      Ожидает согласования
+                    </option>
+                    <option value="changes_requested">Нужны изменения</option>
+                    <option value="approved">Согласован</option>
+                    <option value="completed">Завершён</option>
+                  </select>
+                  <label for="stage-start-date">Дата начала</label
+                  ><input
+                    id="stage-start-date"
+                    name="startDate"
+                    type="date"
+                  /><label for="stage-end-date">Плановая дата завершения</label
+                  ><input
+                    id="stage-end-date"
+                    name="plannedEndDate"
+                    type="date"
+                  />
+                  <label for="stage-description">Описание</label
+                  ><textarea
+                    id="stage-description"
+                    name="description"
+                    rows="4"
+                    maxlength="5000"
+                  ></textarea>
+                  <button type="submit" class="primary">Добавить этап</button>
+                </form>
+              </details>
+              <details class="panel admin-details">
+                <summary>Загрузить материал в выбранный проект</summary>
+                <form
+                  id="upload-file-form"
+                  class="admin-form"
+                  enctype="multipart/form-data"
+                >
+                  <label for="upload-file">Файл</label
+                  ><input id="upload-file" name="file" type="file" required />
+                  <label for="upload-category">Раздел</label
+                  ><select id="upload-category" name="category">
+                    <option value="result">Результаты</option>
+                    <option value="document">Документы</option>
+                  </select>
+                  <label for="upload-stage">Этап</label
+                  ><select id="upload-stage" name="stageId">
+                    <option value="">Без привязки к этапу</option>
+                  </select>
+                  <label class="recovery-identity"
+                    ><input
+                      id="upload-for-review"
+                      name="review"
+                      type="checkbox"
+                      value="yes"
+                    /><span
+                      >Отправить на согласование клиенту (результат с выбранным
+                      этапом)</span
+                    ></label
+                  >
+                  <p class="muted review-upload-help">
+                    Обычная загрузка сохраняет файл без запроса согласования.
+                  </p>
+                  <div
+                    id="upload-recipient"
+                    class="upload-recipient"
+                    aria-live="polite"
+                  >
+                    <p id="upload-project-name">Проект: не выбран</p>
+                    <p id="upload-client-name">Клиент: не выбран</p>
+                  </div>
+                  <button type="submit" class="primary">Загрузить файл</button>
+                </form>
+              </details>
+            </section>
+            <section
+              id="password-recovery-panel"
+              data-tab-panel="recovery"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-recovery"
+              hidden
+            >
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">Безопасность аккаунтов</p>
+                  <h2>Запросы на восстановление</h2>
+                  <p class="muted">
+                    Проверьте личность клиента по известному каналу связи перед
+                    выдачей ссылки.
+                  </p>
+                </div>
+                <button id="recovery-refresh" class="text-button" type="button">
+                  Обновить список
+                </button>
+              </div>
+              <p id="recovery-admin-message" role="status" class="muted"></p>
+              <div class="recovery-grid">
+                <div
+                  id="recovery-list"
+                  class="recovery-list"
+                  aria-label="Запросы клиентов"
+                ></div>
+                <section
+                  id="recovery-detail"
+                  class="panel recovery-detail"
+                  aria-label="Детали запроса"
+                >
+                  <p class="muted">
+                    Выберите запрос, чтобы посмотреть подробности.
+                  </p>
+                </section>
+              </div>
+            </section>
+            <section
+              id="admin-clients-panel"
+              data-tab-panel="clients"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-clients"
+              hidden
+            >
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">Студия / Люди</p>
+                  <h2>Клиенты</h2>
+                  <p class="muted">Контакты, проекты и доступ к кабинету.</p>
+                </div>
+              </div>
+              <details class="panel invitations-panel">
+                <summary>Приглашения клиентов</summary>
+                <p class="muted">
+                  Ссылка действует 24 часа и используется один раз. Она не
+                  назначает проекты автоматически. Проверьте получателя через
+                  известный вам канал связи: получение ссылки само по себе не
+                  подтверждает владение email.
+                </p>
+                <form id="invitation-form">
+                  <label for="invitation-email">Email нового клиента</label
+                  ><input
+                    id="invitation-email"
+                    name="email"
+                    type="email"
+                    required
+                    maxlength="254"
+                    autocomplete="off"
+                  /><label class="recovery-identity"
+                    ><input
+                      id="invitation-verified"
+                      name="verified"
+                      type="checkbox"
+                      value="yes"
+                      required
+                    /><span
+                      >Я проверил(а) получателя по известному каналу связи и
+                      передам ссылку лично. Это не является проверкой владения
+                      email.</span
+                    ></label
+                  ><button class="primary" type="submit">
+                    Создать приглашение на 24 часа
+                  </button>
+                </form>
+                <p
+                  id="invitation-message"
+                  class="muted"
+                  role="status"
+                  aria-live="polite"
+                ></p>
+                <div id="invitation-link" class="invitation-link"></div>
+                <div class="section-title">
+                  <h3>Выданные приглашения</h3>
+                  <button
+                    id="invitation-refresh"
+                    class="text-button"
+                    type="button"
+                  >
+                    Обновить
+                  </button>
+                </div>
+                <div id="invitation-list" class="invitation-list"></div>
+              </details>
+              <form id="admin-client-search" class="admin-search">
+                <label for="admin-client-query">Поиск по имени или email</label>
+                <div>
+                  <input
+                    id="admin-client-query"
+                    name="search"
+                    type="search"
+                    maxlength="200"
+                  /><button class="primary" type="submit">Найти</button>
+                </div>
+              </form>
+              <p id="admin-clients-message" role="status" class="muted"></p>
+              <div class="admin-management-grid">
+                <div id="admin-client-list" class="admin-card-list"></div>
+                <section
+                  id="admin-client-detail"
+                  class="panel admin-detail"
+                  aria-label="Карточка клиента"
+                >
+                  <p class="muted">Выберите клиента.</p>
+                </section>
+              </div>
+            </section>
+            <section
+              id="admin-projects-panel"
+              data-tab-panel="projects"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-projects"
+              hidden
+            >
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">Студия / Пространства</p>
+                  <h2>Проекты</h2>
+                  <p class="muted">
+                    Управление проектами и архивом без удаления материалов.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="text-button"
+                  data-open-tab="create-project"
+                >
+                  Создать проект →
+                </button>
+              </div>
+              <form id="admin-project-search" class="admin-search">
+                <label for="admin-project-query"
+                  >Поиск по названию проекта или клиенту</label
+                >
+                <div>
+                  <input
+                    id="admin-project-query"
+                    name="search"
+                    type="search"
+                    maxlength="200"
+                  /><select
+                    id="admin-project-filter"
+                    name="status"
+                    aria-label="Статус проекта"
+                  >
+                    <option value="all">Все проекты</option>
+                    <option>Новый</option>
+                    <option>В работе</option>
+                    <option>На паузе</option>
+                    <option>Завершён</option>
+                    <option>Архив</option></select
+                  ><button class="primary" type="submit">Найти</button>
+                </div>
+              </form>
+              <p id="admin-projects-message" role="status" class="muted"></p>
+              <div class="admin-management-grid">
+                <div id="admin-project-list" class="admin-card-list"></div>
+              </div>
+            </section>
+            <section
+              id="panel-notifications"
+              data-tab-panel="notifications"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-notifications"
+              hidden
+            >
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">События проекта</p>
+                  <h2>Уведомления</h2>
+                </div>
+                <button
+                  id="notifications-refresh"
+                  class="text-button"
+                  type="button"
+                >
+                  Обновить
+                </button>
+              </div>
+              <p id="notifications-message" class="muted" role="status"></p>
+              <div id="notification-list" class="notification-list"></div>
+            </section>
+            <section
+              id="panel-workspace"
+              data-tab-panel="workspace"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-workspace"
+              hidden
+            >
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">Студия / Рабочий день</p>
+                  <h1>Обзор студии</h1>
+                  <p id="workspace-calendar" class="muted"></p>
+                </div>
+                <button
+                  id="workspace-refresh"
+                  class="text-button"
+                  type="button"
+                >
+                  Обновить
+                </button>
+              </div>
+              <p id="workspace-message" role="status" class="muted"></p>
+              <div id="workspace-metrics" class="workspace-metrics"></div>
+              <div class="workspace-quick-actions">
+                <button
+                  type="button"
+                  class="text-button"
+                  id="workspace-new-project"
+                >
+                  Создать проект →</button
+                ><button
+                  id="workspace-new-task"
+                  type="button"
+                  class="text-button"
+                >
+                  Создать задачу →</button
+                ><button
+                  type="button"
+                  class="text-button"
+                  data-open-tab="clients"
+                >
+                  Клиенты →</button
+                ><button
+                  type="button"
+                  class="text-button"
+                  data-open-tab="projects"
+                >
+                  Открыть проекты →</button
+                ><button
+                  type="button"
+                  class="text-button"
+                  data-open-tab="recovery"
+                >
+                  Запросы на восстановление →
+                </button>
+              </div>
+              <div class="workspace-attention-filters">
+                <label
+                  >Проект<select id="workspace-project-filter">
+                    <option value="">Все активные проекты</option>
+                  </select></label
+                ><label
+                  >Требует внимания<select id="workspace-type-filter">
+                    <option value="">Все события</option>
+                    <option value="changes_requested">Нужны изменения</option>
+                    <option value="unanswered_comment">Ждёт ответа</option>
+                  </select></label
+                >
+              </div>
+              <div id="workspace-attention" class="workspace-sections"></div>
+              <div id="workspace-deadlines" class="workspace-sections"></div>
+            </section>
+            <section
+              id="panel-tasks"
+              data-tab-panel="tasks"
+              role="tabpanel"
+              tabindex="0"
+              aria-labelledby="tab-tasks"
+              hidden
+            >
+              <div class="section-title">
+                <div>
+                  <p class="eyebrow">Студия / Внутренняя работа</p>
+                  <h2>Задачи</h2>
+                  <p class="muted">
+                    Работа команды и сроки. Этот раздел доступен только
+                    сотрудникам.
+                  </p>
+                </div>
+                <button id="task-new-button" class="primary" type="button">
+                  Новая задача
+                </button>
+              </div>
+              <form id="task-filter-form" class="task-filters">
+                <label
+                  >Поиск<input
+                    id="task-search"
+                    name="search"
+                    type="search"
+                    maxlength="200" /></label
+                ><label
+                  >Показать<select id="task-preset" name="preset">
+                    <option value="active">Все активные</option>
+                    <option value="mine">Мои задачи</option>
+                    <option value="today">На сегодня</option>
+                    <option value="overdue">Просроченные</option>
+                    <option value="completed">Выполненные</option>
+                    <option value="nodue">Без срока</option>
+                  </select></label
+                ><label
+                  >Проект<select id="task-project-filter" name="projectId">
+                    <option value="">Активные проекты</option>
+                  </select></label
+                ><label
+                  >Статус<select id="task-status-filter" name="status">
+                    <option value="">Все активные</option>
+                  </select></label
+                ><label
+                  >Приоритет<select id="task-priority-filter" name="priority">
+                    <option value="">Любой</option>
+                  </select></label
+                ><button class="primary" type="submit">Применить</button>
+              </form>
+              <p id="task-message" role="status" class="muted"></p>
+              <div class="task-layout">
+                <div id="task-list" class="task-list"></div>
+                <section
+                  id="task-detail"
+                  class="panel task-detail"
+                  aria-label="Карточка задачи"
+                >
+                  <p class="muted">Выберите задачу или создайте новую.</p>
+                </section>
+              </div>
+            </section>
+          </div>
+          <div class="workspace-footer">
+            ITD Studio <span>Интерьер, продуманный до мелочей.</span>
+          </div>
+        </div>
+      </section>
+      <p
+        id="status-message"
+        class="status-message"
+        role="status"
+        aria-live="polite"
+      ></p>
+      <noscript
+        ><p class="panel">
+          Для работы личного кабинета включите JavaScript в браузере.
+        </p></noscript
+      >
+    </main>
+    <dialog
+      id="upload-switch-dialog"
+      class="upload-switch-dialog"
+      aria-labelledby="upload-switch-title"
+      aria-describedby="upload-switch-message"
+    >
+      <h2 id="upload-switch-title">Перейти в другой проект?</h2>
+      <p id="upload-switch-message"></p>
+      <div class="upload-switch-actions">
+        <button
+          id="upload-stay"
+          type="button"
+          class="upload-dialog-stay"
+          autofocus
+        >
+          Остаться
+        </button>
+        <button id="upload-discard" type="button" class="primary">
+          Перейти и отменить загрузку
+        </button>
+      </div>
+    </dialog>
+    <footer>ITD Studio <span>Интерьер, продуманный до мелочей.</span></footer>
+  </body>
+</html>
+
+```
+
