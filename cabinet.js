@@ -74,6 +74,7 @@
     window.ITDViewer?.invalidate();
     clearTimeout(messageTimer);
     user = null;
+    window.ITDUI?.syncShell(null, null, false, selectTab);
     projects = [];
     selectedId = null;
     projectTabs.clear();
@@ -246,6 +247,7 @@
     window.ITDAdmin?.onTab(tab);
     window.ITDReview?.onTab(tab);
     window.ITDClientWorkspace?.onTab(tab);
+    window.ITDUI?.syncShell(user, tab, inProject, selectTab);
   }
   async function openProject(id, options = {}) {
     id = Number(id);
@@ -476,6 +478,11 @@
       );
     }
     $("project-status").textContent = project.status;
+    $("project-route").replaceChildren(window.ITDUI.journey(project, {
+      openStage: (id) => {selectedStageId=id; selectTab("stages"); render();},
+      openMaterial: (file) => window.ITDReview.open(file.review.materialId, file.review.versionId),
+      openTab: selectTab
+    }));
     const completed = project.stages.filter(
       (stage) => stage.status === "completed",
     ).length;
@@ -1224,6 +1231,7 @@
     getProjects: () => projects,
     selectTab,
     openProject,
+    openStage: async (pid, sid) => { await openProject(pid, {tab: "stages"}); selectedStageId = sid; render(); },
     message,
     openMaterial: async (pid, mid, vid) => {
       await openProject(pid, { tab: "review" });
@@ -1238,8 +1246,7 @@
     },
   });
   $("mobile-menu-button")?.addEventListener("click", () => {
-    const expanded = document.body.classList.toggle("menu-open");
-    $("mobile-menu-button").setAttribute("aria-expanded", String(expanded));
+    window.ITDUI.toggleMenu();
   });
   $("shell-back").addEventListener("click", () => {
     if (returnClientId && user?.role === "admin")

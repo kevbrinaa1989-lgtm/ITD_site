@@ -1,6 +1,6 @@
 # Selected final direction: Route / Маршрут
 
-User selected concept C, with client journey from C, admin workbench from A, photographic gallery from B. This is one proposed final direction, awaiting final visual approval. Do not implement application changes or deploy. Source: `.superdesign/prototypes/unified.html`. Earlier A/B/C prototypes remain historical options.
+User selected concept C, with client journey from C, admin workbench from A, photographic gallery from B. The user approved this unified direction and authorized full application implementation on feature/itd-superdesign-redesign. Do not deploy or access production data/VPS. Source: `.superdesign/prototypes/unified.html`. Earlier A/B/C prototypes remain historical options.
 
 ## Structure
 - Shared light cream architectural shell, exact official ITD logo, Manrope UI and Prata on editorial client/gallery headings. Dark only around visualization previews/fullscreen viewer and restrained active controls.

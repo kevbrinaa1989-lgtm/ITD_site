@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Личный кабинет — ITD Studio</title>
+    <link rel="stylesheet" href="/assets/fonts/fonts.css" />
     <link rel="stylesheet" href="/cabinet.css" />
+    <link rel="stylesheet" href="/cabinet-route.css" />
+    <script src="/cabinet-ui.js" defer></script>
     <script src="/file-viewer.js" defer></script>
     <script src="/admin-management.js" defer></script>
     <script src="/material-review.js" defer></script>
@@ -19,12 +22,13 @@
     <a class="skip-link" href="#main">К содержимому</a>
     <header class="site-header">
       <a class="brand" href="https://itdstudio.ru/" aria-label="ITD Studio — на основной сайт">
-        <img class="brand-logo" src="https://forms.itdstudio.ru/itd/assets/logo.svg" alt="ITD Studio" />
+        <img class="brand-logo" src="/assets/brand/itd-logo.svg" alt="ITD Studio" />
       </a>
       <a class="back-link" href="https://itdstudio.ru/"
         >На сайт <span aria-hidden="true">→</span></a
       >
     </header>
+    <nav id="mobile-bottom-nav" aria-label="Основные разделы"></nav>
     <main id="main">
       <section
         id="login-view"
@@ -164,12 +168,12 @@
         </div>
       </section>
       <section id="app-view" class="workspace" hidden aria-label="Ваши проекты">
-        <aside class="project-sidebar" aria-label="Навигация кабинета">
+        <button id="shell-menu-backdrop" type="button" aria-label="Закрыть меню"></button><aside class="project-sidebar" aria-label="Навигация кабинета">
           <a
             class="brand sidebar-brand"
             href="https://itdstudio.ru/"
             aria-label="ITD Studio — на основной сайт"
-          ><img class="brand-logo" src="https://forms.itdstudio.ru/itd/assets/logo.svg" alt="ITD Studio" /></a>
+          ><img class="brand-logo" src="/assets/brand/itd-logo.svg" alt="ITD Studio" /></a>
           <p id="shell-role-label" class="sidebar-caption">Личный кабинет</p>
 
           <nav
@@ -298,7 +302,7 @@
           </div>
         </aside>
         <div class="workspace-body">
-          <div class="workspace-topbar">
+          <div class="workspace-topbar"><a class="shell-brand" href="https://itdstudio.ru/" aria-label="ITD Studio — на основной сайт"><img src="/assets/brand/itd-logo.svg" alt="ITD Studio"></a><div id="shell-navigation-host"></div>
             <div class="shell-location-row">
               <button
                 id="mobile-menu-button"
@@ -431,7 +435,8 @@
                 tabindex="0"
                 aria-labelledby="tab-overview"
               >
-                <div class="overview-grid">
+                <div id="project-route"></div>
+                <div class="overview-grid legacy-overview">
                   <section class="panel progress-card">
                     <div class="section-topline">
                       <span class="eyebrow">Движение проекта</span
@@ -1105,7 +1110,7 @@
               <div class="section-title">
                 <div>
                   <p class="eyebrow">Студия / Рабочий день</p>
-                  <h1>Обзор студии</h1>
+                  <h1>Сегодня в студии</h1>
                   <p id="workspace-calendar" class="muted"></p>
                 </div>
                 <button
