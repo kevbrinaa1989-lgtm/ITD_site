@@ -1,0 +1,297 @@
+[
+  {
+    "width": 1440,
+    "view": "client",
+    "overflow": 0,
+    "h1": "Квартира у парка",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Визуализация гостиной — иллюстрация из портфолио ITD Studio"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "view": "admin",
+    "overflow": 0,
+    "h1": "Сегодня в студии",
+    "images": [],
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "view": "material",
+    "overflow": 0,
+    "h1": "Материалы проекта",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Гостиная — выбранная версия"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "view": "gallery",
+    "overflow": 0,
+    "h1": "Пространство в деталях",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Гостиная"
+      },
+      {
+        "loaded": true,
+        "alt": "Гостиная"
+      },
+      {
+        "loaded": true,
+        "alt": "Спальня"
+      },
+      {
+        "loaded": true,
+        "alt": "Спальня · второй ракурс"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "view": "client",
+    "overflow": 0,
+    "h1": "Квартира у парка",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Визуализация гостиной — иллюстрация из портфолио ITD Studio"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "view": "admin",
+    "overflow": 0,
+    "h1": "Сегодня в студии",
+    "images": [],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "view": "material",
+    "overflow": 0,
+    "h1": "Материалы проекта",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Гостиная — выбранная версия"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "view": "gallery",
+    "overflow": 0,
+    "h1": "Пространство в деталях",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Гостиная"
+      },
+      {
+        "loaded": true,
+        "alt": "Гостиная"
+      },
+      {
+        "loaded": true,
+        "alt": "Спальня"
+      },
+      {
+        "loaded": true,
+        "alt": "Спальня · второй ракурс"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 360,
+    "view": "client",
+    "overflow": 0,
+    "h1": "Квартира у парка",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Визуализация гостиной — иллюстрация из портфолио ITD Studio"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 360,
+    "view": "admin",
+    "overflow": 0,
+    "h1": "Сегодня в студии",
+    "images": [],
+    "errors": []
+  },
+  {
+    "width": 360,
+    "view": "material",
+    "overflow": 0,
+    "h1": "Материалы проекта",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Гостиная — выбранная версия"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 360,
+    "view": "gallery",
+    "overflow": 0,
+    "h1": "Пространство в деталях",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Гостиная"
+      },
+      {
+        "loaded": true,
+        "alt": "Гостиная"
+      },
+      {
+        "loaded": true,
+        "alt": "Спальня"
+      },
+      {
+        "loaded": true,
+        "alt": "Спальня · второй ракурс"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 768,
+    "view": "client",
+    "overflow": 0,
+    "h1": "Квартира у парка",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Визуализация гостиной — иллюстрация из портфолио ITD Studio"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 768,
+    "view": "admin",
+    "overflow": 0,
+    "h1": "Сегодня в студии",
+    "images": [],
+    "errors": []
+  },
+  {
+    "width": 768,
+    "view": "material",
+    "overflow": 0,
+    "h1": "Материалы проекта",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Гостиная — выбранная версия"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 768,
+    "view": "gallery",
+    "overflow": 0,
+    "h1": "Пространство в деталях",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Гостиная"
+      },
+      {
+        "loaded": true,
+        "alt": "Гостиная"
+      },
+      {
+        "loaded": true,
+        "alt": "Спальня"
+      },
+      {
+        "loaded": true,
+        "alt": "Спальня · второй ракурс"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 1024,
+    "view": "client",
+    "overflow": 0,
+    "h1": "Квартира у парка",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Визуализация гостиной — иллюстрация из портфолио ITD Studio"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 1024,
+    "view": "admin",
+    "overflow": 0,
+    "h1": "Сегодня в студии",
+    "images": [],
+    "errors": []
+  },
+  {
+    "width": 1024,
+    "view": "material",
+    "overflow": 0,
+    "h1": "Материалы проекта",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Гостиная — выбранная версия"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 1024,
+    "view": "gallery",
+    "overflow": 0,
+    "h1": "Пространство в деталях",
+    "images": [
+      {
+        "loaded": true,
+        "alt": "Гостиная"
+      },
+      {
+        "loaded": true,
+        "alt": "Гостиная"
+      },
+      {
+        "loaded": true,
+        "alt": "Спальня"
+      },
+      {
+        "loaded": true,
+        "alt": "Спальня · второй ракурс"
+      }
+    ],
+    "errors": []
+  }
+]
