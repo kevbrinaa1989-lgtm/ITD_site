@@ -179,6 +179,10 @@ try {
       await page.locator("#login-password").fill(password);
       await page.locator("#login-form .primary").click();
       await page.locator("#app-view").waitFor({ state: "visible" });
+      if (shots)
+        await page.waitForFunction(
+          () => !document.querySelector("#status-message").textContent,
+        );
     }
     async function capture(name, fullPage = true) {
       await page.evaluate(() => document.fonts.ready);
@@ -193,6 +197,11 @@ try {
         await page.screenshot({
           path: join(shots, `${name}-${width}.png`),
           fullPage,
+        });
+      if (shots && ["admin", "client", "approval", "gallery"].includes(name))
+        await page.screenshot({
+          path: join(shots, `${name}-viewport-${width}.png`),
+          fullPage: false,
         });
     }
     await signIn("studio@example.test");

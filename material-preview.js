@@ -52,7 +52,7 @@
       status.textContent = "Для этого формата доступно скачивание оригинала.";
       return;
     }
-    const expand = window.ITDViewer.control(file, [file], "На весь экран ↗");
+    const expand = window.ITDViewer.control(file, [file], "На весь экран");
     // One fullscreen action shared by the inline preview and accessibility tests.
     expand.className = "material-preview-expand file-preview";
     expand.setAttribute("aria-label", "Увеличить материал");

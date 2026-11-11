@@ -159,7 +159,7 @@ try {
     ...extraFixtures,
     ["План.pdf", "application/pdf", pdfTwoPages()],
     ["Смета.txt", "text/plain", Buffer.from("download only")],
-  ].filter(v => !process.env.ITD_TEST_WIDTHS || process.env.ITD_TEST_WIDTHS.split(",").map(Number).includes(v.width))) {
+  ]) {
     const file = await (
       await request(
         `/api/projects/${project.id}/files`,
@@ -178,12 +178,18 @@ try {
 
   for (const viewport of [
     { width: 1440, height: 1000 },
+    { width: 1024, height: 900 },
+    { width: 360, height: 800 },
     { width: 768, height: 1024 },
     { width: 390, height: 844 },
     { width: 375, height: 812 },
     { width: 430, height: 932 },
     { width: 320, height: 700 },
-  ]) {
+  ].filter(
+    (v) =>
+      !process.env.ITD_TEST_WIDTHS ||
+      process.env.ITD_TEST_WIDTHS.split(",").map(Number).includes(v.width),
+  )) {
     const context = await browser.newContext({
       viewport,
       hasTouch: viewport.width < 500,
@@ -368,7 +374,9 @@ try {
     for (const file of files.filter((f) =>
       f.contentType.startsWith("image/"),
     )) {
-      const card = page.locator("#result-list .gallery-open").filter({ hasText: file.name });
+      const card = page
+        .locator("#result-list .gallery-open")
+        .filter({ hasText: file.name });
       await card.click();
       await initialFit();
       if (

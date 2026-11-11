@@ -785,7 +785,7 @@
         el("h3", eventsNames[n.type] || "Обновление материала"),
         el(
           "p",
-          `${n.materialTitle} · Версия ${n.versionNumber} · ${n.actorName || "Студия"}`,
+          `${window.ITDUI.materialTitle(n.materialTitle)} · Версия ${n.versionNumber} · ${n.actorName || "Студия"}`,
           "review-context",
         ),
         button("Открыть версию", async () => {

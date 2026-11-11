@@ -264,7 +264,10 @@
           "file-meta",
         ),
         node("h3", labels[event.type] || "Обновление проекта"),
-        node("p", `${event.materialTitle} · Версия ${event.versionNumber}`),
+        node(
+          "p",
+          `${window.ITDUI.materialTitle(event.materialTitle)} · Версия ${event.versionNumber}`,
+        ),
       );
       const open = button("Открыть материал →", () =>
         hooks.openMaterial(event.projectId, event.materialId, event.versionId),

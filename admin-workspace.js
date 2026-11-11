@@ -558,7 +558,7 @@
         tile.append(
           node("span", project.status, "workspace-context"),
           node("strong", project.title),
-          node("small", "Открыть проект ↗"),
+          node("small", "Открыть проект"),
         );
         projectStrip.append(tile);
       }

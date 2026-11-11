@@ -404,6 +404,8 @@ try {
     await fileBytes(retry, b, 403);
     async function versionForm() {
       await page.locator("#tab-review").click();
+      if (await page.locator(".review-library-back").isVisible())
+        await page.locator(".review-library-back").click();
       await page
         .locator(
           `#review-material-list [data-material-id="${seed.review.materialId}"]`,
