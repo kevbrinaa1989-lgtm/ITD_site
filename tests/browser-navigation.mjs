@@ -1,5 +1,15 @@
+export async function dismissWelcome(page) {
+  await page.waitForFunction(() => document.body.dataset.cabinetReady === "true");
+  const overlay = page.locator("#itd-tour-layer");
+  if (await overlay.isVisible()) {
+    await overlay.getByRole("button", { name: "Пропустить" }).click();
+    await overlay.waitFor({ state: "detached" });
+  }
+}
+
 export async function openGlobal(page, key) {
   await page.locator("#app-view").waitFor({ state: "visible" });
+  await dismissWelcome(page);
   const tab = page.locator(`#tab-${key}`);
   if (!(await tab.isVisible()))
     await page.locator("#mobile-menu-button").click();
