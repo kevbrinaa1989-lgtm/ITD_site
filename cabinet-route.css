@@ -2805,6 +2805,8 @@ progress::-moz-progress-bar {
   line-height: 1.5;
 }
 #app-view .route-step-title {
+  font-size: 14px;
+  font-weight: 600;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -2922,7 +2924,7 @@ progress::-moz-progress-bar {
     font-size: 18px;
   }
   #app-view .route-step-title {
-    font-size: 11px;
+    font-size: 12px;
   }
   #app-view .route-step small {
     font-size: 10px;
