@@ -1,0 +1,330 @@
+{
+  "date": "2026-11-11",
+  "branch": "feature/itd-superdesign-redesign",
+  "base": "99b7555fad5a5c9996391ca85e6f3ba0486c75e8",
+  "node": "24.19.0",
+  "automatedTests": 189,
+  "browserSuites": 9,
+  "responsiveRuns": 43,
+  "productionAccess": false,
+  "databaseSchemaChanged": false,
+  "checks": [
+    {
+      "suite": "api",
+      "status": "passed",
+      "widths": [],
+      "testCount": 189,
+      "evidence": [
+        "ℹ tests 189",
+        "ℹ suites 0",
+        "ℹ pass 189",
+        "ℹ fail 0",
+        "ℹ cancelled 0",
+        "ℹ skipped 0",
+        "ℹ todo 0",
+        "ℹ duration_ms 66478.429501"
+      ]
+    },
+    {
+      "suite": "route",
+      "status": "passed",
+      "widths": [
+        360,
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "testCount": null,
+      "evidence": [
+        "Route 360px: admin/client sections, album, selected PDF/image version, mobile actions/discussion, failed/successful comments, per-version drafts and reload persistence PASS",
+        "Route 390px: admin/client sections, album, selected PDF/image version, mobile actions/discussion, failed/successful comments, per-version drafts and reload persistence PASS",
+        "Route 768px: admin/client sections, album, selected PDF/image version, mobile actions/discussion, failed/successful comments, per-version drafts and reload persistence PASS",
+        "Route 1024px: admin/client sections, album, selected PDF/image version, mobile actions/discussion, failed/successful comments, per-version drafts and reload persistence PASS",
+        "Route 1440px: admin/client sections, album, selected PDF/image version, mobile actions/discussion, failed/successful comments, per-version drafts and reload persistence PASS"
+      ]
+    },
+    {
+      "suite": "review",
+      "status": "passed",
+      "widths": [
+        360,
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "testCount": null,
+      "evidence": [
+        "Review browser 1440px: image/PDF success-only views, no list/thumb/download/admin marks, first/repeat dates, versions/changes/approval/cancel/history, notifications, ownership and layout PASS",
+        "Review browser 768px: image/PDF success-only views, no list/thumb/download/admin marks, first/repeat dates, versions/changes/approval/cancel/history, notifications, ownership and layout PASS",
+        "Review browser 1024px: image/PDF success-only views, no list/thumb/download/admin marks, first/repeat dates, versions/changes/approval/cancel/history, notifications, ownership and layout PASS",
+        "Review browser 390px: image/PDF success-only views, no list/thumb/download/admin marks, first/repeat dates, versions/changes/approval/cancel/history, notifications, ownership and layout PASS",
+        "Review browser 360px: image/PDF success-only views, no list/thumb/download/admin marks, first/repeat dates, versions/changes/approval/cancel/history, notifications, ownership and layout PASS"
+      ]
+    },
+    {
+      "suite": "workspace",
+      "status": "passed",
+      "widths": [
+        360,
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "testCount": null,
+      "evidence": [
+        "Workspace browser 1440px: real default dashboard, waiting vs studio work, old-version/stage/task deep navigation, CRUD/CAS/filters/search/dates/archive, client privacy and responsive layout PASS",
+        "Workspace browser 768px: real default dashboard, waiting vs studio work, old-version/stage/task deep navigation, CRUD/CAS/filters/search/dates/archive, client privacy and responsive layout PASS",
+        "Workspace browser 1024px: real default dashboard, waiting vs studio work, old-version/stage/task deep navigation, CRUD/CAS/filters/search/dates/archive, client privacy and responsive layout PASS",
+        "Workspace browser 390px: real default dashboard, waiting vs studio work, old-version/stage/task deep navigation, CRUD/CAS/filters/search/dates/archive, client privacy and responsive layout PASS",
+        "Workspace browser 360px: real default dashboard, waiting vs studio work, old-version/stage/task deep navigation, CRUD/CAS/filters/search/dates/archive, client privacy and responsive layout PASS"
+      ]
+    },
+    {
+      "suite": "preview",
+      "status": "passed",
+      "widths": [
+        320,
+        375,
+        390,
+        430,
+        768,
+        1440
+      ],
+      "testCount": null,
+      "evidence": [
+        "Browser 1440px: equal gallery cards/captions, image fit, independent zoom/reset/scroll, image formats, navigation, PDF pixels/pages, original downloads, logout/foreign access and no external requests PASS",
+        "Browser 768px: equal gallery cards/captions, image fit, independent zoom/reset/scroll, image formats, navigation, PDF pixels/pages, original downloads, logout/foreign access and no external requests PASS",
+        "Browser 390px: equal gallery cards/captions, image fit, independent zoom/reset/scroll, image formats, navigation, PDF pixels/pages, original downloads, logout/foreign access and no external requests PASS",
+        "Browser 375px: equal gallery cards/captions, image fit, independent zoom/reset/scroll, image formats, navigation, PDF pixels/pages, original downloads, logout/foreign access and no external requests PASS",
+        "Browser 430px: equal gallery cards/captions, image fit, independent zoom/reset/scroll, image formats, navigation, PDF pixels/pages, original downloads, logout/foreign access and no external requests PASS",
+        "Browser 320px: equal gallery cards/captions, image fit, independent zoom/reset/scroll, image formats, navigation, PDF pixels/pages, original downloads, logout/foreign access and no external requests PASS"
+      ]
+    },
+    {
+      "suite": "preview-extra",
+      "status": "passed",
+      "widths": [
+        360,
+        1024
+      ],
+      "testCount": null,
+      "evidence": [
+        "Browser 1024px: equal gallery cards/captions, image fit, independent zoom/reset/scroll, image formats, navigation, PDF pixels/pages, original downloads, logout/foreign access and no external requests PASS",
+        "Browser 360px: equal gallery cards/captions, image fit, independent zoom/reset/scroll, image formats, navigation, PDF pixels/pages, original downloads, logout/foreign access and no external requests PASS"
+      ]
+    },
+    {
+      "suite": "admin",
+      "status": "passed",
+      "widths": [
+        375,
+        430,
+        768,
+        1440
+      ],
+      "testCount": null,
+      "evidence": [
+        "Admin browser 1440px: search, empty details, name/status edits, confirmations/cancel, disable/reactivate, reassignment+file access, archive/restore/filter, create project, logout, no overflow or external requests PASS",
+        "Admin browser 768px: search, empty details, name/status edits, confirmations/cancel, disable/reactivate, reassignment+file access, archive/restore/filter, create project, logout, no overflow or external requests PASS",
+        "Admin browser 430px: search, empty details, name/status edits, confirmations/cancel, disable/reactivate, reassignment+file access, archive/restore/filter, create project, logout, no overflow or external requests PASS",
+        "Admin browser 375px: search, empty details, name/status edits, confirmations/cancel, disable/reactivate, reassignment+file access, archive/restore/filter, create project, logout, no overflow or external requests PASS"
+      ]
+    },
+    {
+      "suite": "approved-interface",
+      "status": "passed",
+      "widths": [
+        375,
+        430,
+        768,
+        1440
+      ],
+      "testCount": null,
+      "evidence": [
+        "Approved interface: 1440/768/430/375 PASS"
+      ]
+    },
+    {
+      "suite": "upload-context",
+      "status": "passed",
+      "widths": [
+        375,
+        430,
+        768,
+        1440
+      ],
+      "testCount": null,
+      "evidence": [
+        "Upload context 1440px: delayed preparation, stay/discard, explicit reselection, image/PDF/document recipients, in-flight block, lost-response idempotent retry, version isolation and reassigned recipient refresh PASS",
+        "Upload context 768px: delayed preparation, stay/discard, explicit reselection, image/PDF/document recipients, in-flight block, lost-response idempotent retry, version isolation and reassigned recipient refresh PASS",
+        "Upload context 430px: delayed preparation, stay/discard, explicit reselection, image/PDF/document recipients, in-flight block, lost-response idempotent retry, version isolation and reassigned recipient refresh PASS",
+        "Upload context 375px: delayed preparation, stay/discard, explicit reselection, image/PDF/document recipients, in-flight block, lost-response idempotent retry, version isolation and reassigned recipient refresh PASS"
+      ]
+    },
+    {
+      "suite": "invitations",
+      "status": "passed",
+      "widths": [
+        375,
+        430,
+        768,
+        1440
+      ],
+      "testCount": null,
+      "evidence": [
+        "Invitation browser 1440px PASS",
+        "Invitation browser 768px PASS",
+        "Invitation browser 430px PASS",
+        "Invitation browser 375px PASS"
+      ]
+    },
+    {
+      "suite": "recovery",
+      "status": "passed",
+      "widths": [
+        375,
+        430,
+        768,
+        1440
+      ],
+      "testCount": null,
+      "evidence": [
+        "Recovery browser 1440px: generic requests, administrator-only approval, manual/copy/rotation, fragment cleanup, mismatch/success/used/expired, revoked sessions, no external requests and mobile layout PASS",
+        "Recovery browser 768px: generic requests, administrator-only approval, manual/copy/rotation, fragment cleanup, mismatch/success/used/expired, revoked sessions, no external requests and mobile layout PASS",
+        "Recovery browser 375px: generic requests, administrator-only approval, manual/copy/rotation, fragment cleanup, mismatch/success/used/expired, revoked sessions, no external requests and mobile layout PASS",
+        "Recovery browser 430px: generic requests, administrator-only approval, manual/copy/rotation, fragment cleanup, mismatch/success/used/expired, revoked sessions, no external requests and mobile layout PASS"
+      ]
+    }
+  ],
+  "fileSha256": {
+    "cabinet-ui.js": "e56014c080933e24068a5433ae614fe0c05f47701dc22f8cda828cf0edee8b98",
+    "cabinet-route.css": "a1c51a1b95d6642ecb45332fa24fefdbac06e375e9474e37f9ee0c9d8e1bdc0c",
+    "cabinet.js": "5a2a150bbdfaec7c5ebb1272a7f8e01ccdec0202a2f13060ba7ff59a7d38e783",
+    "cabinet.html": "5e0d65aece78c33c907f1638f6528b897e166efddbc62beb015e5c5ef4e63c04",
+    "material-review.js": "b7725483232be1bf7f941ad609fea52406add841d6cf9e2060941184e8dd61aa",
+    "material-preview.js": "2dc0c99f9d1a4b611dda3d0d6106ddc308830e3b28d2990b022f92548c2de2fd",
+    "file-viewer.js": "6fac7736657bf28c0db9bff0eedee47e275e92a75fce975332012e3ec602c18b",
+    "project-gallery.js": "1aea7f050cd3b16e983673b3a4c0b089d1d6d1e0d317740fc2f7c9d2517c6f89",
+    "admin-workspace.js": "ce7b95010ffc83689e1f2044873d965e0b547254cbbae2261e754fcf3e5d385f",
+    "client-workspace.js": "a53a002bbde93e3ae98409c0ec49b45c4176304377f7f6463f4987dad9e9e919",
+    "server.mjs": "91ce4e81390fc8b686f2a5c7a54f7e2f0f32f1deab7f7f6ef77a64fa526d56da"
+  },
+  "screenshots": [
+    {
+      "file": "docs/redesign/screenshots/admin-1440.png",
+      "sha256": "71a3075544564204e049bc9db3a26108ab7d459f25848cc406f353b378733c7e"
+    },
+    {
+      "file": "docs/redesign/screenshots/admin-390.png",
+      "sha256": "2fc8bdaeb1c9c41926ab00012a9a715bcf42ee833907063fae6d2997e4fc19ff"
+    },
+    {
+      "file": "docs/redesign/screenshots/admin-viewport-1024.png",
+      "sha256": "51c34161325aa100a51d5f4f8c6249891a82ff897f08052a8ef773650624d994"
+    },
+    {
+      "file": "docs/redesign/screenshots/admin-viewport-1440.png",
+      "sha256": "57ea687626176199947b2c96db61ad4ac6ded72cc54457e225361ed62db49d59"
+    },
+    {
+      "file": "docs/redesign/screenshots/admin-viewport-360.png",
+      "sha256": "cc088303d99f67cc42788e7b115d32e8308d03b27e30947a1ec7dc6dc6e26a31"
+    },
+    {
+      "file": "docs/redesign/screenshots/admin-viewport-390.png",
+      "sha256": "1f2f75c373580865da0b56ee77f7034abb0a9ca49c7c4b623cc389b99d6ef4f6"
+    },
+    {
+      "file": "docs/redesign/screenshots/admin-viewport-768.png",
+      "sha256": "7d2979e5482fc747f01ccfbb9fe5a77fc63a66018a4253e6c0928ede444736f3"
+    },
+    {
+      "file": "docs/redesign/screenshots/approval-1440.png",
+      "sha256": "262a7821d532d58222a23273366aa20f56a37499ce27fa9e0d63c6305d7a90e5"
+    },
+    {
+      "file": "docs/redesign/screenshots/approval-390.png",
+      "sha256": "46d9fed5e70cf879e5b6c66b32eb35294ca48264a60eec896e5fe5bdffde95be"
+    },
+    {
+      "file": "docs/redesign/screenshots/approval-viewport-1024.png",
+      "sha256": "90cb62469d372d3157673ec044fa2c2dea6186d44e6828e28451124ada1e512f"
+    },
+    {
+      "file": "docs/redesign/screenshots/approval-viewport-1440.png",
+      "sha256": "88cda00c6dcb5bface9783dfaeb8f6b6aaa21c9be68a7696e70f398b913805dc"
+    },
+    {
+      "file": "docs/redesign/screenshots/approval-viewport-360.png",
+      "sha256": "22d799ad4e3a0da2e38a8307317dea1949b828647e3258ea26feead2d59d8b27"
+    },
+    {
+      "file": "docs/redesign/screenshots/approval-viewport-390.png",
+      "sha256": "e551b9a4ed312f689b53ecd77509b4d1a49f26f2327157bbc58678e64a22988e"
+    },
+    {
+      "file": "docs/redesign/screenshots/approval-viewport-768.png",
+      "sha256": "ad0250818cd771899e7da79c8e71b20fcbf7ffcf147fe61b86242c934128132c"
+    },
+    {
+      "file": "docs/redesign/screenshots/client-1440.png",
+      "sha256": "b3d8133f4f2651c3a938f0938f2e3e45d69d80645917f43aabc7cc30f537c2ee"
+    },
+    {
+      "file": "docs/redesign/screenshots/client-390.png",
+      "sha256": "d62c529181f0231fb3c1ad47a40f7e308f1203bcad1c0024e29358f54d9d6e92"
+    },
+    {
+      "file": "docs/redesign/screenshots/client-viewport-1024.png",
+      "sha256": "12e72adbd1308417fda95c39efe56b30117e2b25d9406e66046fb0c5e30d1f04"
+    },
+    {
+      "file": "docs/redesign/screenshots/client-viewport-1440.png",
+      "sha256": "2ff6efdf3cd15762eb89272cc7bbdb12da3a5c9b7e1334a497582dcaa40e5229"
+    },
+    {
+      "file": "docs/redesign/screenshots/client-viewport-360.png",
+      "sha256": "1e031f8cd380dd9c15ec587531af10f404bb05f588e491cd05cf65bce4a05a4e"
+    },
+    {
+      "file": "docs/redesign/screenshots/client-viewport-390.png",
+      "sha256": "1e8c8c2c050ad056fcf1b0f41a3affc60dfe9dbd402dfe9044e079a882969915"
+    },
+    {
+      "file": "docs/redesign/screenshots/client-viewport-768.png",
+      "sha256": "f7cc1e9c7bcb6d68fbac00e93c91d08feb21c60f66202894e769a23a9d7785a4"
+    },
+    {
+      "file": "docs/redesign/screenshots/gallery-1440.png",
+      "sha256": "d55e081520608b9ba75fa676e0a0f8c1a54c71abb704fe25d7f6c957bbb8bd80"
+    },
+    {
+      "file": "docs/redesign/screenshots/gallery-390.png",
+      "sha256": "a976dfdfeb9b6651e13169a40dfe5d6fd20179873a7a43fe563e3b6a21c5a18b"
+    },
+    {
+      "file": "docs/redesign/screenshots/gallery-viewport-1024.png",
+      "sha256": "5ec133053d2ffc0f0d592d187acd84d2fd43cc82cbb91850448f9d7b07b006cc"
+    },
+    {
+      "file": "docs/redesign/screenshots/gallery-viewport-1440.png",
+      "sha256": "f2487cfc0f3a29cfaf455a91540c4a3201126d6841c4773a61996af332212824"
+    },
+    {
+      "file": "docs/redesign/screenshots/gallery-viewport-360.png",
+      "sha256": "b65e6bea6ab8c12fd1ed6eff99081a3fab94830264bfbbdfc33714df46e12612"
+    },
+    {
+      "file": "docs/redesign/screenshots/gallery-viewport-390.png",
+      "sha256": "234978ab8c803453f908448f104dd56bf2cbe9d51b37cb321b1a3885c4ce12a1"
+    },
+    {
+      "file": "docs/redesign/screenshots/gallery-viewport-768.png",
+      "sha256": "165443f59a1f6b5de8568068dbab5225169daf144bb12a5f855f714205376833"
+    }
+  ],
+  "implementationCommit": "9f790d3"
+}

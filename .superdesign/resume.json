@@ -1,0 +1,1478 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "cabinet-concepts": {
+      "targetKind": "existing-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "e1268107-be1a-4b08-8aa6-d54da0e35649",
+      "baselineDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/baseline-shell.md",
+        ".superdesign/context/baseline-client.md",
+        ".superdesign/context/baseline-admin.md",
+        ".superdesign/context/baseline-material.md",
+        ".superdesign/context/baseline.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/baseline-shell.md": "a872487bb7c022465760bf4d3e2416c0e406a778c1e39167bb25eea80ebf52ca",
+        ".superdesign/context/baseline-client.md": "42efe7098eab1f44253d9f904aa109060140a4fb1328b466f214f1a12f1bfa68",
+        ".superdesign/context/baseline-admin.md": "d6f77a6b36dd468726f9f4cbbd596e6947a88442ddbcb60d3730bbd035795f1a",
+        ".superdesign/context/baseline-material.md": "a1d9b1960af38ac9af454097bb78d1b11e74eb9990dee8d4a5add091f22069da",
+        ".superdesign/context/baseline.css": "05e096a789c19172fa473de6ef069d583a5f0014b48c10efcf64ee75474a1b5f"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [
+        {
+          "name": "CabinetSidebar",
+          "id": "72bc4675-f374-4ae1-83da-67ca7cd2fb80",
+          "sourcePath": "cabinet.html",
+          "logoAssetKey": "itd-official-logo.svg"
+        },
+        {
+          "name": "WorkspaceTopbar",
+          "id": "0286811e-22dd-4eb5-88fa-7ce0d9ea1319",
+          "sourcePath": "cabinet.html"
+        }
+      ],
+      "drafts": {
+        "877132b5-75af-4048-adab-4182306351da": {
+          "title": "ITD Studio Cabinet Baseline",
+          "visualDirection": "Existing cabinet baseline",
+          "currentVersion": 3,
+          "previewUrl": "https://p.superdesign.dev/draft/877132b5-75af-4048-adab-4182306351da"
+        },
+        "77b55cff-9f50-40d7-bdf7-3864b5a082fa": {
+          "title": "01 · Рабочий стол · Заказчик",
+          "visualDirection": "Light workbench with sidebar and action priority",
+          "currentVersion": 5,
+          "previewUrl": "https://p.superdesign.dev/draft/77b55cff-9f50-40d7-bdf7-3864b5a082fa",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-77b55cff-9f50-40d7-bdf7-3864b5a082fa",
+          "initialView": "client",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          }
+        },
+        "36bb4ef5-b38a-4923-a220-a9a1e3d6df27": {
+          "title": "02 — Альбом проекта · Заказчик",
+          "visualDirection": "Dark editorial project album",
+          "currentVersion": 5,
+          "previewUrl": "https://p.superdesign.dev/draft/36bb4ef5-b38a-4923-a220-a9a1e3d6df27",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-36bb4ef5-b38a-4923-a220-a9a1e3d6df27",
+          "initialView": "client",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          }
+        },
+        "e1268107-be1a-4b08-8aa6-d54da0e35649": {
+          "title": "03 · Маршрут · Заказчик · Компьютер",
+          "displayTitle": "Маршрут · Единая концепция · Заказчик · Компьютер",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/e1268107-be1a-4b08-8aa6-d54da0e35649",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-e1268107-be1a-4b08-8aa6-d54da0e35649",
+          "initialView": "client",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        },
+        "81c2b58f-c70a-40e5-90ce-4abd12c78108": {
+          "title": "03 · Маршрут · Заказчик · Телефон",
+          "displayTitle": "Маршрут · Единая концепция · Заказчик · Телефон",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/81c2b58f-c70a-40e5-90ce-4abd12c78108",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-81c2b58f-c70a-40e5-90ce-4abd12c78108",
+          "initialView": "client",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        },
+        "38162523-05e0-4821-87b3-19c08c8c2c04": {
+          "title": "03 · Маршрут · Администратор · Компьютер",
+          "displayTitle": "Маршрут · Единая концепция · Администратор · Компьютер",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/38162523-05e0-4821-87b3-19c08c8c2c04",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-38162523-05e0-4821-87b3-19c08c8c2c04",
+          "initialView": "admin",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        },
+        "e6032e04-8840-47bc-ae9a-928cb9df0547": {
+          "title": "03 · Маршрут · Администратор · Телефон",
+          "displayTitle": "Маршрут · Единая концепция · Администратор · Телефон",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/e6032e04-8840-47bc-ae9a-928cb9df0547",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-e6032e04-8840-47bc-ae9a-928cb9df0547",
+          "initialView": "admin",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        },
+        "154ac77e-8f80-4faa-b7ff-c95fb770eb87": {
+          "title": "03 · Маршрут · Согласование · Компьютер",
+          "displayTitle": "Маршрут · Единая концепция · Согласование · Компьютер",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/154ac77e-8f80-4faa-b7ff-c95fb770eb87",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-154ac77e-8f80-4faa-b7ff-c95fb770eb87",
+          "initialView": "material",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        },
+        "a460df1b-cb4c-41a0-8b89-c365ace4f2bc": {
+          "title": "03 · Маршрут · Согласование · Телефон",
+          "displayTitle": "Маршрут · Единая концепция · Согласование · Телефон",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/a460df1b-cb4c-41a0-8b89-c365ace4f2bc",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-a460df1b-cb4c-41a0-8b89-c365ace4f2bc",
+          "initialView": "material",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        },
+        "c53f2fcf-184e-4376-a413-2446bd172c05": {
+          "title": "Маршрут · Единая концепция · Галерея · Компьютер",
+          "displayTitle": "Маршрут · Единая концепция · Галерея · Компьютер",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 2,
+          "previewUrl": "https://p.superdesign.dev/draft/c53f2fcf-184e-4376-a413-2446bd172c05",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-c53f2fcf-184e-4376-a413-2446bd172c05",
+          "initialView": "gallery",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        },
+        "811ba94b-859d-45a9-a0fc-3ccc39af81ad": {
+          "title": "Маршрут · Единая концепция · Галерея · Телефон",
+          "displayTitle": "Маршрут · Единая концепция · Галерея · Телефон",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 2,
+          "previewUrl": "https://p.superdesign.dev/draft/811ba94b-859d-45a9-a0fc-3ccc39af81ad",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-811ba94b-859d-45a9-a0fc-3ccc39af81ad",
+          "initialView": "gallery",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "selectionPending": false,
+      "selectedDirection": "Unified Route: client C, administrator A, gallery B",
+      "finalApprovalPending": false,
+      "contentAssets": {
+        "e76dc454-ea36-49ea-912d-0ec8b0449e59": {
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/content-assets/itd-public-portfolio-bedroom/bedroom.webp",
+          "storagePath": "projects/0a91e369-2692-4bb7-8c12-0055f988924c/content-assets/itd-public-portfolio-bedroom/bedroom.webp",
+          "filename": "bedroom.webp",
+          "mimeType": "image/webp",
+          "size": 97142,
+          "purpose": "content",
+          "contentHash": "cb73b487e03b20c5d3cc697e53177800323f4d2a52d0bdce494ec46fcae8926a",
+          "nodeId": "e76dc454-ea36-49ea-912d-0ec8b0449e59"
+        },
+        "217482ff-17e8-4e02-a552-1b2f1b0735c8": {
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/content-assets/itd-public-portfolio-detail/detail.webp",
+          "storagePath": "projects/0a91e369-2692-4bb7-8c12-0055f988924c/content-assets/itd-public-portfolio-detail/detail.webp",
+          "filename": "detail.webp",
+          "mimeType": "image/webp",
+          "size": 96318,
+          "purpose": "content",
+          "contentHash": "cb47cfe329ba88b7e6e569d8d3b904d38a56f6c77955f413366939ec924a6f2c",
+          "nodeId": "217482ff-17e8-4e02-a552-1b2f1b0735c8"
+        }
+      },
+      "selectedContextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "selectedFingerprints": {
+        ".superdesign/design-system.md": "058e9db05d09a8fa1ec4eab166f0f98a219499be862e2407d4b749edb12e5a7e",
+        ".superdesign/context/unified-design.md": "325303fc44dd3b534aa9553ad04775c85f2490ebc7d6ae58a5623b00729e41fa",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "implementationAuthorized": true
+    },
+    "concept-a:client:desktop": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "77b55cff-9f50-40d7-bdf7-3864b5a082fa",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/prototypes/concept-a.html",
+        ".superdesign/context/baseline.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/prototypes/concept-a.html": "86271c0e25eb68feeb05fe2a603c387833b188cab301dec7d4fcff4e5c725468",
+        ".superdesign/context/baseline.css": "05e096a789c19172fa473de6ef069d583a5f0014b48c10efcf64ee75474a1b5f"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "77b55cff-9f50-40d7-bdf7-3864b5a082fa": {
+          "title": "01 · Рабочий стол · Заказчик",
+          "visualDirection": "Light workbench with sidebar and action priority",
+          "currentVersion": 5,
+          "previewUrl": "https://p.superdesign.dev/draft/77b55cff-9f50-40d7-bdf7-3864b5a082fa",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-77b55cff-9f50-40d7-bdf7-3864b5a082fa",
+          "initialView": "client",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          }
+        }
+      },
+      "updatedAt": "2026-11-10T14:20:04.448856+00:00"
+    },
+    "concept-a:client:mobile": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "4a445f34-f491-421e-8a5b-67112de968be",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/prototypes/concept-a.html",
+        ".superdesign/context/baseline.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/prototypes/concept-a.html": "86271c0e25eb68feeb05fe2a603c387833b188cab301dec7d4fcff4e5c725468",
+        ".superdesign/context/baseline.css": "05e096a789c19172fa473de6ef069d583a5f0014b48c10efcf64ee75474a1b5f"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "4a445f34-f491-421e-8a5b-67112de968be": {
+          "title": "01 · Рабочий стол · Заказчик · Телефон",
+          "visualDirection": "Light workbench with sidebar and action priority",
+          "currentVersion": 4,
+          "previewUrl": "https://p.superdesign.dev/draft/4a445f34-f491-421e-8a5b-67112de968be",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-4a445f34-f491-421e-8a5b-67112de968be",
+          "initialView": "client",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          }
+        }
+      },
+      "updatedAt": "2026-11-10T14:20:04.448856+00:00"
+    },
+    "concept-a:admin:desktop": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "6dba8b74-8d5d-43ad-bc55-1678b6235bc9",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/prototypes/concept-a.html",
+        ".superdesign/context/baseline.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/prototypes/concept-a.html": "86271c0e25eb68feeb05fe2a603c387833b188cab301dec7d4fcff4e5c725468",
+        ".superdesign/context/baseline.css": "05e096a789c19172fa473de6ef069d583a5f0014b48c10efcf64ee75474a1b5f"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "6dba8b74-8d5d-43ad-bc55-1678b6235bc9": {
+          "title": "01 · Рабочий стол · Администратор · Компьютер",
+          "visualDirection": "Light workbench with sidebar and action priority",
+          "currentVersion": 4,
+          "previewUrl": "https://p.superdesign.dev/draft/6dba8b74-8d5d-43ad-bc55-1678b6235bc9",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-6dba8b74-8d5d-43ad-bc55-1678b6235bc9",
+          "initialView": "admin",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          }
+        }
+      },
+      "updatedAt": "2026-11-10T14:20:04.448856+00:00"
+    },
+    "concept-a:admin:mobile": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "caff39af-c580-480a-9f88-c84978b762e7",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/prototypes/concept-a.html",
+        ".superdesign/context/baseline.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/prototypes/concept-a.html": "86271c0e25eb68feeb05fe2a603c387833b188cab301dec7d4fcff4e5c725468",
+        ".superdesign/context/baseline.css": "05e096a789c19172fa473de6ef069d583a5f0014b48c10efcf64ee75474a1b5f"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "caff39af-c580-480a-9f88-c84978b762e7": {
+          "title": "01 · Рабочий стол · Администратор · Телефон",
+          "visualDirection": "Light workbench with sidebar and action priority",
+          "currentVersion": 4,
+          "previewUrl": "https://p.superdesign.dev/draft/caff39af-c580-480a-9f88-c84978b762e7",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-caff39af-c580-480a-9f88-c84978b762e7",
+          "initialView": "admin",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          }
+        }
+      },
+      "updatedAt": "2026-11-10T14:20:04.448856+00:00"
+    },
+    "concept-a:material:desktop": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "737c0bb4-8b3d-405e-a504-942c7a1cdff1",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/prototypes/concept-a.html",
+        ".superdesign/context/baseline.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/prototypes/concept-a.html": "86271c0e25eb68feeb05fe2a603c387833b188cab301dec7d4fcff4e5c725468",
+        ".superdesign/context/baseline.css": "05e096a789c19172fa473de6ef069d583a5f0014b48c10efcf64ee75474a1b5f"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "737c0bb4-8b3d-405e-a504-942c7a1cdff1": {
+          "title": "01 · Рабочий стол · Согласование · Компьютер",
+          "visualDirection": "Light workbench with sidebar and action priority",
+          "currentVersion": 4,
+          "previewUrl": "https://p.superdesign.dev/draft/737c0bb4-8b3d-405e-a504-942c7a1cdff1",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-737c0bb4-8b3d-405e-a504-942c7a1cdff1",
+          "initialView": "material",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          }
+        }
+      },
+      "updatedAt": "2026-11-10T14:20:04.448856+00:00"
+    },
+    "concept-a:material:mobile": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "020a729f-4281-49c6-acfc-b1cb3609dee1",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/prototypes/concept-a.html",
+        ".superdesign/context/baseline.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/prototypes/concept-a.html": "86271c0e25eb68feeb05fe2a603c387833b188cab301dec7d4fcff4e5c725468",
+        ".superdesign/context/baseline.css": "05e096a789c19172fa473de6ef069d583a5f0014b48c10efcf64ee75474a1b5f"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "020a729f-4281-49c6-acfc-b1cb3609dee1": {
+          "title": "01 · Рабочий стол · Согласование · Телефон",
+          "visualDirection": "Light workbench with sidebar and action priority",
+          "currentVersion": 4,
+          "previewUrl": "https://p.superdesign.dev/draft/020a729f-4281-49c6-acfc-b1cb3609dee1",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-020a729f-4281-49c6-acfc-b1cb3609dee1",
+          "initialView": "material",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          }
+        }
+      },
+      "updatedAt": "2026-11-10T14:20:04.448856+00:00"
+    },
+    "concept-b:client:desktop": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "36bb4ef5-b38a-4923-a220-a9a1e3d6df27",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/prototypes/concept-b.html",
+        ".superdesign/context/baseline.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/prototypes/concept-b.html": "af87904329877c5983aeabd8e84e4119a6a7d07733427cd544c415c04486f2f8",
+        ".superdesign/context/baseline.css": "05e096a789c19172fa473de6ef069d583a5f0014b48c10efcf64ee75474a1b5f"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "36bb4ef5-b38a-4923-a220-a9a1e3d6df27": {
+          "title": "02 — Альбом проекта · Заказчик",
+          "visualDirection": "Dark editorial project album",
+          "currentVersion": 5,
+          "previewUrl": "https://p.superdesign.dev/draft/36bb4ef5-b38a-4923-a220-a9a1e3d6df27",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-36bb4ef5-b38a-4923-a220-a9a1e3d6df27",
+          "initialView": "client",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          }
+        }
+      },
+      "updatedAt": "2026-11-10T14:20:04.448856+00:00"
+    },
+    "concept-b:client:mobile": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "e5abf97c-cea6-4fad-b815-11f36c310886",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/prototypes/concept-b.html",
+        ".superdesign/context/baseline.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/prototypes/concept-b.html": "af87904329877c5983aeabd8e84e4119a6a7d07733427cd544c415c04486f2f8",
+        ".superdesign/context/baseline.css": "05e096a789c19172fa473de6ef069d583a5f0014b48c10efcf64ee75474a1b5f"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "e5abf97c-cea6-4fad-b815-11f36c310886": {
+          "title": "02 · Альбом проекта · Заказчик · Телефон",
+          "visualDirection": "Dark editorial project album",
+          "currentVersion": 4,
+          "previewUrl": "https://p.superdesign.dev/draft/e5abf97c-cea6-4fad-b815-11f36c310886",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-e5abf97c-cea6-4fad-b815-11f36c310886",
+          "initialView": "client",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          }
+        }
+      },
+      "updatedAt": "2026-11-10T14:20:04.448856+00:00"
+    },
+    "concept-b:admin:desktop": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "cf85e1f5-3fff-45b6-b7e2-574e1f392097",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/prototypes/concept-b.html",
+        ".superdesign/context/baseline.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/prototypes/concept-b.html": "af87904329877c5983aeabd8e84e4119a6a7d07733427cd544c415c04486f2f8",
+        ".superdesign/context/baseline.css": "05e096a789c19172fa473de6ef069d583a5f0014b48c10efcf64ee75474a1b5f"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "cf85e1f5-3fff-45b6-b7e2-574e1f392097": {
+          "title": "02 · Альбом проекта · Администратор · Компьютер",
+          "visualDirection": "Dark editorial project album",
+          "currentVersion": 4,
+          "previewUrl": "https://p.superdesign.dev/draft/cf85e1f5-3fff-45b6-b7e2-574e1f392097",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-cf85e1f5-3fff-45b6-b7e2-574e1f392097",
+          "initialView": "admin",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          }
+        }
+      },
+      "updatedAt": "2026-11-10T14:20:04.448856+00:00"
+    },
+    "concept-b:admin:mobile": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "1cf13c2e-3d52-4353-8f78-0edc9cc71a99",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/prototypes/concept-b.html",
+        ".superdesign/context/baseline.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/prototypes/concept-b.html": "af87904329877c5983aeabd8e84e4119a6a7d07733427cd544c415c04486f2f8",
+        ".superdesign/context/baseline.css": "05e096a789c19172fa473de6ef069d583a5f0014b48c10efcf64ee75474a1b5f"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "1cf13c2e-3d52-4353-8f78-0edc9cc71a99": {
+          "title": "02 · Альбом проекта · Администратор · Телефон",
+          "visualDirection": "Dark editorial project album",
+          "currentVersion": 4,
+          "previewUrl": "https://p.superdesign.dev/draft/1cf13c2e-3d52-4353-8f78-0edc9cc71a99",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-1cf13c2e-3d52-4353-8f78-0edc9cc71a99",
+          "initialView": "admin",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          }
+        }
+      },
+      "updatedAt": "2026-11-10T14:20:04.448856+00:00"
+    },
+    "concept-b:material:desktop": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "e520a2a2-c886-4656-b1ed-fdc3be4631e3",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/prototypes/concept-b.html",
+        ".superdesign/context/baseline.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/prototypes/concept-b.html": "af87904329877c5983aeabd8e84e4119a6a7d07733427cd544c415c04486f2f8",
+        ".superdesign/context/baseline.css": "05e096a789c19172fa473de6ef069d583a5f0014b48c10efcf64ee75474a1b5f"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "e520a2a2-c886-4656-b1ed-fdc3be4631e3": {
+          "title": "02 · Альбом проекта · Согласование · Компьютер",
+          "visualDirection": "Dark editorial project album",
+          "currentVersion": 4,
+          "previewUrl": "https://p.superdesign.dev/draft/e520a2a2-c886-4656-b1ed-fdc3be4631e3",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-e520a2a2-c886-4656-b1ed-fdc3be4631e3",
+          "initialView": "material",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          }
+        }
+      },
+      "updatedAt": "2026-11-10T14:20:04.448856+00:00"
+    },
+    "concept-b:material:mobile": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "344a7b31-9ffa-4c73-99ca-33c0aacb05a0",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/prototypes/concept-b.html",
+        ".superdesign/context/baseline.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/prototypes/concept-b.html": "af87904329877c5983aeabd8e84e4119a6a7d07733427cd544c415c04486f2f8",
+        ".superdesign/context/baseline.css": "05e096a789c19172fa473de6ef069d583a5f0014b48c10efcf64ee75474a1b5f"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "344a7b31-9ffa-4c73-99ca-33c0aacb05a0": {
+          "title": "02 · Альбом проекта · Согласование · Телефон",
+          "visualDirection": "Dark editorial project album",
+          "currentVersion": 4,
+          "previewUrl": "https://p.superdesign.dev/draft/344a7b31-9ffa-4c73-99ca-33c0aacb05a0",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-344a7b31-9ffa-4c73-99ca-33c0aacb05a0",
+          "initialView": "material",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          }
+        }
+      },
+      "updatedAt": "2026-11-10T14:20:04.448856+00:00"
+    },
+    "concept-c:client:desktop": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "e1268107-be1a-4b08-8aa6-d54da0e35649",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/unified-design.md": "cc9f1b1d26415e7e7fbaea596b95d38328e333c1ec515e3c0e4b20a311b70c41",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "e1268107-be1a-4b08-8aa6-d54da0e35649": {
+          "title": "03 · Маршрут · Заказчик · Компьютер",
+          "displayTitle": "Маршрут · Единая концепция · Заказчик · Компьютер",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/e1268107-be1a-4b08-8aa6-d54da0e35649",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-e1268107-be1a-4b08-8aa6-d54da0e35649",
+          "initialView": "client",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "finalApprovalPending": false,
+      "implementationAuthorized": true
+    },
+    "concept-c:client:mobile": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "81c2b58f-c70a-40e5-90ce-4abd12c78108",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/unified-design.md": "cc9f1b1d26415e7e7fbaea596b95d38328e333c1ec515e3c0e4b20a311b70c41",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "81c2b58f-c70a-40e5-90ce-4abd12c78108": {
+          "title": "03 · Маршрут · Заказчик · Телефон",
+          "displayTitle": "Маршрут · Единая концепция · Заказчик · Телефон",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/81c2b58f-c70a-40e5-90ce-4abd12c78108",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-81c2b58f-c70a-40e5-90ce-4abd12c78108",
+          "initialView": "client",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "finalApprovalPending": false,
+      "implementationAuthorized": true
+    },
+    "concept-c:admin:desktop": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "38162523-05e0-4821-87b3-19c08c8c2c04",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/unified-design.md": "cc9f1b1d26415e7e7fbaea596b95d38328e333c1ec515e3c0e4b20a311b70c41",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "38162523-05e0-4821-87b3-19c08c8c2c04": {
+          "title": "03 · Маршрут · Администратор · Компьютер",
+          "displayTitle": "Маршрут · Единая концепция · Администратор · Компьютер",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/38162523-05e0-4821-87b3-19c08c8c2c04",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-38162523-05e0-4821-87b3-19c08c8c2c04",
+          "initialView": "admin",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "finalApprovalPending": false,
+      "implementationAuthorized": true
+    },
+    "concept-c:admin:mobile": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "e6032e04-8840-47bc-ae9a-928cb9df0547",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/unified-design.md": "cc9f1b1d26415e7e7fbaea596b95d38328e333c1ec515e3c0e4b20a311b70c41",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "e6032e04-8840-47bc-ae9a-928cb9df0547": {
+          "title": "03 · Маршрут · Администратор · Телефон",
+          "displayTitle": "Маршрут · Единая концепция · Администратор · Телефон",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/e6032e04-8840-47bc-ae9a-928cb9df0547",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-e6032e04-8840-47bc-ae9a-928cb9df0547",
+          "initialView": "admin",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "finalApprovalPending": false,
+      "implementationAuthorized": true
+    },
+    "concept-c:material:desktop": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "154ac77e-8f80-4faa-b7ff-c95fb770eb87",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/unified-design.md": "cc9f1b1d26415e7e7fbaea596b95d38328e333c1ec515e3c0e4b20a311b70c41",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "154ac77e-8f80-4faa-b7ff-c95fb770eb87": {
+          "title": "03 · Маршрут · Согласование · Компьютер",
+          "displayTitle": "Маршрут · Единая концепция · Согласование · Компьютер",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/154ac77e-8f80-4faa-b7ff-c95fb770eb87",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-154ac77e-8f80-4faa-b7ff-c95fb770eb87",
+          "initialView": "material",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "finalApprovalPending": false,
+      "implementationAuthorized": true
+    },
+    "concept-c:material:mobile": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "a460df1b-cb4c-41a0-8b89-c365ace4f2bc",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "877132b5-75af-4048-adab-4182306351da",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/unified-design.md": "cc9f1b1d26415e7e7fbaea596b95d38328e333c1ec515e3c0e4b20a311b70c41",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "a460df1b-cb4c-41a0-8b89-c365ace4f2bc": {
+          "title": "03 · Маршрут · Согласование · Телефон",
+          "displayTitle": "Маршрут · Единая концепция · Согласование · Телефон",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/a460df1b-cb4c-41a0-8b89-c365ace4f2bc",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-a460df1b-cb4c-41a0-8b89-c365ace4f2bc",
+          "initialView": "material",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "finalApprovalPending": false,
+      "implementationAuthorized": true
+    },
+    "unified:client:desktop": {
+      "targetKind": "existing-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "e1268107-be1a-4b08-8aa6-d54da0e35649",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "e1268107-be1a-4b08-8aa6-d54da0e35649",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/unified-design.md": "cc9f1b1d26415e7e7fbaea596b95d38328e333c1ec515e3c0e4b20a311b70c41",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c",
+        "e76dc454-ea36-49ea-912d-0ec8b0449e59",
+        "217482ff-17e8-4e02-a552-1b2f1b0735c8"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "e1268107-be1a-4b08-8aa6-d54da0e35649": {
+          "title": "03 · Маршрут · Заказчик · Компьютер",
+          "displayTitle": "Маршрут · Единая концепция · Заказчик · Компьютер",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/e1268107-be1a-4b08-8aa6-d54da0e35649",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-e1268107-be1a-4b08-8aa6-d54da0e35649",
+          "initialView": "client",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "finalApprovalPending": false,
+      "implementationAuthorized": true
+    },
+    "unified:client:mobile": {
+      "targetKind": "existing-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "81c2b58f-c70a-40e5-90ce-4abd12c78108",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "e1268107-be1a-4b08-8aa6-d54da0e35649",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/unified-design.md": "cc9f1b1d26415e7e7fbaea596b95d38328e333c1ec515e3c0e4b20a311b70c41",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c",
+        "e76dc454-ea36-49ea-912d-0ec8b0449e59",
+        "217482ff-17e8-4e02-a552-1b2f1b0735c8"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "81c2b58f-c70a-40e5-90ce-4abd12c78108": {
+          "title": "03 · Маршрут · Заказчик · Телефон",
+          "displayTitle": "Маршрут · Единая концепция · Заказчик · Телефон",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/81c2b58f-c70a-40e5-90ce-4abd12c78108",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-81c2b58f-c70a-40e5-90ce-4abd12c78108",
+          "initialView": "client",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "finalApprovalPending": false,
+      "implementationAuthorized": true
+    },
+    "unified:admin:desktop": {
+      "targetKind": "existing-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "38162523-05e0-4821-87b3-19c08c8c2c04",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "e1268107-be1a-4b08-8aa6-d54da0e35649",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/unified-design.md": "cc9f1b1d26415e7e7fbaea596b95d38328e333c1ec515e3c0e4b20a311b70c41",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c",
+        "e76dc454-ea36-49ea-912d-0ec8b0449e59",
+        "217482ff-17e8-4e02-a552-1b2f1b0735c8"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "38162523-05e0-4821-87b3-19c08c8c2c04": {
+          "title": "03 · Маршрут · Администратор · Компьютер",
+          "displayTitle": "Маршрут · Единая концепция · Администратор · Компьютер",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/38162523-05e0-4821-87b3-19c08c8c2c04",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-38162523-05e0-4821-87b3-19c08c8c2c04",
+          "initialView": "admin",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "finalApprovalPending": false,
+      "implementationAuthorized": true
+    },
+    "unified:admin:mobile": {
+      "targetKind": "existing-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "e6032e04-8840-47bc-ae9a-928cb9df0547",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "e1268107-be1a-4b08-8aa6-d54da0e35649",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/unified-design.md": "cc9f1b1d26415e7e7fbaea596b95d38328e333c1ec515e3c0e4b20a311b70c41",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c",
+        "e76dc454-ea36-49ea-912d-0ec8b0449e59",
+        "217482ff-17e8-4e02-a552-1b2f1b0735c8"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "e6032e04-8840-47bc-ae9a-928cb9df0547": {
+          "title": "03 · Маршрут · Администратор · Телефон",
+          "displayTitle": "Маршрут · Единая концепция · Администратор · Телефон",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/e6032e04-8840-47bc-ae9a-928cb9df0547",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-e6032e04-8840-47bc-ae9a-928cb9df0547",
+          "initialView": "admin",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "finalApprovalPending": false,
+      "implementationAuthorized": true
+    },
+    "unified:material:desktop": {
+      "targetKind": "existing-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "154ac77e-8f80-4faa-b7ff-c95fb770eb87",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "e1268107-be1a-4b08-8aa6-d54da0e35649",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/unified-design.md": "cc9f1b1d26415e7e7fbaea596b95d38328e333c1ec515e3c0e4b20a311b70c41",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c",
+        "e76dc454-ea36-49ea-912d-0ec8b0449e59",
+        "217482ff-17e8-4e02-a552-1b2f1b0735c8"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "154ac77e-8f80-4faa-b7ff-c95fb770eb87": {
+          "title": "03 · Маршрут · Согласование · Компьютер",
+          "displayTitle": "Маршрут · Единая концепция · Согласование · Компьютер",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/154ac77e-8f80-4faa-b7ff-c95fb770eb87",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-154ac77e-8f80-4faa-b7ff-c95fb770eb87",
+          "initialView": "material",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "finalApprovalPending": false,
+      "implementationAuthorized": true
+    },
+    "unified:material:mobile": {
+      "targetKind": "existing-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "a460df1b-cb4c-41a0-8b89-c365ace4f2bc",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "e1268107-be1a-4b08-8aa6-d54da0e35649",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/unified-design.md": "cc9f1b1d26415e7e7fbaea596b95d38328e333c1ec515e3c0e4b20a311b70c41",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c",
+        "e76dc454-ea36-49ea-912d-0ec8b0449e59",
+        "217482ff-17e8-4e02-a552-1b2f1b0735c8"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "a460df1b-cb4c-41a0-8b89-c365ace4f2bc": {
+          "title": "03 · Маршрут · Согласование · Телефон",
+          "displayTitle": "Маршрут · Единая концепция · Согласование · Телефон",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 6,
+          "previewUrl": "https://p.superdesign.dev/draft/a460df1b-cb4c-41a0-8b89-c365ace4f2bc",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-a460df1b-cb4c-41a0-8b89-c365ace4f2bc",
+          "initialView": "material",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "finalApprovalPending": false,
+      "implementationAuthorized": true
+    },
+    "unified:gallery:desktop": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "c53f2fcf-184e-4376-a413-2446bd172c05",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "e1268107-be1a-4b08-8aa6-d54da0e35649",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/unified-design.md": "cc9f1b1d26415e7e7fbaea596b95d38328e333c1ec515e3c0e4b20a311b70c41",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c",
+        "e76dc454-ea36-49ea-912d-0ec8b0449e59",
+        "217482ff-17e8-4e02-a552-1b2f1b0735c8"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "c53f2fcf-184e-4376-a413-2446bd172c05": {
+          "title": "Маршрут · Единая концепция · Галерея · Компьютер",
+          "displayTitle": "Маршрут · Единая концепция · Галерея · Компьютер",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 2,
+          "previewUrl": "https://p.superdesign.dev/draft/c53f2fcf-184e-4376-a413-2446bd172c05",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-c53f2fcf-184e-4376-a413-2446bd172c05",
+          "initialView": "gallery",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "finalApprovalPending": false,
+      "implementationAuthorized": true
+    },
+    "unified:gallery:mobile": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "811ba94b-859d-45a9-a0fc-3ccc39af81ad",
+      "sourceTarget": "cabinet-concepts",
+      "sourceDraftId": "e1268107-be1a-4b08-8aa6-d54da0e35649",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/context/unified-design.md",
+        ".superdesign/prototypes/unified.html:1:29",
+        ".superdesign/prototypes/unified.html:30:100",
+        ".superdesign/prototypes/unified.html:101:114"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f",
+        ".superdesign/context/unified-design.md": "cc9f1b1d26415e7e7fbaea596b95d38328e333c1ec515e3c0e4b20a311b70c41",
+        ".superdesign/prototypes/unified.html": "4e0b6aa0ffe7e3b0877e1db5811db789277ffe904a51de16aff277d18e1659ff"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg",
+        "9759a23f-3ed5-48a3-a51c-f1d719ce105c",
+        "e76dc454-ea36-49ea-912d-0ec8b0449e59",
+        "217482ff-17e8-4e02-a552-1b2f1b0735c8"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "itd-official-logo.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/0a91e369-2692-4bb7-8c12-0055f988924c/brand-assets/itd-official-logo.svg/logo.svg"
+        }
+      },
+      "components": [],
+      "drafts": {
+        "811ba94b-859d-45a9-a0fc-3ccc39af81ad": {
+          "title": "Маршрут · Единая концепция · Галерея · Телефон",
+          "displayTitle": "Маршрут · Единая концепция · Галерея · Телефон",
+          "visualDirection": "Unified Route: C client, A administrator, B gallery",
+          "currentVersion": 2,
+          "previewUrl": "https://p.superdesign.dev/draft/811ba94b-859d-45a9-a0fc-3ccc39af81ad",
+          "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-811ba94b-859d-45a9-a0fc-3ccc39af81ad",
+          "initialView": "gallery",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "prototypePath": ".superdesign/prototypes/unified.html"
+        }
+      },
+      "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+      "finalApprovalPending": false,
+      "implementationAuthorized": true
+    }
+  }
+}

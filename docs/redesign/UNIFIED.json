@@ -1,0 +1,180 @@
+{
+  "updatedAt": "2026-11-10T19:26:54.746773+00:00",
+  "branch": "feature/itd-superdesign-redesign",
+  "approval": "approved-for-implementation",
+  "screens": [
+    {
+      "view": "client",
+      "mobile": false,
+      "title": "03 · Маршрут · Заказчик · Компьютер",
+      "sourceFile": ".superdesign/tmp/unified-client.html",
+      "draftId": "e1268107-be1a-4b08-8aa6-d54da0e35649",
+      "currentVersion": 6,
+      "projectUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c",
+      "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-e1268107-be1a-4b08-8aa6-d54da0e35649",
+      "previewUrl": "https://p.superdesign.dev/draft/e1268107-be1a-4b08-8aa6-d54da0e35649",
+      "verifiedLogo": true,
+      "verifiedSource": true,
+      "prototypePath": ".superdesign/prototypes/unified.html",
+      "initialView": "client",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "visualDirection": "Unified Route: C client, A administrator, B gallery",
+      "displayTitle": "Маршрут · Единая концепция · Заказчик · Компьютер"
+    },
+    {
+      "view": "client",
+      "mobile": true,
+      "title": "03 · Маршрут · Заказчик · Телефон",
+      "sourceFile": ".superdesign/tmp/unified-client.html",
+      "draftId": "81c2b58f-c70a-40e5-90ce-4abd12c78108",
+      "currentVersion": 6,
+      "projectUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c",
+      "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-81c2b58f-c70a-40e5-90ce-4abd12c78108",
+      "previewUrl": "https://p.superdesign.dev/draft/81c2b58f-c70a-40e5-90ce-4abd12c78108",
+      "verifiedLogo": true,
+      "verifiedSource": true,
+      "prototypePath": ".superdesign/prototypes/unified.html",
+      "initialView": "client",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "visualDirection": "Unified Route: C client, A administrator, B gallery",
+      "displayTitle": "Маршрут · Единая концепция · Заказчик · Телефон"
+    },
+    {
+      "view": "admin",
+      "mobile": false,
+      "title": "03 · Маршрут · Администратор · Компьютер",
+      "sourceFile": ".superdesign/tmp/unified-admin.html",
+      "draftId": "38162523-05e0-4821-87b3-19c08c8c2c04",
+      "currentVersion": 6,
+      "projectUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c",
+      "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-38162523-05e0-4821-87b3-19c08c8c2c04",
+      "previewUrl": "https://p.superdesign.dev/draft/38162523-05e0-4821-87b3-19c08c8c2c04",
+      "verifiedLogo": true,
+      "verifiedSource": true,
+      "prototypePath": ".superdesign/prototypes/unified.html",
+      "initialView": "admin",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "visualDirection": "Unified Route: C client, A administrator, B gallery",
+      "displayTitle": "Маршрут · Единая концепция · Администратор · Компьютер"
+    },
+    {
+      "view": "admin",
+      "mobile": true,
+      "title": "03 · Маршрут · Администратор · Телефон",
+      "sourceFile": ".superdesign/tmp/unified-admin.html",
+      "draftId": "e6032e04-8840-47bc-ae9a-928cb9df0547",
+      "currentVersion": 6,
+      "projectUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c",
+      "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-e6032e04-8840-47bc-ae9a-928cb9df0547",
+      "previewUrl": "https://p.superdesign.dev/draft/e6032e04-8840-47bc-ae9a-928cb9df0547",
+      "verifiedLogo": true,
+      "verifiedSource": true,
+      "prototypePath": ".superdesign/prototypes/unified.html",
+      "initialView": "admin",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "visualDirection": "Unified Route: C client, A administrator, B gallery",
+      "displayTitle": "Маршрут · Единая концепция · Администратор · Телефон"
+    },
+    {
+      "view": "material",
+      "mobile": false,
+      "title": "03 · Маршрут · Согласование · Компьютер",
+      "sourceFile": ".superdesign/tmp/unified-material.html",
+      "draftId": "154ac77e-8f80-4faa-b7ff-c95fb770eb87",
+      "currentVersion": 6,
+      "projectUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c",
+      "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-154ac77e-8f80-4faa-b7ff-c95fb770eb87",
+      "previewUrl": "https://p.superdesign.dev/draft/154ac77e-8f80-4faa-b7ff-c95fb770eb87",
+      "verifiedLogo": true,
+      "verifiedSource": true,
+      "prototypePath": ".superdesign/prototypes/unified.html",
+      "initialView": "material",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "visualDirection": "Unified Route: C client, A administrator, B gallery",
+      "displayTitle": "Маршрут · Единая концепция · Согласование · Компьютер"
+    },
+    {
+      "view": "material",
+      "mobile": true,
+      "title": "03 · Маршрут · Согласование · Телефон",
+      "sourceFile": ".superdesign/tmp/unified-material.html",
+      "draftId": "a460df1b-cb4c-41a0-8b89-c365ace4f2bc",
+      "currentVersion": 6,
+      "projectUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c",
+      "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-a460df1b-cb4c-41a0-8b89-c365ace4f2bc",
+      "previewUrl": "https://p.superdesign.dev/draft/a460df1b-cb4c-41a0-8b89-c365ace4f2bc",
+      "verifiedLogo": true,
+      "verifiedSource": true,
+      "prototypePath": ".superdesign/prototypes/unified.html",
+      "initialView": "material",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "visualDirection": "Unified Route: C client, A administrator, B gallery",
+      "displayTitle": "Маршрут · Единая концепция · Согласование · Телефон"
+    },
+    {
+      "view": "gallery",
+      "mobile": false,
+      "title": "Маршрут · Единая концепция · Галерея · Компьютер",
+      "sourceFile": ".superdesign/tmp/unified-gallery.html",
+      "draftId": "c53f2fcf-184e-4376-a413-2446bd172c05",
+      "currentVersion": 2,
+      "projectUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c",
+      "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-c53f2fcf-184e-4376-a413-2446bd172c05",
+      "previewUrl": "https://p.superdesign.dev/draft/c53f2fcf-184e-4376-a413-2446bd172c05",
+      "verifiedLogo": true,
+      "verifiedSource": true,
+      "prototypePath": ".superdesign/prototypes/unified.html",
+      "initialView": "gallery",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "visualDirection": "Unified Route: C client, A administrator, B gallery",
+      "displayTitle": "Маршрут · Единая концепция · Галерея · Компьютер"
+    },
+    {
+      "view": "gallery",
+      "mobile": true,
+      "title": "Маршрут · Единая концепция · Галерея · Телефон",
+      "sourceFile": ".superdesign/tmp/unified-gallery.html",
+      "draftId": "811ba94b-859d-45a9-a0fc-3ccc39af81ad",
+      "currentVersion": 2,
+      "projectUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c",
+      "nodeUrl": "https://superdesign.dev/teams/5332d9b8-b683-4fce-bfb4-487cc53f72e0/projects/0a91e369-2692-4bb7-8c12-0055f988924c?node=draft-variant-811ba94b-859d-45a9-a0fc-3ccc39af81ad",
+      "previewUrl": "https://p.superdesign.dev/draft/811ba94b-859d-45a9-a0fc-3ccc39af81ad",
+      "verifiedLogo": true,
+      "verifiedSource": true,
+      "prototypePath": ".superdesign/prototypes/unified.html",
+      "initialView": "gallery",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "visualDirection": "Unified Route: C client, A administrator, B gallery",
+      "displayTitle": "Маршрут · Единая концепция · Галерея · Телефон"
+    }
+  ],
+  "implementation": {
+    "branch": "feature/itd-superdesign-redesign",
+    "productionDeploymentAuthorized": false,
+    "report": "docs/redesign/IMPLEMENTATION.md"
+  }
+}

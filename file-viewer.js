@@ -45,7 +45,9 @@
     source,
     opener,
     viewerUrl;
-  let renderedCallback = null, reportedOpen = false;
+  let renderedCallback = null,
+    discussCallback = null,
+    reportedOpen = false;
   function reportRendered() {
     if (!dialog.open || !current || reportedOpen) return;
     reportedOpen = true;
@@ -86,7 +88,19 @@
   download.className = "viewer-download";
   toolbar.append(title, button("Закрыть", close));
   const controls = el("div", undefined, "viewer-controls");
-  controls.append(prev, next, minus, reset, plus, download);
+  const discuss = button("Комментарий к версии", async () => {
+    const file = current;
+    close();
+    try {
+      await discussCallback?.(file);
+    } catch (error) {
+      window.dispatchEvent(
+        new CustomEvent("itd-viewer-error", { detail: error.message }),
+      );
+    }
+  });
+  discuss.hidden = true;
+  controls.append(prev, next, minus, reset, plus, download, discuss);
   dialog.append(toolbar, controls, status, viewport);
   document.body.append(dialog);
   dialog.addEventListener("cancel", (event) => {
@@ -123,6 +137,52 @@
     },
     { passive: true },
   );
+  let pinch,
+    lastTap = 0;
+  const distance = (touches) =>
+    Math.hypot(
+      touches[0].clientX - touches[1].clientX,
+      touches[0].clientY - touches[1].clientY,
+    );
+  viewport.addEventListener(
+    "touchstart",
+    (e) => {
+      if (!image(current)) return;
+      if (e.touches.length === 2) {
+        pinch = { distance: distance(e.touches), zoom };
+        touch = null;
+      } else if (e.touches.length === 1) {
+        const now = Date.now();
+        if (now - lastTap < 280) {
+          e.preventDefault();
+          setZoom(zoom > 1 ? 1 : 2);
+          touch = null;
+        }
+        lastTap = now;
+      }
+    },
+    { passive: false },
+  );
+  viewport.addEventListener(
+    "touchmove",
+    (e) => {
+      if (!pinch || e.touches.length !== 2 || !image(current)) return;
+      e.preventDefault();
+      touch = null;
+      setZoom((pinch.zoom * distance(e.touches)) / Math.max(1, pinch.distance));
+    },
+    { passive: false },
+  );
+  viewport.addEventListener(
+    "touchend",
+    () => {
+      pinch = null;
+    },
+    { passive: true },
+  );
+  viewport.addEventListener("dblclick", (e) => {
+    if (image(current) && e.target === source) setZoom(zoom > 1 ? 1 : 2);
+  });
   dialog.addEventListener("keydown", (e) => {
     if (e.key === "ArrowRight" && zoom === 1) {
       e.preventDefault();
@@ -141,7 +201,7 @@
         ? page >= pages
         : index >= collection.length - 1;
     minus.disabled = zoom <= 0.5;
-    plus.disabled = zoom >= 3;
+    plus.disabled = zoom >= 4;
     reset.textContent = `Сбросить масштаб (${Math.round(zoom * 100)}%)`;
   }
   function showError(e) {
@@ -188,7 +248,7 @@
     }
   }
   function setZoom(value) {
-    zoom = Math.min(3, Math.max(0.5, value));
+    zoom = Math.min(4, Math.max(0.5, value));
     if (image(current)) imageZoom.set(current.id, zoom);
     if (pdf) renderPdf();
     else if (source) {
@@ -231,6 +291,7 @@
     pages = 1;
     const token = generation;
     controller = new AbortController();
+    discuss.hidden = !file.review || !discussCallback;
     title.textContent = file.name;
     title.title = image(file) ? file.name : "";
     if (image(file)) viewport.scrollTo(0, 0);
@@ -319,6 +380,7 @@
     return b;
   }
   const pendingThumbs = new Map();
+  const thumbnailRecords = new Map();
   const observer = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
@@ -332,12 +394,19 @@
     },
     { rootMargin: "120px" },
   );
-  function thumbnail(file, files) {
+  function thumbnail(file, files, options = {}) {
     const card = el("div", undefined, "gallery-card"),
-      b = control(file, files, "");
+      b = options.onOpen
+        ? button("", () => options.onOpen(file))
+        : control(file, files, "");
+    b.setAttribute(
+      "aria-label",
+      options.label || `Открыть материал: ${file.name}`,
+    );
     b.className = "gallery-open";
     const img = el("img");
     img.alt = file.name;
+    img.onload = () => options.onLoad?.(file, img);
     img.onerror = () => {
       img.remove();
       b.prepend(el("span", "Изображение недоступно", "thumbnail-error"));
@@ -348,10 +417,13 @@
     card.append(b);
     const stamp = epoch;
     thumbs.add(img);
+    const record = { card, controller: null, url: null };
+    thumbnailRecords.set(img, record);
     pendingThumbs.set(card, () => {
       if (stamp !== epoch) return;
       const c = new AbortController();
       controllers.add(c);
+      record.controller = c;
       fetch(`/api/files/${file.id}/preview`, {
         credentials: "same-origin",
         signal: c.signal,
@@ -365,8 +437,9 @@
           return r.blob();
         })
         .then((blob) => {
-          if (stamp !== epoch) return;
+          if (stamp !== epoch || !thumbnailRecords.has(img)) return;
           const url = URL.createObjectURL(blob);
+          record.url = url;
           urls.add(url);
           img.src = url;
         })
@@ -380,6 +453,22 @@
     });
     observer.observe(card);
     return card;
+  }
+  function releaseWithin(host) {
+    if (!host) return;
+    for (const [img, record] of thumbnailRecords) {
+      if (!host.contains(img)) continue;
+      observer.unobserve(record.card);
+      pendingThumbs.delete(record.card);
+      record.controller?.abort();
+      controllers.delete(record.controller);
+      if (record.url) {
+        URL.revokeObjectURL(record.url);
+        urls.delete(record.url);
+      }
+      thumbs.delete(img);
+      thumbnailRecords.delete(img);
+    }
   }
   let resizeTimer;
   const resizeObserver = new ResizeObserver(() => {
@@ -395,6 +484,7 @@
     epoch++;
     observer.disconnect();
     pendingThumbs.clear();
+    thumbnailRecords.clear();
     clearTimeout(resizeTimer);
     close();
     controllers.forEach((c) => c.abort());
@@ -409,5 +499,18 @@
     current = null;
     collection = [];
   }
-  window.ITDViewer = { supported, image, control, thumbnail, invalidate, onRendered: callback => {renderedCallback = callback;} };
+  window.ITDViewer = {
+    onDiscuss: (callback) => {
+      discussCallback = callback;
+    },
+    supported,
+    image,
+    control,
+    thumbnail,
+    releaseWithin,
+    invalidate,
+    onRendered: (callback) => {
+      renderedCallback = callback;
+    },
+  };
 })();

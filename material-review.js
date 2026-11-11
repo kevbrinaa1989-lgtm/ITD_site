@@ -48,10 +48,12 @@
       (id === undefined || project?.id === id);
   const notice = (text) => {
     $("review-message").textContent = text;
+    if (sheet?.notice) sheet.notice.textContent = text;
   };
   function button(text, callback, cls = "text-button") {
     const n = el("button", text, cls);
     n.type = "button";
+    n.setAttribute("aria-label", text);
     n.addEventListener("click", async () => {
       const generation = epoch;
       try {
@@ -63,6 +65,11 @@
     return n;
   }
   function reset() {
+    closeSheet();
+    window.ITDMaterialPreview.clear();
+    drafts.clear();
+    document.body.classList.remove("review-detail-open");
+    $("panel-review").classList.remove("has-selection");
     epoch++;
     detailSeq++;
     listSeq++;
@@ -91,10 +98,8 @@
   }
   function fileControls(file) {
     const n = el("div", undefined, "review-file-actions");
-    if (window.ITDViewer.supported(file))
-      n.append(window.ITDViewer.control(file, [file], "Посмотреть"));
-    else n.append(el("span", "Предпросмотр недоступен", "file-meta"));
     const link = el("a", "Скачать", "file-download");
+    link.setAttribute("aria-label", "Скачать");
     link.href = `/api/files/${file.id}/download`;
     link.download = file.name;
     n.append(link);
@@ -106,30 +111,87 @@
     return `Просмотрено ${date(view.lastViewedAt)}`;
   }
 
-  // The material title is set when version 1 is uploaded; later versions may
-  // have a different file type. Keep the readable title, but derive its file
-  // extension from the selected version rather than the original upload.
-  function versionFileName(material, version) {
-    const actual = String(version?.file?.name || "").trim();
-    const title = String(material?.title || "").trim() || actual || "Материал";
-    const match = actual.match(/\.([A-Za-z0-9]{2,10})$/);
-    if (!match) return title;
-    const ext = match[1].toLowerCase();
-    const base = title.replace(/\.(?:pdf|jpe?g|png|webp|gif|svg|dwg|dxf|docx?|xlsx?|pptx?|txt|zip|rar|7z)$/i, "");
-    return `${base || title}.${ext}`;
+  const materialTitle = (material) =>
+    window.ITDUI.materialTitle(material.title);
+  const drafts = new Map();
+  let sheet = null;
+  function closeSheet() {
+    if (!sheet) return;
+    const { dialog, pane, marker, trigger } = sheet;
+    sheet = null;
+    marker.replaceWith(pane);
+    dialog.close();
+    dialog.remove();
+    if (trigger?.isConnected) trigger.focus({ preventScroll: true });
   }
-  function presentedFile(material, version) {
-    // Only the label used by the viewer/download changes; the stored file ID,
-    // content type and original name in the database are untouched.
-    return { ...version.file, name: versionFileName(material, version) };
+  function showSheet(pane, title) {
+    if (!pane) return;
+    pane.hidden = false;
+    if (pane.tagName === "DETAILS") pane.open = true;
+    if (!matchMedia("(max-width: 767px)").matches) {
+      pane.scrollIntoView({ block: "nearest" });
+      pane.querySelector("textarea")?.focus();
+      return;
+    }
+    closeSheet();
+    const dialog = el("dialog", undefined, "review-sheet"),
+      marker = document.createComment("discussion");
+    const trigger = document.activeElement;
+    pane.before(marker);
+    dialog.setAttribute("aria-label", title);
+    const heading = el("div", undefined, "review-sheet-heading");
+    heading.append(el("h2", title), button("Закрыть", closeSheet));
+    const feedback = el("p", "", "review-sheet-message");
+    feedback.setAttribute("role", "status");
+    dialog.append(heading, feedback, pane);
+    document.body.append(dialog);
+    sheet = { dialog, pane, marker, trigger, notice: feedback };
+    dialog.addEventListener("cancel", (e) => {
+      e.preventDefault();
+      closeSheet();
+    });
+    dialog.showModal();
+  }
+  function openDiscussion() {
+    showSheet(
+      $("review-comment-form")?.closest(".review-comments-pane"),
+      "Обсуждение версии",
+    );
+  }
+  function closeDetail() {
+    detailSeq++;
+    closeSheet();
+    window.ITDMaterialPreview.clear();
+    $("review-material-detail").hidden = true;
+    $("panel-review").classList.remove("has-selection");
+    document.body.classList.remove("review-detail-open");
+    $("review-material-list").querySelector(".is-selected button")?.focus();
   }
   function fileTile(file) {
     const name = String(file?.name || "");
-    const extension = name.match(/\.([A-Za-z0-9]{2,5})$/)?.[1]?.toUpperCase() || "ФАЙЛ";
-    const type = ["PDF", "DWG", "DXF", "JPG", "JPEG", "PNG", "WEBP", "DOC", "DOCX", "XLS", "XLSX"].includes(extension) ? extension : "ФАЙЛ";
+    const extension =
+      name.match(/\.([A-Za-z0-9]{2,5})$/)?.[1]?.toUpperCase() || "ФАЙЛ";
+    const type = [
+      "PDF",
+      "DWG",
+      "DXF",
+      "JPG",
+      "JPEG",
+      "PNG",
+      "WEBP",
+      "DOC",
+      "DOCX",
+      "XLS",
+      "XLSX",
+    ].includes(extension)
+      ? extension
+      : "ФАЙЛ";
     const badge = el("div", undefined, "review-file-tile");
     badge.setAttribute("aria-hidden", "true");
-    badge.append(el("span", "▤", "review-file-tile-icon"), el("span", type === "JPEG" ? "JPG" : type, "review-file-tile-type"));
+    badge.append(
+      el("span", "▤", "review-file-tile-icon"),
+      el("span", type === "JPEG" ? "JPG" : type, "review-file-tile-type"),
+    );
     return badge;
   }
   function statusTag(value) {
@@ -146,23 +208,49 @@
     const main = el("div", undefined, "review-card-main");
     const copy = el("div", undefined, "review-card-copy");
     copy.append(
-      el("p", `${stage?.title || "Этап"}${admin() ? ` · ${project.title} · ${project.clientName || "Без клиента"}` : ""}`, "review-context"),
-      el("h3", versionFileName(material, v)),
-      el("p", `Версия ${v.versionNumber} · ${date(v.createdAt)} · ${v.uploadedByName || "Студия"}`, "file-meta"),
+      el(
+        "p",
+        `${stage?.title || "Этап"}${admin() ? ` · ${project.title} · ${project.clientName || "Без клиента"}` : ""}`,
+        "review-context",
+      ),
+      el("h3", materialTitle(material)),
+      el(
+        "p",
+        `Версия ${v.versionNumber} · ${date(v.createdAt)} · ${v.uploadedByName || "Студия"}`,
+        "file-meta",
+      ),
       statusTag(v.status),
     );
     if (admin()) copy.append(el("p", viewLabel(v), "review-view-status"));
-    if (v.decisionAt) copy.append(el("p", `${v.decisionByName || "Клиент"} · ${date(v.decisionAt)}`, "file-meta"));
+    if (v.decisionAt)
+      copy.append(
+        el(
+          "p",
+          `${v.decisionByName || "Клиент"} · ${date(v.decisionAt)}`,
+          "file-meta",
+        ),
+      );
     main.append(fileTile(v.file), copy);
     const actions = el("div", undefined, "review-card-action-area");
     actions.append(
-      fileControls(presentedFile(material, v)),
-      button("Открыть согласование и комментарии", () => open(material.id, v.id), "primary review-open-button"),
+      button(
+        "Открыть согласование и комментарии",
+        () => open(material.id, v.id),
+        "primary review-open-button",
+      ),
     );
     n.append(main, actions);
     return n;
   }
   function matches(material) {
+    const query = $("review-search").value.trim().toLocaleLowerCase("ru-RU");
+    if (
+      query &&
+      !`${material.title} ${material.currentVersion.file.name}`
+        .toLocaleLowerCase("ru-RU")
+        .includes(query)
+    )
+      return false;
     const f = $("review-filter").value;
     if (f === "viewed") return !!material.currentVersion.view?.viewed;
     if (f === "unviewed") return !material.currentVersion.view?.viewed;
@@ -173,7 +261,9 @@
     n.replaceChildren();
     const shown = materials.filter(matches);
     for (const m of shown) n.append(card(m));
-    if ($("review-material-count")) $("review-material-count").textContent = `${shown.length} ${shown.length === 1 ? "материал" : shown.length >= 2 && shown.length <= 4 ? "материала" : "материалов"}`;
+    if ($("review-material-count"))
+      $("review-material-count").textContent =
+        `${shown.length} ${shown.length === 1 ? "материал" : shown.length >= 2 && shown.length <= 4 ? "материала" : "материалов"}`;
     if (!n.childElementCount)
       n.append(
         el("p", "Материалы по выбранному фильтру отсутствуют.", "empty-note"),
@@ -202,6 +292,9 @@
   }
   function setProject(next) {
     if (project?.id !== next?.id) {
+      closeDetail();
+      drafts.clear();
+      $("review-search").value = "";
       epoch++;
       detailSeq++;
       listSeq++;
@@ -228,7 +321,11 @@
     versionId = requestedVersion ? Number(requestedVersion) : null;
     h.selectTab("review");
     const host = $("review-material-detail");
+    closeSheet();
+    window.ITDMaterialPreview.clear();
     host.hidden = false;
+    $("panel-review").classList.add("has-selection");
+    document.body.classList.add("review-detail-open");
     host.replaceChildren(el("p", "Загрузка версии…", "muted"));
     try {
       const result = await h.api(`/api/materials/${id}`);
@@ -253,6 +350,9 @@
     form.id = id;
     const caption = el("label", label),
       input = el("textarea");
+    const draftKey = `${project?.id}:${selection}:${versionId}:${id}`;
+    input.value = drafts.get(draftKey) || "";
+    input.addEventListener("input", () => drafts.set(draftKey, input.value));
     input.name = name;
     input.required = true;
     input.maxLength = 4000;
@@ -291,11 +391,18 @@
       ...$("review-material-detail").querySelectorAll(
         "button,input,textarea,select",
       ),
+      ...(sheet?.dialog.querySelectorAll("button,input,textarea,select") || []),
     ].map((n) => [n, n.disabled]);
     controls.forEach(([n]) => (n.disabled = true));
     notice("Сохраняем…");
     try {
       await h.api(path, "POST", payload);
+      const formId = path.endsWith("/comments")
+        ? "review-comment-form"
+        : path.endsWith("/cancel")
+          ? "review-cancel-form"
+          : "review-changes-form";
+      drafts.delete(`${pid}:${mid}:${vid}:${formId}`);
       if (!valid(generation, pid)) return;
       await h.refresh();
       if (!valid(generation, pid) || seq !== detailSeq) return;
@@ -320,6 +427,8 @@
     const { material, versions, events } = detail,
       v = versions.find((v) => v.id === versionId),
       host = $("review-material-detail");
+    closeSheet();
+    window.ITDMaterialPreview.clear();
     host.replaceChildren();
     if (!v) {
       host.append(el("p", "Версия недоступна.", "error"));
@@ -328,19 +437,37 @@
     const current = v.id === material.currentVersion.id,
       stage = project.stages.find((s) => s.id === material.stageId);
 
-    document.querySelectorAll(".review-material-card[data-material-id]").forEach((node) => {
-      node.classList.toggle("is-selected", Number(node.dataset.materialId) === Number(material.id));
-    });
+    document
+      .querySelectorAll(".review-material-card[data-material-id]")
+      .forEach((node) => {
+        node.classList.toggle(
+          "is-selected",
+          Number(node.dataset.materialId) === Number(material.id),
+        );
+      });
     const summary = el("div", undefined, "review-detail-header");
     const description = el("div", undefined, "review-detail-heading");
     description.append(
-      el("p", `${project.title} / ${stage?.title || "Этап"} / Версия ${v.versionNumber}`, "review-context"),
-      el("h2", versionFileName(material, v)),
-      el("p", `Версия ${v.versionNumber} · ${date(v.createdAt)} · ${v.uploadedByName || "Студия"}`, "file-meta"),
+      el(
+        "p",
+        `${project.title} / ${stage?.title || "Этап"} / Версия ${v.versionNumber}`,
+        "review-context",
+      ),
+      el("h2", materialTitle(material)),
+      el(
+        "p",
+        `Версия ${v.versionNumber} · ${date(v.createdAt)} · ${v.uploadedByName || "Студия"}`,
+        "file-meta",
+      ),
       statusTag(v.status),
     );
     summary.append(fileTile(v.file), description);
-    host.append(summary);
+    const back = button(
+      "← Материалы проекта",
+      closeDetail,
+      "text-button review-library-back",
+    );
+    host.append(back, summary);
     const label = el("label", "Версия материала"),
       picker = el("select");
     picker.id = "review-version-select";
@@ -358,15 +485,36 @@
     label.append(picker);
 
     const versionTools = el("div", undefined, "review-version-tools");
-    versionTools.append(label, fileControls(presentedFile(material, v)));
+    versionTools.append(
+      label,
+      fileControls({
+        ...v.file,
+        review: { materialId: material.id, versionId: v.id },
+      }),
+    );
     host.append(versionTools);
-    if (v.file.name && v.file.name !== versionFileName(material, v)) {
-      const technical = el("details", undefined, "review-technical");
-      technical.append(el("summary", "Сведения о файле"), el("p", v.file.name, "file-meta"));
-      host.append(technical);
-    }
+    host.append(el("p", v.file.name, "review-actual-file file-meta"));
+    const workspace = el("div", undefined, "review-workspace");
+    const visual = el("div", undefined, "review-visual");
+    const preview = el("div", undefined, "material-preview");
+    visual.append(preview);
+    visual.append(
+      button(
+        "Комментарии к версии",
+        openDiscussion,
+        "review-discussion-button",
+      ),
+    );
+    const rail = el("aside", undefined, "review-detail-rail");
+    workspace.append(visual, rail);
+    host.append(workspace);
+    window.ITDMaterialPreview.mount(
+      preview,
+      { ...v.file, review: { materialId: material.id, versionId: v.id } },
+      rendered,
+    );
     if (admin()) {
-      host.append(el("p", viewLabel(v), "review-view-status"));
+      rail.append(el("p", viewLabel(v), "review-view-status"));
       const views = el("dl", undefined, "recovery-fields");
       for (const [key, value] of [
         ["Первый просмотр", date(v.view?.firstViewedAt)],
@@ -374,7 +522,7 @@
         ["Количество открытий", v.view?.viewCount || 0],
       ])
         views.append(el("dt", key), el("dd", String(value)));
-      host.append(views);
+      rail.append(views);
       if (v.views?.length) {
         const history = el("details", undefined, "admin-history");
         history.append(el("summary", "Просмотры пользователей"));
@@ -386,11 +534,11 @@
               "file-meta",
             ),
           );
-        host.append(history);
+        rail.append(history);
       }
     }
     if (v.decisionAt)
-      host.append(
+      rail.append(
         el(
           "p",
           `Решение: ${v.decisionByName || "Клиент"} · ${date(v.decisionAt)}`,
@@ -398,7 +546,10 @@
         ),
       );
     if (!current)
-      host.append(
+      rail.append(
+        button("Открыть текущую версию", () =>
+          open(material.id, material.currentVersion.id),
+        ),
         el(
           "p",
           "Это предыдущая версия. Решения сохранены в истории. Согласовать можно только текущую версию.",
@@ -426,7 +577,7 @@
           () => {
             if (
               window.confirm(
-                `Вы подтверждаете согласование версии ${v.versionNumber} файла «${versionFileName(material, v)}»?`,
+                `Вы подтверждаете согласование версии ${v.versionNumber} файла «${materialTitle(material)}»?`,
               )
             )
               return mutate(`/api/material-versions/${v.id}/decision`, {
@@ -440,13 +591,12 @@
         button(
           "Нужны изменения",
           () => {
-            changes.hidden = false;
-            changes.querySelector("textarea").focus();
+            showSheet(changes, "Замечания к версии");
           },
           "review-secondary",
         ),
       );
-      host.append(controls, changes);
+      rail.append(controls, changes);
     }
     if (current && admin()) {
       if (v.status === "approved") {
@@ -472,7 +622,7 @@
             },
           ),
         );
-        host.append(cancel);
+        rail.append(cancel);
       }
       const upload = el("details", undefined, "admin-editor");
       upload.append(el("summary", "Загрузить новую версию"));
@@ -524,7 +674,7 @@
         }),
       });
       upload.append(form);
-      host.append(upload);
+      rail.append(upload);
     }
     const comments = el("details", undefined, "review-comments-pane");
     const entries = events.filter((e) => e.versionId === v.id && e.body);
@@ -558,7 +708,7 @@
           }),
       ),
     );
-    host.append(comments);
+    rail.append(comments);
     const history = el("details", undefined, "review-history-pane");
     history.append(el("summary", `История всех версий (${versions.length})`));
     const list = el("ol", undefined, "review-history");
@@ -578,7 +728,7 @@
       list.append(item);
     }
     history.append(list);
-    host.append(history);
+    rail.append(history);
   }
   function reviewControl(file) {
     return file.review
@@ -635,7 +785,7 @@
         el("h3", eventsNames[n.type] || "Обновление материала"),
         el(
           "p",
-          `${n.materialTitle} · Версия ${n.versionNumber} · ${n.actorName || "Студия"}`,
+          `${window.ITDUI.materialTitle(n.materialTitle)} · Версия ${n.versionNumber} · ${n.actorName || "Студия"}`,
           "review-context",
         ),
         button("Открыть версию", async () => {
@@ -705,6 +855,7 @@
   }
   function init(hooks) {
     h = hooks;
+    $("review-search").addEventListener("input", renderList);
     $("review-filter").addEventListener("change", renderList);
     $("notifications-refresh").addEventListener("click", loadNotifications);
     window.ITDViewer.onRendered(rendered);
@@ -713,6 +864,11 @@
     });
   }
   function onTab(tab) {
+    closeSheet();
+    document.body.classList.toggle(
+      "review-detail-open",
+      tab === "review" && !$("review-material-detail").hidden,
+    );
     if (tab === "review" && project) loadList();
     if (tab === "notifications") loadNotifications();
   }
@@ -725,5 +881,6 @@
     open,
     reviewControl,
     sendControl,
+    openDiscussion,
   };
 })();

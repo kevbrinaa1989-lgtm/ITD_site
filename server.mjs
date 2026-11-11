@@ -685,9 +685,21 @@ export function createApp(options = {}) {
         "/accept-invitation": "invitation.html",
         "/accept-invitation/": "invitation.html",
         "/upload-context.js": "upload-context.js",
+        "/material-preview.js": "material-preview.js",
         "/material-review.js": "material-review.js",
         "/file-viewer.js": "file-viewer.js",
+        "/project-gallery.js": "project-gallery.js",
         "/cabinet.css": "cabinet.css",
+        "/cabinet-route.css": "cabinet-route.css",
+        "/cabinet-ui.js": "cabinet-ui.js",
+        "/assets/brand/itd-logo.svg": "assets/brand/itd-logo.svg",
+        "/assets/fonts/fonts.css": "assets/fonts/fonts.css",
+        "/assets/fonts/itd-font-0.ttf": "assets/fonts/itd-font-0.ttf",
+        "/assets/fonts/itd-font-1.ttf": "assets/fonts/itd-font-1.ttf",
+        "/assets/fonts/itd-font-2.ttf": "assets/fonts/itd-font-2.ttf",
+        "/assets/fonts/itd-font-3.ttf": "assets/fonts/itd-font-3.ttf",
+        "/assets/fonts/itd-font-4.ttf": "assets/fonts/itd-font-4.ttf",
+        "/assets/fonts/itd-font-5.ttf": "assets/fonts/itd-font-5.ttf",
       };
       const asset = path.startsWith("/vendor/pdfjs/") ? path.slice("/vendor/pdfjs/".length) : null;
       const file = routes[path] || (PDF_ASSETS.has(asset) ? `vendor/pdfjs/${asset}` : null);
@@ -715,6 +727,7 @@ export function createApp(options = {}) {
           : file.endsWith(".css")
             ? "text/css; charset=utf-8"
             : file.endsWith(".wasm") ? "application/wasm"
+            : file.endsWith(".svg") ? "image/svg+xml"
             : file.endsWith(".ttf") ? "font/ttf"
             : asset ? "application/octet-stream" : "text/html; charset=utf-8",
         "Content-Length": bytes.length,

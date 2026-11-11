@@ -59,9 +59,14 @@ try {
   for (const viewport of [
     { width: 1440, height: 1000 },
     { width: 768, height: 1024 },
-    { width: 430, height: 932 },
-    { width: 375, height: 812 },
-  ]) {
+    { width: 1024, height: 900 },
+    { width: 390, height: 844 },
+    { width: 360, height: 800 },
+  ].filter(
+    (v) =>
+      !process.env.ITD_TEST_WIDTHS ||
+      process.env.ITD_TEST_WIDTHS.split(",").map(Number).includes(v.width),
+  )) {
     const email = `owner${viewport.width}@example.test`,
       foreignEmail = `foreign${viewport.width}@example.test`;
     let owner, foreign;
@@ -170,6 +175,8 @@ try {
     }
     async function open(p, id = mid) {
       await p.locator("#tab-review").click();
+      if (await p.locator(".review-library-back").isVisible())
+        await p.locator(".review-library-back").click();
       const card = p.locator(
         `#review-material-list .review-card[data-material-id="${id}"]`,
       );
@@ -250,22 +257,30 @@ try {
     );
     await client.locator("#tab-stages").click();
     await client.locator("#tab-results").click();
-    for (const card of await client.locator(".gallery-card").all()) {
+    for (const card of await client
+      .locator("#result-list .gallery-card")
+      .all()) {
       await card.scrollIntoViewIfNeeded();
     }
-    await open(client);
     assert.equal((await state()).material.currentVersion.view.viewed, false);
     assert.equal(viewRequests.filter((r) => r.page === client).length, 0);
+    await open(client);
+    await client.waitForFunction(
+      () =>
+        document.querySelector(".material-preview")?.dataset.loaded === "true",
+    );
+    await client.waitForTimeout(150);
+    assert.equal((await state()).material.currentVersion.view.viewCount, 1);
     const download = client.waitForEvent("download");
     await client
       .locator("#review-material-detail")
       .getByRole("link", { name: "Скачать", exact: true })
       .click();
     assert.deepEqual(await readFile(await (await download).path()), jpg);
-    assert.equal((await state()).material.currentVersion.view.viewed, false);
+    assert.equal((await state()).material.currentVersion.view.viewCount, 1);
     await preview(client, v1);
     const first = (await state()).material.currentVersion.view;
-    assert.equal(first.viewCount, 1);
+    assert.equal(first.viewCount, 2);
     const notificationsBefore = (
       await api("/api/notifications", { cookie: adminCookie })
     ).notifications.length;
@@ -273,7 +288,7 @@ try {
       .getByRole("button", { name: "Увеличить", exact: true })
       .click();
     await client.getByRole("button", { name: /Сбросить масштаб/ }).click();
-    assert.equal(viewRequests.filter((r) => r.page === client).length, 1);
+    assert.equal(viewRequests.filter((r) => r.page === client).length, 2);
     await closeViewer(client);
     await preview(client, v1);
     await closeViewer(client);
@@ -282,7 +297,7 @@ try {
     assert.ok(
       Date.parse(repeated.lastViewedAt) >= Date.parse(first.lastViewedAt),
     );
-    assert.equal(repeated.viewCount, 2);
+    assert.equal(repeated.viewCount, 3);
     assert.equal(
       (await api("/api/notifications", { cookie: adminCookie })).notifications
         .length,
@@ -298,6 +313,8 @@ try {
       ).includes("Просмотрено"),
     );
     await shot(admin, "viewed-admin");
+    if (await admin.locator(".review-library-back").isVisible())
+      await admin.locator(".review-library-back").click();
     await admin.locator("#review-filter").selectOption("unviewed");
     assert.equal(
       await admin
@@ -338,16 +355,42 @@ try {
     await shot(client, "changes-client");
     await refresh(admin);
     await open(admin);
+    if (viewport.width < 768)
+      await admin
+        .getByRole("button", { name: "Комментарии к версии", exact: true })
+        .click();
     await admin
       .locator("#review-comment-form textarea")
       .fill("Уточните, пожалуйста, желаемую ширину прохода.");
+    const replyResponse = admin.waitForResponse(
+      (r) =>
+        r.url().endsWith(`/api/material-versions/${v1}/comments`) &&
+        r.request().method() === "POST",
+    );
     await admin.locator("#review-comment-form button[type=submit]").click();
+    await replyResponse;
+    await admin.waitForFunction(
+      () =>
+        document.querySelector("#review-message").textContent ===
+        "Изменения сохранены.",
+    );
+    if (viewport.width < 768)
+      await admin
+        .getByRole("button", { name: "Комментарии к версии", exact: true })
+        .click();
     await admin
       .locator(".review-comments .review-comment-body")
       .getByText("Уточните, пожалуйста, желаемую ширину прохода.", {
         exact: true,
       })
       .waitFor();
+    if (viewport.width < 768)
+      await admin
+        .locator(".review-sheet")
+        .getByRole("button", { name: "Закрыть", exact: true })
+        .click();
+    const oldViewCount = (await state()).versions.find((v) => v.id === v1).view
+      .viewCount;
     await admin
       .locator("#review-material-detail summary")
       .filter({ hasText: "Загрузить новую версию" })
@@ -377,10 +420,9 @@ try {
     assert.equal(current.view.viewed, false);
     assert.equal(
       (await state()).versions.find((v) => v.id === v1).view.viewCount,
-      2,
+      oldViewCount,
     );
     await refresh(client);
-    await open(client);
     let release, intercepted;
     const interceptedPromise = new Promise(
         (resolve) => (intercepted = resolve),
@@ -394,15 +436,21 @@ try {
         await r.continue();
       } catch {}
     });
-    await client.locator("#review-material-detail .file-preview").click();
+    await open(client);
     await interceptedPromise;
-    await closeViewer(client);
+    await client.locator("#tab-stages").click();
     release();
     await client.unroute(route);
     assert.equal((await state()).material.currentVersion.view.viewed, false);
+    await open(client);
+    await client.waitForFunction(
+      () =>
+        document.querySelector(".material-preview")?.dataset.loaded === "true",
+    );
+    await client.waitForTimeout(150);
     await preview(client, v2, "pdf");
     await closeViewer(client);
-    assert.equal((await state()).material.currentVersion.view.viewCount, 1);
+    assert.equal((await state()).material.currentVersion.view.viewCount, 2);
     client.once("dialog", (d) => d.dismiss());
     await client
       .getByRole("button", { name: "Согласовать", exact: true })

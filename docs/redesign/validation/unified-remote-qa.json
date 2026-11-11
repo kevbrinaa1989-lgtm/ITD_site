@@ -1,0 +1,86 @@
+[
+  {
+    "draftId": "e1268107-be1a-4b08-8aa6-d54da0e35649",
+    "view": "client",
+    "mobile": false,
+    "status": 200,
+    "errors": [],
+    "logoVisible": true,
+    "allImagesLoaded": true,
+    "noOverflow": true
+  },
+  {
+    "draftId": "81c2b58f-c70a-40e5-90ce-4abd12c78108",
+    "view": "client",
+    "mobile": true,
+    "status": 200,
+    "errors": [],
+    "logoVisible": true,
+    "allImagesLoaded": true,
+    "noOverflow": true
+  },
+  {
+    "draftId": "38162523-05e0-4821-87b3-19c08c8c2c04",
+    "view": "admin",
+    "mobile": false,
+    "status": 200,
+    "errors": [],
+    "logoVisible": true,
+    "allImagesLoaded": true,
+    "noOverflow": true
+  },
+  {
+    "draftId": "e6032e04-8840-47bc-ae9a-928cb9df0547",
+    "view": "admin",
+    "mobile": true,
+    "status": 200,
+    "errors": [],
+    "logoVisible": true,
+    "allImagesLoaded": true,
+    "noOverflow": true
+  },
+  {
+    "draftId": "154ac77e-8f80-4faa-b7ff-c95fb770eb87",
+    "view": "material",
+    "mobile": false,
+    "status": 200,
+    "errors": [],
+    "logoVisible": true,
+    "allImagesLoaded": true,
+    "noOverflow": true,
+    "zoomWorks": true,
+    "oldVersionCannotApprove": true
+  },
+  {
+    "draftId": "a460df1b-cb4c-41a0-8b89-c365ace4f2bc",
+    "view": "material",
+    "mobile": true,
+    "status": 200,
+    "errors": [],
+    "logoVisible": true,
+    "allImagesLoaded": true,
+    "noOverflow": true,
+    "zoomWorks": true,
+    "oldVersionCannotApprove": true
+  },
+  {
+    "draftId": "c53f2fcf-184e-4376-a413-2446bd172c05",
+    "view": "gallery",
+    "mobile": false,
+    "status": 200,
+    "errors": [],
+    "logoVisible": true,
+    "allImagesLoaded": true,
+    "noOverflow": true
+  },
+  {
+    "draftId": "811ba94b-859d-45a9-a0fc-3ccc39af81ad",
+    "view": "gallery",
+    "mobile": true,
+    "status": 200,
+    "errors": [],
+    "logoVisible": true,
+    "allImagesLoaded": true,
+    "noOverflow": true
+  }
+]

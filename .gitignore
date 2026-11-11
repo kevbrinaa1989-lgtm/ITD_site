@@ -10,3 +10,4 @@ playwright-report/
 test-results/
 ITD-backups/
 .itd-studio/
+.superdesign/tmp/

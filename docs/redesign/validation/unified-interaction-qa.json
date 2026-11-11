@@ -1,0 +1,69 @@
+[
+  {
+    "width": 1440,
+    "status": "passed",
+    "checks": [
+      "historical PDF/current JPG",
+      "historical approval blocked",
+      "local comment",
+      "zoom buttons and pan",
+      "viewer to discussion",
+      "required change comment",
+      "approval confirmation",
+      "selected material metadata",
+      "admin overdue filter/search",
+      "gallery assets loaded",
+      "no JavaScript errors"
+    ]
+  },
+  {
+    "width": 390,
+    "status": "passed",
+    "checks": [
+      "historical PDF/current JPG",
+      "historical approval blocked",
+      "local comment",
+      "zoom buttons and pan",
+      "pinch gesture",
+      "swipe image",
+      "material fits viewport",
+      "discussion above action bar",
+      "viewer to discussion",
+      "required change comment",
+      "approval confirmation",
+      "selected material metadata",
+      "admin overdue filter/search",
+      "gallery assets loaded",
+      "no JavaScript errors"
+    ]
+  },
+  {
+    "width": 360,
+    "status": "passed",
+    "checks": [
+      "historical PDF/current JPG",
+      "historical approval blocked",
+      "local comment",
+      "zoom buttons and pan",
+      "pinch gesture",
+      "swipe image",
+      "material fits viewport",
+      "discussion above action bar",
+      "viewer to discussion",
+      "required change comment",
+      "approval confirmation",
+      "selected material metadata",
+      "admin overdue filter/search",
+      "gallery assets loaded",
+      "no JavaScript errors"
+    ]
+  },
+  {
+    "width": 390,
+    "status": "passed",
+    "checks": [
+      "admin new-comment shortcut visible above tasks",
+      "admin shortcut opens current material discussion"
+    ]
+  }
+]
