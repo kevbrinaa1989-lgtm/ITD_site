@@ -13,7 +13,8 @@
     notifications = [],
     notificationError = "",
     profileBusy = false,
-    notificationsRequest = null;
+    notificationsRequest = null,
+    guideExpanded = null;
   const client = () => hooks?.getUser()?.role === "client";
   const valid = (generation, user) =>
     generation === epoch && client() && hooks.getUser() === user;
@@ -46,6 +47,72 @@
       }
     });
     return el;
+  }
+  const guideKey = (user) => `itd-client-guide-v1:${user.id}`;
+  function guideSeen(user) {
+    try {
+      return localStorage.getItem(guideKey(user)) === "1";
+    } catch {
+      return false;
+    }
+  }
+  function rememberGuide(user) {
+    try {
+      localStorage.setItem(guideKey(user), "1");
+    } catch {
+      // Browsers may disable local storage; the guide remains usable.
+    }
+  }
+  function renderGuide(user) {
+    if (guideExpanded === null) guideExpanded = !guideSeen(user);
+    const firstName = String(user.name || "").trim().split(/\s+/)[0];
+    const guide = node("section", undefined, "client-guide");
+    guide.id = "client-guide";
+    guide.setAttribute("aria-label", "Знакомство с личным кабинетом");
+    const top = node("div", undefined, "client-guide-top");
+    const copy = node("div", undefined, "client-guide-copy");
+    copy.append(
+      node("p", "ITD STUDIO · ДОБРО ПОЖАЛОВАТЬ", "client-guide-kicker"),
+      node("h2", firstName ? `Здравствуйте, ${firstName}!` : "Добро пожаловать!"),
+      node("p", "Здесь вы можете следить за дизайн-проектом, смотреть материалы и согласовывать решения со студией.", "client-guide-intro"),
+    );
+    const toggle = button(
+      guideExpanded ? "Скрыть подсказки" : "Как пользоваться",
+      () => {
+        guideExpanded = !guideExpanded;
+        if (!guideExpanded) rememberGuide(user);
+        body.hidden = !guideExpanded;
+        toggle.textContent = guideExpanded ? "Скрыть подсказки" : "Как пользоваться";
+        toggle.setAttribute("aria-expanded", String(guideExpanded));
+      },
+      "client-guide-toggle",
+    );
+    toggle.id = "client-guide-toggle";
+    toggle.setAttribute("aria-controls", "client-guide-body");
+    toggle.setAttribute("aria-expanded", String(guideExpanded));
+    top.append(copy, toggle);
+    const body = node("div", undefined, "client-guide-body");
+    body.id = "client-guide-body";
+    body.hidden = !guideExpanded;
+    const list = node("ol", undefined, "client-guide-list");
+    const items = [
+      ["Маршрут и этапы", "В «Обзоре» виден текущий этап и общий прогресс. В «Этапах» — подробности работы."],
+      ["Материалы", "Открывайте планировки, визуализации и другие материалы проекта, смотрите новые версии."],
+      ["Согласования", "Подтверждайте предложенные решения или отправляйте замечания с комментарием."],
+      ["Документы и новости", "Находите документы проекта и проверяйте уведомления об обновлениях."],
+    ];
+    items.forEach(([title, description], index) => {
+      const item = node("li");
+      item.append(
+        node("span", String(index + 1).padStart(2, "0"), "client-guide-index"),
+        node("h3", title),
+        node("p", description),
+      );
+      list.append(item);
+    });
+    body.append(list);
+    guide.append(top, body);
+    return guide;
   }
   function projectCard(project) {
     const card = node(
@@ -188,6 +255,8 @@
       projects[0];
     window.ITDViewer?.releaseWithin(host);
     host.replaceChildren();
+    $("client-guide-trigger").hidden = false;
+    host.append(renderGuide(user));
     if (project) {
       const header = node("div", undefined, "route-home-heading"),
         copy = node("div");
@@ -343,6 +412,8 @@
     notificationError = "";
     profileBusy = false;
     notificationsRequest = null;
+    guideExpanded = null;
+    $("client-guide-trigger").hidden = true;
     $("profile-form")
       ?.querySelectorAll("input,button")
       .forEach((control) => (control.disabled = false));
@@ -358,6 +429,13 @@
   }
   function init(options) {
     hooks = options;
+    $("client-guide-trigger").addEventListener("click", () => {
+      if (!client()) return;
+      guideExpanded = true;
+      hooks.selectTab("client-home");
+      $("client-guide")?.scrollIntoView({ block: "start" });
+      $("client-guide-toggle")?.focus({ preventScroll: true });
+    });
     $("profile-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!client() || profileBusy) return;
