@@ -196,16 +196,18 @@ try {
     }
     await signIn("client@example.test");
     if (!before) {
-      await page.locator("#client-guide").waitFor({ state: "visible" });
-      assert.match(await page.locator("#client-guide h2").textContent(), /Здравствуйте, Заказчик/);
-      assert.equal(await page.locator("#client-guide-body").isVisible(), true);
-      await page.locator("#client-guide-toggle").click();
-      assert.equal(await page.locator("#client-guide-body").isVisible(), false);
+      await page.locator("#itd-tour-layer").waitFor({ state: "visible" });
+      assert.match(await page.locator("#itd-tour-layer h2").textContent(), /Добро пожаловать, Заказчик/);
+      await page.getByRole("button", { name: /Начать обзор/ }).click();
+      assert.match(await page.locator("#itd-tour-layer h2").textContent(), /Обзор проекта/);
+      await page.getByRole("button", { name: /Пропустить/ }).click();
+      await page.locator("#itd-tour-layer").waitFor({ state: "detached" });
       assert.equal(await page.evaluate((id) =>
-        localStorage.getItem("itd-client-guide-v1:" + id), user.id
-      ), "1");
-      await page.locator("#client-guide-toggle").click();
-      assert.equal(await page.locator("#client-guide-body").isVisible(), true);
+        localStorage.getItem("itd-client-tour-v2:" + id), user.id
+      ), "done");
+      await page.locator("#client-guide-trigger").click();
+      await page.locator("#itd-tour-layer").waitFor({ state: "visible" });
+      await page.getByRole("button", { name: /Пропустить/ }).click();
     }
     await page.locator("#client-home-panel .route-feature").waitFor();
     const current = await page
