@@ -195,6 +195,18 @@ try {
         });
     }
     await signIn("client@example.test");
+    if (!before) {
+      await page.locator("#client-guide").waitFor({ state: "visible" });
+      assert.match(await page.locator("#client-guide h2").textContent(), /Здравствуйте, Заказчик/);
+      assert.equal(await page.locator("#client-guide-body").isVisible(), true);
+      await page.locator("#client-guide-toggle").click();
+      assert.equal(await page.locator("#client-guide-body").isVisible(), false);
+      assert.equal(await page.evaluate((id) =>
+        localStorage.getItem("itd-client-guide-v1:" + id), user.id
+      ), "1");
+      await page.locator("#client-guide-toggle").click();
+      assert.equal(await page.locator("#client-guide-body").isVisible(), true);
+    }
     await page.locator("#client-home-panel .route-feature").waitFor();
     const current = await page
       .locator("#client-home-panel .route-stage-heading h2")
