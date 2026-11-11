@@ -685,6 +685,7 @@ export function createApp(options = {}) {
         "/accept-invitation": "invitation.html",
         "/accept-invitation/": "invitation.html",
         "/upload-context.js": "upload-context.js",
+        "/material-preview.js": "material-preview.js",
         "/material-review.js": "material-review.js",
         "/file-viewer.js": "file-viewer.js",
         "/project-gallery.js": "project-gallery.js",

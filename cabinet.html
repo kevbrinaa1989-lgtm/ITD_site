@@ -12,6 +12,7 @@
     <script src="/file-viewer.js" defer></script>
     <script src="/project-gallery.js" defer></script>
     <script src="/admin-management.js" defer></script>
+    <script src="/material-preview.js" defer></script>
     <script src="/material-review.js" defer></script>
     <script src="/admin-workspace.js" defer></script>
     <script src="/upload-context.js" defer></script>
@@ -22,8 +23,16 @@
   <body>
     <a class="skip-link" href="#main">К содержимому</a>
     <header class="site-header">
-      <a class="brand" href="https://itdstudio.ru/" aria-label="ITD Studio — на основной сайт">
-        <img class="brand-logo" src="/assets/brand/itd-logo.svg" alt="ITD Studio" />
+      <a
+        class="brand"
+        href="https://itdstudio.ru/"
+        aria-label="ITD Studio — на основной сайт"
+      >
+        <img
+          class="brand-logo"
+          src="/assets/brand/itd-logo.svg"
+          alt="ITD Studio"
+        />
       </a>
       <a class="back-link" href="https://itdstudio.ru/"
         >На сайт <span aria-hidden="true">→</span></a
@@ -169,12 +178,21 @@
         </div>
       </section>
       <section id="app-view" class="workspace" hidden aria-label="Ваши проекты">
-        <button id="shell-menu-backdrop" type="button" aria-label="Закрыть меню"></button><aside class="project-sidebar" aria-label="Навигация кабинета">
+        <button
+          id="shell-menu-backdrop"
+          type="button"
+          aria-label="Закрыть меню"
+        ></button>
+        <aside class="project-sidebar" aria-label="Навигация кабинета">
           <a
             class="brand sidebar-brand"
             href="https://itdstudio.ru/"
             aria-label="ITD Studio — на основной сайт"
-          ><img class="brand-logo" src="/assets/brand/itd-logo.svg" alt="ITD Studio" /></a>
+            ><img
+              class="brand-logo"
+              src="/assets/brand/itd-logo.svg"
+              alt="ITD Studio"
+          /></a>
           <p id="shell-role-label" class="sidebar-caption">Личный кабинет</p>
 
           <nav
@@ -303,7 +321,14 @@
           </div>
         </aside>
         <div class="workspace-body">
-          <div class="workspace-topbar"><a class="shell-brand" href="https://itdstudio.ru/" aria-label="ITD Studio — на основной сайт"><img src="/assets/brand/itd-logo.svg" alt="ITD Studio"></a><div id="shell-navigation-host"></div>
+          <div class="workspace-topbar">
+            <a
+              class="shell-brand"
+              href="https://itdstudio.ru/"
+              aria-label="ITD Studio — на основной сайт"
+              ><img src="/assets/brand/itd-logo.svg" alt="ITD Studio"
+            /></a>
+            <div id="shell-navigation-host"></div>
             <div class="shell-location-row">
               <button
                 id="mobile-menu-button"
@@ -534,20 +559,34 @@
                   </select>
                 </div>
                 <p id="review-message" role="status" class="muted"></p>
-                <div class="review-library-heading">
-                  <h3>Материалы проекта</h3>
-                  <span id="review-material-count" class="review-library-count" aria-live="polite"></span>
+                <div class="review-layout">
+                  <aside class="review-library">
+                    <label class="review-search-label"
+                      >Поиск материала<input
+                        id="review-search"
+                        type="search"
+                        placeholder="Название или имя файла"
+                    /></label>
+                    <div class="review-library-heading">
+                      <h3>Материалы проекта</h3>
+                      <span
+                        id="review-material-count"
+                        class="review-library-count"
+                        aria-live="polite"
+                      ></span>
+                    </div>
+                    <div
+                      id="review-material-list"
+                      class="review-material-list"
+                    ></div>
+                  </aside>
+                  <section
+                    id="review-material-detail"
+                    class="panel review-detail"
+                    aria-label="Версия материала"
+                    hidden
+                  ></section>
                 </div>
-                <div
-                  id="review-material-list"
-                  class="review-material-list"
-                ></div>
-                <section
-                  id="review-material-detail"
-                  class="panel review-detail"
-                  aria-label="Версия материала"
-                  hidden
-                ></section>
               </section>
               <section
                 id="panel-stages"
@@ -577,7 +616,8 @@
               >
                 <div class="section-title">
                   <div>
-                    <p class="eyebrow">Альбом проекта</p><h2>Пространство в деталях</h2>
+                    <p class="eyebrow">Альбом проекта</p>
+                    <h2>Пространство в деталях</h2>
                     <p class="muted">
                       Чертежи, визуализации и другие материалы проекта.
                     </p>
@@ -1158,25 +1198,54 @@
                   Запросы на восстановление →
                 </button>
               </div>
-              <div id="workspace-project-strip" class="studio-project-strip"></div>
-              <div class="studio-grid"><div class="studio-main">
-              <div class="section-title"><h2>Задачи студии</h2><button class="text-button" type="button" data-open-tab="tasks">Все задачи →</button></div>
-              <div id="workspace-task-queue" class="studio-task-queue"></div>
-              <div class="workspace-attention-filters">
-                <label
-                  >Проект<select id="workspace-project-filter">
-                    <option value="">Все активные проекты</option>
-                  </select></label
-                ><label
-                  >Требует внимания<select id="workspace-type-filter">
-                    <option value="">Все события</option>
-                    <option value="changes_requested">Нужны изменения</option>
-                    <option value="unanswered_comment">Ждёт ответа</option>
-                  </select></label
-                >
+              <div
+                id="workspace-project-strip"
+                class="studio-project-strip"
+              ></div>
+              <div class="studio-grid">
+                <div class="studio-main">
+                  <div class="section-title">
+                    <h2>Задачи студии</h2>
+                    <button
+                      class="text-button"
+                      type="button"
+                      data-open-tab="tasks"
+                    >
+                      Все задачи →
+                    </button>
+                  </div>
+                  <div
+                    id="workspace-task-queue"
+                    class="studio-task-queue"
+                  ></div>
+                  <div class="workspace-attention-filters">
+                    <label
+                      >Проект<select id="workspace-project-filter">
+                        <option value="">Все активные проекты</option>
+                      </select></label
+                    ><label
+                      >Требует внимания<select id="workspace-type-filter">
+                        <option value="">Все события</option>
+                        <option value="changes_requested">
+                          Нужны изменения
+                        </option>
+                        <option value="unanswered_comment">Ждёт ответа</option>
+                      </select></label
+                    >
+                  </div>
+                  <div
+                    id="workspace-attention"
+                    class="workspace-sections"
+                  ></div>
+                </div>
+                <aside class="studio-agenda">
+                  <h2>Ближайшие сроки</h2>
+                  <div
+                    id="workspace-deadlines"
+                    class="workspace-sections"
+                  ></div>
+                </aside>
               </div>
-              <div id="workspace-attention" class="workspace-sections"></div>
-              </div><aside class="studio-agenda"><h2>Ближайшие сроки</h2><div id="workspace-deadlines" class="workspace-sections"></div></aside></div>
             </section>
             <section
               id="panel-tasks"

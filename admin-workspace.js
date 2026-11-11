@@ -547,9 +547,19 @@
       }
       const projectStrip = $("workspace-project-strip");
       projectStrip.replaceChildren();
-      for (const project of result.projects.filter(window.ITDUI.active).slice(0, 3)) {
-        const tile=button("",()=>hooks.openProject(project.id),"studio-project-tile");
-        tile.append(node("span",project.status,"workspace-context"),node("strong",project.title),node("small","Открыть проект ↗"));
+      for (const project of result.projects
+        .filter(window.ITDUI.active)
+        .slice(0, 3)) {
+        const tile = button(
+          "",
+          () => hooks.openProject(project.id),
+          "studio-project-tile",
+        );
+        tile.append(
+          node("span", project.status, "workspace-context"),
+          node("strong", project.title),
+          node("small", "Открыть проект ↗"),
+        );
         projectStrip.append(tile);
       }
       const attention = $("workspace-attention");
@@ -565,11 +575,14 @@
         if (!result[key].tasks.length && !result[key].stages.length) continue;
         const period = node("section", undefined, "workspace-period");
         period.append(node("h2", title));
-        if(result[key].tasks.length) group(period, "Задачи", result[key].tasks, (t) => taskCard(t, true));
-        if(result[key].stages.length) group(period, "Этапы", result[key].stages, stageCard);
+        if (result[key].tasks.length)
+          group(period, "Задачи", result[key].tasks, (t) => taskCard(t, true));
+        if (result[key].stages.length)
+          group(period, "Этапы", result[key].stages, stageCard);
         deadlines.append(period);
       }
-      if(!deadlines.childElementCount)deadlines.append(node("p","Нет ближайших сроков.","empty-note"));
+      if (!deadlines.childElementCount)
+        deadlines.append(node("p", "Нет ближайших сроков.", "empty-note"));
       $("workspace-message").textContent = "";
     } catch (error) {
       if (valid(generation) && seq === dashboardSeq)
@@ -592,28 +605,46 @@
       ),
       (m) => materialCard(m),
     );
-    const queue=$("workspace-task-queue");queue.replaceChildren();
-    const tasks=[...dashboard.overdue.tasks,...dashboard.today.tasks,...dashboard.upcoming.tasks].filter(t=>!project||String(t.projectId)===project);
-    for(const t of tasks.slice(0,6))queue.append(taskCard(t,true));
-    if(!queue.childElementCount)queue.append(node("p","Нет задач с ближайшим сроком. Все активные задачи доступны в разделе «Задачи».","empty-note"));
+    const queue = $("workspace-task-queue");
+    queue.replaceChildren();
+    const tasks = [
+      ...dashboard.overdue.tasks,
+      ...dashboard.today.tasks,
+      ...dashboard.upcoming.tasks,
+    ].filter((t) => !project || String(t.projectId) === project);
+    for (const t of tasks.slice(0, 6)) queue.append(taskCard(t, true));
+    if (!queue.childElementCount)
+      queue.append(
+        node(
+          "p",
+          "Нет задач с ближайшим сроком. Все активные задачи доступны в разделе «Задачи».",
+          "empty-note",
+        ),
+      );
     const waiting = node("section");
     waiting.id = "workspace-waiting";
     const rows = dashboard.waiting.filter(
       (item) => !project || String(item.projectId) === project,
     );
-    if(rows.some(m=>!m.viewed)) group(
-      waiting,
-      "Ожидаем решения клиента · не просмотрено",
-      rows.filter((m) => !m.viewed),
-      (m) => materialCard(m, true),
-    );
-    if(rows.some(m=>m.viewed)) group(
-      waiting,
-      "Ожидаем решения клиента · просмотрено",
-      rows.filter((m) => m.viewed),
-      (m) => materialCard(m, true),
-    );
-    if(!rows.length)waiting.append(node("h2","Ждём заказчика"),node("p","Сейчас нет материалов, ожидающих решения.","empty-note"));
+    if (rows.some((m) => !m.viewed))
+      group(
+        waiting,
+        "Ожидаем решения клиента · не просмотрено",
+        rows.filter((m) => !m.viewed),
+        (m) => materialCard(m, true),
+      );
+    if (rows.some((m) => m.viewed))
+      group(
+        waiting,
+        "Ожидаем решения клиента · просмотрено",
+        rows.filter((m) => m.viewed),
+        (m) => materialCard(m, true),
+      );
+    if (!rows.length)
+      waiting.append(
+        node("h2", "Ждём заказчика"),
+        node("p", "Сейчас нет материалов, ожидающих решения.", "empty-note"),
+      );
     host.append(waiting);
   }
   function focusAttention() {

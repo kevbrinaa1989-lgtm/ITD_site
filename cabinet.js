@@ -480,11 +480,18 @@
     }
     $("project-status").textContent = project.status;
     window.ITDViewer.releaseWithin($("project-route"));
-    $("project-route").replaceChildren(window.ITDUI.journey(project, {
-      openStage: (id) => {selectedStageId=id; selectTab("stages"); render();},
-      openMaterial: (file) => window.ITDReview.open(file.review.materialId, file.review.versionId),
-      openTab: selectTab
-    }));
+    $("project-route").replaceChildren(
+      window.ITDUI.journey(project, {
+        openStage: (id) => {
+          selectedStageId = id;
+          selectTab("stages");
+          render();
+        },
+        openMaterial: (file) =>
+          window.ITDReview.open(file.review.materialId, file.review.versionId),
+        openTab: selectTab,
+      }),
+    );
     const completed = project.stages.filter(
       (stage) => stage.status === "completed",
     ).length;
@@ -1227,6 +1234,16 @@
     refresh,
     openProject: (id) => openProject(id, { tab: "review" }),
   });
+  window.ITDViewer.onDiscuss(async (file) => {
+    const owner = projects.find((p) => p.files.some((f) => f.id === file.id));
+    if (!owner || !file.review) return;
+    await openProject(owner.id, { tab: "review" });
+    if (
+      await window.ITDReview.open(file.review.materialId, file.review.versionId)
+    )
+      window.ITDReview.openDiscussion();
+  });
+  window.addEventListener("itd-viewer-error", (e) => message(e.detail));
   const openWorkspaceProject = (id, tab) => openProject(id, { tab });
   window.ITDClientWorkspace?.init({
     api,
@@ -1234,7 +1251,11 @@
     getProjects: () => projects,
     selectTab,
     openProject,
-    openStage: async (pid, sid) => { await openProject(pid, {tab: "stages"}); selectedStageId = sid; render(); },
+    openStage: async (pid, sid) => {
+      await openProject(pid, { tab: "stages" });
+      selectedStageId = sid;
+      render();
+    },
     message,
     openMaterial: async (pid, mid, vid) => {
       await openProject(pid, { tab: "review" });

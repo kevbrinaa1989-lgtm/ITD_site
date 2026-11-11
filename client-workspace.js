@@ -55,7 +55,11 @@
     );
     const stages = project.stages || [],
       completed = stages.filter((stage) => stage.status === "completed").length;
-    const current = stages.filter(stage => ["in_progress", "pending_approval", "changes_requested"].includes(stage.status));
+    const current = stages.filter((stage) =>
+      ["in_progress", "pending_approval", "changes_requested"].includes(
+        stage.status,
+      ),
+    );
     card.append(
       node("h3", project.title),
       node("p", project.status, "badge"),
@@ -79,7 +83,11 @@
       card.append(
         node(
           "p",
-          current.length ? `В работе: ${current.map(s=>s.title).join(" · ")}` : completed===stages.length ? "Все этапы завершены" : "Этапы запланированы",
+          current.length
+            ? `В работе: ${current.map((s) => s.title).join(" · ")}`
+            : completed === stages.length
+              ? "Все этапы завершены"
+              : "Этапы запланированы",
           "muted",
         ),
       );
@@ -173,26 +181,73 @@
       projects = hooks.getProjects(),
       waiting = pending();
     const activeProjects = projects.filter(window.ITDUI.active);
-    const project = activeProjects.find(p => waiting.some(w => w.project.id === p.id)) || activeProjects[0] || projects[0];
+    const project =
+      activeProjects.find((p) => waiting.some((w) => w.project.id === p.id)) ||
+      activeProjects[0] ||
+      projects[0];
     window.ITDViewer?.releaseWithin(host);
     host.replaceChildren();
     if (project) {
-      const header=node("div",undefined,"route-home-heading"), copy=node("div");
-      copy.append(node("p","Ваш проект","eyebrow"),node("h1",project.title),node("p",project.status,"badge"));
-      header.append(copy,window.ITDUI.progress(project));host.append(header);
-      if(projects.length>1)host.append(button(`Все мои проекты · ${projects.length} →`,()=>hooks.selectTab("client-projects")));
-      host.append(window.ITDUI.journey(project, {
-        openStage: id=>hooks.openStage(project.id,id),
-        openTab: tab=>hooks.openProject(project.id,{tab}),
-        openMaterial: file=>hooks.openMaterial(project.id,file.review.materialId,file.review.versionId)
-      }));
-      const other=waiting.filter(item=>item.project.id!==project.id || item.file.id!==waiting.find(w=>w.project.id===project.id)?.file.id);
-      if(other.length){const attention=node("section",undefined,"client-other-decisions");attention.append(node("h2","Также ждут вашего решения"));other.slice(0,3).forEach(item=>attention.append(materialCard(item)));if(other.length>3)attention.append(button("Все решения →",()=>hooks.selectTab("client-review")));host.append(attention)}
+      const header = node("div", undefined, "route-home-heading"),
+        copy = node("div");
+      copy.append(
+        node("p", "Ваш проект", "eyebrow"),
+        node("h1", project.title),
+        node("p", project.status, "badge"),
+      );
+      header.append(copy, window.ITDUI.progress(project));
+      host.append(header);
+      if (projects.length > 1)
+        host.append(
+          button(`Все мои проекты · ${projects.length} →`, () =>
+            hooks.selectTab("client-projects"),
+          ),
+        );
+      host.append(
+        window.ITDUI.journey(project, {
+          openStage: (id) => hooks.openStage(project.id, id),
+          openTab: (tab) => hooks.openProject(project.id, { tab }),
+          openMaterial: (file) =>
+            hooks.openMaterial(
+              project.id,
+              file.review.materialId,
+              file.review.versionId,
+            ),
+        }),
+      );
+      const other = waiting.filter(
+        (item) =>
+          item.project.id !== project.id ||
+          item.file.id !==
+            waiting.find((w) => w.project.id === project.id)?.file.id,
+      );
+      if (other.length) {
+        const attention = node("section", undefined, "client-other-decisions");
+        attention.append(node("h2", "Также ждут вашего решения"));
+        other
+          .slice(0, 3)
+          .forEach((item) => attention.append(materialCard(item)));
+        if (other.length > 3)
+          attention.append(
+            button("Все решения →", () => hooks.selectTab("client-review")),
+          );
+        host.append(attention);
+      }
     } else {
-      heading(host,`Здравствуйте, ${user.name}`,"Ваши проекты и материалы появятся здесь после назначения студией.");
-      host.append(node("p","Вам пока не назначен проект. Если работа уже началась, свяжитесь со студией.","empty-note"));
+      heading(
+        host,
+        `Здравствуйте, ${user.name}`,
+        "Ваши проекты и материалы появятся здесь после назначения студией.",
+      );
+      host.append(
+        node(
+          "p",
+          "Вам пока не назначен проект. Если работа уже началась, свяжитесь со студией.",
+          "empty-note",
+        ),
+      );
     }
-    host.append(node("h2","Последние события","route-events-title"));
+    host.append(node("h2", "Последние события", "route-events-title"));
     const events = node("div", undefined, "client-events");
     const labels = {
       submitted: "Новый материал на согласование",

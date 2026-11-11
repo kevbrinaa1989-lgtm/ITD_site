@@ -159,7 +159,7 @@ try {
     ...extraFixtures,
     ["План.pdf", "application/pdf", pdfTwoPages()],
     ["Смета.txt", "text/plain", Buffer.from("download only")],
-  ]) {
+  ].filter(v => !process.env.ITD_TEST_WIDTHS || process.env.ITD_TEST_WIDTHS.split(",").map(Number).includes(v.width))) {
     const file = await (
       await request(
         `/api/projects/${project.id}/files`,

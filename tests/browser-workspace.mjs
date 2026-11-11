@@ -61,9 +61,10 @@ try {
   for (const viewport of [
     { width: 1440, height: 1000 },
     { width: 768, height: 1024 },
-    { width: 430, height: 932 },
-    { width: 375, height: 812 },
-  ]) {
+    { width: 1024, height: 900 },
+    { width: 390, height: 844 },
+    { width: 360, height: 800 },
+  ].filter(v => !process.env.ITD_TEST_WIDTHS || process.env.ITD_TEST_WIDTHS.split(",").map(Number).includes(v.width))) {
     const email = `owner${viewport.width}@example.test`;
     const { user: owner } = await api("/api/register", {
       body: { name: "Анна · демонстрация", email, password },
