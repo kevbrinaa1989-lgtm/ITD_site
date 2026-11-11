@@ -199,8 +199,23 @@ try {
       await page.locator("#itd-tour-layer").waitFor({ state: "visible" });
       assert.match(await page.locator("#itd-tour-layer h2").textContent(), /Добро пожаловать, Заказчик/);
       await page.getByRole("button", { name: /Начать обзор/ }).click();
-      assert.match(await page.locator("#itd-tour-layer h2").textContent(), /Обзор проекта/);
-      await page.getByRole("button", { name: /Пропустить/ }).click();
+      for (const [i, title] of [
+        "Обзор проекта",
+        "Этапы работы",
+        "Согласование решений",
+        "Материалы проекта",
+        "Общение со студией",
+        "Документы проекта",
+      ].entries()) {
+        await page.waitForFunction(
+          (title) => document.querySelector("#itd-tour-layer h2")?.textContent === title,
+          title,
+        );
+        if (i < 5)
+          await page.getByRole("button", { name: /Далее/ }).click();
+        else
+          await page.getByRole("button", { name: /Завершить/ }).click();
+      }
       await page.locator("#itd-tour-layer").waitFor({ state: "detached" });
       assert.equal(await page.evaluate((id) =>
         localStorage.getItem("itd-client-tour-v2:" + id), user.id
