@@ -308,7 +308,6 @@
             </button>
           </nav>
           <div class="sidebar-bottom">
-            <button id="client-guide-trigger" class="client-guide-sidebar" type="button" hidden>Пройти обзор повторно <span aria-hidden="true">↗</span></button>
             <a class="studio-contact" href="https://t.me/Kevbrina_Diana"
               >Связаться со студией <span aria-hidden="true">→</span></a
             >
@@ -347,7 +346,10 @@
             <div class="topbar-actions">
               <button id="refresh-button" type="button" class="text-button">
                 <span aria-hidden="true">↻</span> Обновить</button
-              ><a href="https://itdstudio.ru/">На сайт →</a>
+              ><button id="client-guide-trigger" class="text-button" type="button"
+                aria-label="Пройти обзор повторно" title="Пройти обзор повторно" hidden>
+                <span aria-hidden="true">?</span> Обзор кабинета
+              </button><a href="https://itdstudio.ru/">На сайт →</a>
               <button
                 id="logout-button"
                 type="button"
