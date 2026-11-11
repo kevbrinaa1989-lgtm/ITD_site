@@ -62,6 +62,7 @@
   };
   const showAuth = () => {
     onboarding.close();
+    delete document.body.dataset.cabinetReady;
     window.ITDUploads?.reset();
     clearRecovery();
     window.ITDWorkspace?.reset();
@@ -1035,6 +1036,7 @@
     await refreshClients();
     window.ITDReview?.start();
     $("client-guide-trigger").hidden = user.role !== "client";
+    document.body.dataset.cabinetReady = "true";
     onboarding.start();
   }
   function authTab(register) {
