@@ -2969,106 +2969,143 @@ progress::-moz-progress-bar {
   overflow-wrap: anywhere;
 }
 
-/* Client welcome and concise, dismissible guide. */
-#app-view .client-guide {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  padding: clamp(20px, 2.5vw, 32px);
-  margin-bottom: 28px;
-  min-width: 0;
-}
-#app-view .client-guide-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 22px;
-}
-#app-view .client-guide-copy { min-width: 0; }
-#app-view .client-guide-kicker {
-  margin: 0 0 10px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .15em;
-  color: var(--copper);
-}
-#app-view .client-guide h2 {
-  margin: 0 0 7px;
-  font: 400 clamp(22px, 2.3vw, 30px)/1.3 Prata, Georgia, serif;
-  color: var(--ink);
-}
-#app-view .client-guide-intro {
-  max-width: 680px;
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.7;
-}
-#app-view .client-guide-toggle,
-#app-view .client-guide-sidebar {
-  color: var(--ink);
-  border: 1px solid var(--line);
-  background: transparent;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 11px 15px;
-  min-height: 44px;
-  cursor: pointer;
-}
-#app-view .client-guide-toggle {
-  flex: none;
-  white-space: nowrap;
-}
-#app-view .client-guide-toggle:hover,
-#app-view .client-guide-sidebar:hover { background: var(--ivory); }
+
+/* Interactive first-entry walkthrough, based on the approved six-step preview. */
 #app-view .client-guide-sidebar {
   display: flex;
   width: 100%;
   justify-content: space-between;
+  gap: 8px;
   align-items: center;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: transparent;
+  padding: 11px 14px;
   margin-bottom: 16px;
+  min-height: 44px;
+  font: 600 12px/1.5 Manrope, Arial, sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+#app-view .client-guide-sidebar[hidden] { display: none !important; }
+#app-view .client-guide-sidebar:hover { background: var(--paper); }
+.itd-tour-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  pointer-events: auto;
+  font-family: Manrope, Arial, sans-serif;
+}
+.itd-tour-layer.is-intro {
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(25, 23, 19, .76);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+.itd-tour-focus {
+  position: fixed;
+  z-index: 1;
+  border: 2px solid #cfbd98;
+  border-radius: 3px;
+  background: transparent;
+  box-shadow: 0 0 0 200vmax rgba(21, 20, 17, .76), 0 0 0 5px rgba(207, 189, 152, .17);
+  pointer-events: none;
+  transition: top .22s ease, left .22s ease, width .22s ease, height .22s ease;
+}
+.itd-tour-focus[hidden] { display: none; }
+.itd-tour-panel {
+  position: fixed;
+  z-index: 2;
+  width: min(410px, calc(100vw - 24px));
+  box-sizing: border-box;
+  padding: 28px;
+  background: #f8f5ef;
+  color: #25231f;
+  border: 1px solid #d5cbb9;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, .27);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.itd-tour-layer.is-intro .itd-tour-panel {
+  position: relative;
+  width: min(640px, 100%);
+  padding: clamp(28px, 5vw, 56px);
   text-align: left;
 }
-#app-view .client-guide-sidebar[hidden],
-#app-view .client-guide-body[hidden] { display: none !important; }
-#app-view .client-guide-list {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  list-style: none;
-  padding: 20px 0 0;
-  margin: 22px 0 0;
-  border-top: 1px solid var(--line);
-  gap: 16px;
-}
-#app-view .client-guide-list li {
-  min-width: 0;
-  padding: 0 14px;
-  border-left: 1px solid var(--line);
-}
-#app-view .client-guide-index {
+.itd-tour-logo {
+  width: 120px;
+  height: 46px;
+  object-fit: contain;
   display: block;
+  margin-bottom: 32px;
+}
+.itd-tour-eyebrow {
+  color: #786649;
+  font: 650 10px/1.5 Manrope, Arial, sans-serif;
+  letter-spacing: .17em;
+  margin: 0 0 12px;
+}
+.itd-tour-panel h2 {
+  color: #25231f;
+  font: 400 clamp(25px, 3.5vw, 36px)/1.25 Prata, Georgia, serif;
+  margin: 0 0 16px;
+}
+.itd-tour-description {
+  margin: 0 0 25px;
+  color: #5f5b53;
+  font-size: 14px;
+  line-height: 1.85;
+}
+.itd-tour-caption {
+  color: #867967;
   font-size: 12px;
-  color: var(--copper);
-  margin-bottom: 12px;
+  margin: 0 0 30px;
 }
-#app-view .client-guide-list h3 {
-  font: 600 14px/1.5 Manrope, Arial, sans-serif;
-  margin: 0 0 8px;
+.itd-tour-progress {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin: 0 0 24px;
 }
-#app-view .client-guide-list p {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.7;
-  margin: 0;
-  overflow-wrap: anywhere;
+.itd-tour-progress span { height: 3px; background: #ded6c9; }
+.itd-tour-progress .is-done { background: #786649; }
+.itd-tour-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
-@media (max-width: 1000px) {
-  #app-view .client-guide-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    row-gap: 22px;
-  }
+.itd-tour-actions button {
+  min-height: 44px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-radius: 0;
+  font: 600 12px/1.3 Manrope, Arial, sans-serif;
 }
-@media (max-width: 600px) {
-  #app-view .client-guide-top { align-items: stretch; flex-direction: column; gap: 14px; }
-  #app-view .client-guide-toggle { align-self: flex-start; }
-  #app-view .client-guide-list { grid-template-columns: 1fr; }
+.itd-tour-actions button:focus-visible { outline: 2px solid #786649; outline-offset: 2px; }
+.itd-tour-actions button:disabled { opacity: .38; cursor: default; }
+.itd-tour-secondary {
+  background: transparent;
+  border: 1px solid #cfc5b7;
+  color: #39342b;
+}
+.itd-tour-primary {
+  color: #f8f5ef;
+  background: #24231f;
+  border: 1px solid #24231f;
+}
+.itd-tour-primary:hover { background: #4e473b; }
+@media (max-width: 720px) {
+  .itd-tour-panel { padding: 21px; }
+  .itd-tour-layer.is-intro .itd-tour-panel { padding: 30px 22px; }
+  .itd-tour-panel h2 { font-size: 26px; }
+  .itd-tour-description { font-size: 13px; }
+  .itd-tour-actions { justify-content: stretch; }
+  .itd-tour-actions button { flex: 1 1 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .itd-tour-focus { transition: none; }
 }
