@@ -1,7 +1,7 @@
 name: Cabinet checks
 on:
   pull_request:
-    branches: [main, feature/client-cabinet]
+    branches: [main, feature/client-cabinet, feature/itd-superdesign-redesign]
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,6 +26,7 @@ jobs:
         suite:
           [
             route,
+            route-fixes,
             review,
             workspace,
             preview,
