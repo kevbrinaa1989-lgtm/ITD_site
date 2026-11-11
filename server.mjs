@@ -687,6 +687,7 @@ export function createApp(options = {}) {
         "/upload-context.js": "upload-context.js",
         "/material-review.js": "material-review.js",
         "/file-viewer.js": "file-viewer.js",
+        "/project-gallery.js": "project-gallery.js",
         "/cabinet.css": "cabinet.css",
         "/cabinet-route.css": "cabinet-route.css",
         "/cabinet-ui.js": "cabinet-ui.js",

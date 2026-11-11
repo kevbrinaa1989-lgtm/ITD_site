@@ -209,7 +209,7 @@ try {
       client: viewport.width !== 1440,
     });
     await page.locator("#tab-results").click();
-    for (const card of await page.locator(".gallery-card").all()) {
+    for (const card of await page.locator("#result-list .gallery-card").all()) {
       await card.scrollIntoViewIfNeeded();
       await card.locator("img").evaluate((img) =>
         img.complete && img.naturalWidth
@@ -224,9 +224,9 @@ try {
             }),
       );
     }
-    assert.equal(await page.locator(".gallery-card").count(), 8);
+    assert.equal(await page.locator("#result-list .gallery-card").count(), 8);
     const cardGeometry = await page
-      .locator(".gallery-card")
+      .locator("#result-list .gallery-card")
       .evaluateAll((cards) =>
         cards.map((card) => {
           const caption = card.querySelector(".gallery-caption"),
@@ -368,7 +368,7 @@ try {
     for (const file of files.filter((f) =>
       f.contentType.startsWith("image/"),
     )) {
-      const card = page.locator(".gallery-open").filter({ hasText: file.name });
+      const card = page.locator("#result-list .gallery-open").filter({ hasText: file.name });
       await card.click();
       await initialFit();
       if (
@@ -396,7 +396,7 @@ try {
     }
     // Each image retains its own zoom while navigating; a new modal session resets it.
     const firstLarge = page
-      .locator(".gallery-open")
+      .locator("#result-list .gallery-open")
       .filter({ hasText: "short.jpg" });
     await firstLarge.scrollIntoViewIfNeeded();
     const galleryScroll = await page.evaluate(() => ({
@@ -536,7 +536,7 @@ try {
       await page.screenshot({
         path: join(imageScreenshot, `gallery-${viewport.width}.png`),
       });
-    await page.locator(".gallery-open").first().click();
+    await page.locator("#result-list .gallery-open").first().click();
     await page.waitForFunction(() =>
       document
         .querySelector(".viewer-status")
@@ -560,7 +560,7 @@ try {
     );
     await page.evaluate(() => {
       document.querySelector(".viewer-toolbar button").click();
-      document.querySelector(".gallery-open").click();
+      document.querySelector("#result-list .gallery-open").click();
     });
     await page.waitForFunction(
       () => document.querySelector(".viewer-content img")?.naturalWidth > 0,

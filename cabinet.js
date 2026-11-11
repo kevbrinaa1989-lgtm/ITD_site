@@ -72,6 +72,7 @@
     selectedStageId = null;
     document.body.classList.remove("menu-open");
     window.ITDViewer?.invalidate();
+    window.ITDGallery?.reset();
     clearTimeout(messageTimer);
     user = null;
     window.ITDUI?.syncShell(null, null, false, selectTab);
@@ -478,6 +479,7 @@
       );
     }
     $("project-status").textContent = project.status;
+    window.ITDViewer.releaseWithin($("project-route"));
     $("project-route").replaceChildren(window.ITDUI.journey(project, {
       openStage: (id) => {selectedStageId=id; selectTab("stages"); render();},
       openMaterial: (file) => window.ITDReview.open(file.review.materialId, file.review.versionId),
@@ -702,6 +704,7 @@
       [...stageSelect.options].some((option) => option.value === previousStage)
     )
       stageSelect.value = previousStage;
+    window.ITDGallery?.render(project);
     window.ITDReview?.setProject(project);
     window.ITDUploads?.reconcile();
   }

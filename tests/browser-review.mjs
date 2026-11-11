@@ -250,7 +250,7 @@ try {
     );
     await client.locator("#tab-stages").click();
     await client.locator("#tab-results").click();
-    for (const card of await client.locator(".gallery-card").all()) {
+    for (const card of await client.locator("#result-list .gallery-card").all()) {
       await card.scrollIntoViewIfNeeded();
     }
     await open(client);

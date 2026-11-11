@@ -174,6 +174,7 @@
       waiting = pending();
     const activeProjects = projects.filter(window.ITDUI.active);
     const project = activeProjects.find(p => waiting.some(w => w.project.id === p.id)) || activeProjects[0] || projects[0];
+    window.ITDViewer?.releaseWithin(host);
     host.replaceChildren();
     if (project) {
       const header=node("div",undefined,"route-home-heading"), copy=node("div");

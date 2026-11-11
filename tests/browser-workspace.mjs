@@ -323,7 +323,7 @@ try {
       .locator(
         "#workspace-attention > .workspace-section .workspace-attention-card",
       )
-      .filter({ hasText: "Планировка-v1.jpg" });
+      .filter({ hasText: "Планировка-v1" });
     await oldThread
       .getByRole("button", { name: "Открыть материал →", exact: true })
       .click();

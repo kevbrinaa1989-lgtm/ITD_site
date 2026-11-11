@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/cabinet-route.css" />
     <script src="/cabinet-ui.js" defer></script>
     <script src="/file-viewer.js" defer></script>
+    <script src="/project-gallery.js" defer></script>
     <script src="/admin-management.js" defer></script>
     <script src="/material-review.js" defer></script>
     <script src="/admin-workspace.js" defer></script>
@@ -576,12 +577,13 @@
               >
                 <div class="section-title">
                   <div>
-                    <h2>Результаты работы</h2>
+                    <p class="eyebrow">Альбом проекта</p><h2>Пространство в деталях</h2>
                     <p class="muted">
                       Чертежи, визуализации и другие материалы проекта.
                     </p>
                   </div>
                 </div>
+                <div id="project-gallery"></div>
                 <div id="result-list" class="file-list"></div>
               </section>
               <section
@@ -1156,6 +1158,10 @@
                   Запросы на восстановление →
                 </button>
               </div>
+              <div id="workspace-project-strip" class="studio-project-strip"></div>
+              <div class="studio-grid"><div class="studio-main">
+              <div class="section-title"><h2>Задачи студии</h2><button class="text-button" type="button" data-open-tab="tasks">Все задачи →</button></div>
+              <div id="workspace-task-queue" class="studio-task-queue"></div>
               <div class="workspace-attention-filters">
                 <label
                   >Проект<select id="workspace-project-filter">
@@ -1170,7 +1176,7 @@
                 >
               </div>
               <div id="workspace-attention" class="workspace-sections"></div>
-              <div id="workspace-deadlines" class="workspace-sections"></div>
+              </div><aside class="studio-agenda"><h2>Ближайшие сроки</h2><div id="workspace-deadlines" class="workspace-sections"></div></aside></div>
             </section>
             <section
               id="panel-tasks"

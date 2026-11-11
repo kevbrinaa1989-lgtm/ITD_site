@@ -319,6 +319,7 @@
     return b;
   }
   const pendingThumbs = new Map();
+  const thumbnailRecords = new Map();
   const observer = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
@@ -332,12 +333,14 @@
     },
     { rootMargin: "120px" },
   );
-  function thumbnail(file, files) {
+  function thumbnail(file, files, options = {}) {
     const card = el("div", undefined, "gallery-card"),
-      b = control(file, files, "");
+      b = options.onOpen ? button("", () => options.onOpen(file)) : control(file, files, "");
+    b.setAttribute("aria-label", options.label || `Открыть материал: ${file.name}`);
     b.className = "gallery-open";
     const img = el("img");
     img.alt = file.name;
+    img.onload = () => options.onLoad?.(file, img);
     img.onerror = () => {
       img.remove();
       b.prepend(el("span", "Изображение недоступно", "thumbnail-error"));
@@ -348,10 +351,13 @@
     card.append(b);
     const stamp = epoch;
     thumbs.add(img);
+    const record={card,controller:null,url:null};
+    thumbnailRecords.set(img,record);
     pendingThumbs.set(card, () => {
       if (stamp !== epoch) return;
       const c = new AbortController();
       controllers.add(c);
+      record.controller=c;
       fetch(`/api/files/${file.id}/preview`, {
         credentials: "same-origin",
         signal: c.signal,
@@ -365,8 +371,9 @@
           return r.blob();
         })
         .then((blob) => {
-          if (stamp !== epoch) return;
+          if (stamp !== epoch || !thumbnailRecords.has(img)) return;
           const url = URL.createObjectURL(blob);
+          record.url=url;
           urls.add(url);
           img.src = url;
         })
@@ -380,6 +387,16 @@
     });
     observer.observe(card);
     return card;
+  }
+  function releaseWithin(host) {
+    if (!host) return;
+    for (const [img,record] of thumbnailRecords) {
+      if (!host.contains(img)) continue;
+      observer.unobserve(record.card);pendingThumbs.delete(record.card);
+      record.controller?.abort();controllers.delete(record.controller);
+      if(record.url){URL.revokeObjectURL(record.url);urls.delete(record.url)}
+      thumbs.delete(img);thumbnailRecords.delete(img);
+    }
   }
   let resizeTimer;
   const resizeObserver = new ResizeObserver(() => {
@@ -395,6 +412,7 @@
     epoch++;
     observer.disconnect();
     pendingThumbs.clear();
+    thumbnailRecords.clear();
     clearTimeout(resizeTimer);
     close();
     controllers.forEach((c) => c.abort());
@@ -409,5 +427,5 @@
     current = null;
     collection = [];
   }
-  window.ITDViewer = { supported, image, control, thumbnail, invalidate, onRendered: callback => {renderedCallback = callback;} };
+  window.ITDViewer = { supported, image, control, thumbnail, releaseWithin, invalidate, onRendered: callback => {renderedCallback = callback;} };
 })();
