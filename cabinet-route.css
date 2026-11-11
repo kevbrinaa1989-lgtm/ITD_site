@@ -2968,3 +2968,107 @@ progress::-moz-progress-bar {
   overflow: hidden;
   overflow-wrap: anywhere;
 }
+
+/* Client welcome and concise, dismissible guide. */
+#app-view .client-guide {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: clamp(20px, 2.5vw, 32px);
+  margin-bottom: 28px;
+  min-width: 0;
+}
+#app-view .client-guide-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 22px;
+}
+#app-view .client-guide-copy { min-width: 0; }
+#app-view .client-guide-kicker {
+  margin: 0 0 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .15em;
+  color: var(--copper);
+}
+#app-view .client-guide h2 {
+  margin: 0 0 7px;
+  font: 400 clamp(22px, 2.3vw, 30px)/1.3 Prata, Georgia, serif;
+  color: var(--ink);
+}
+#app-view .client-guide-intro {
+  max-width: 680px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+#app-view .client-guide-toggle,
+#app-view .client-guide-sidebar {
+  color: var(--ink);
+  border: 1px solid var(--line);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 11px 15px;
+  min-height: 44px;
+  cursor: pointer;
+}
+#app-view .client-guide-toggle {
+  flex: none;
+  white-space: nowrap;
+}
+#app-view .client-guide-toggle:hover,
+#app-view .client-guide-sidebar:hover { background: var(--ivory); }
+#app-view .client-guide-sidebar {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  text-align: left;
+}
+#app-view .client-guide-sidebar[hidden],
+#app-view .client-guide-body[hidden] { display: none !important; }
+#app-view .client-guide-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  list-style: none;
+  padding: 20px 0 0;
+  margin: 22px 0 0;
+  border-top: 1px solid var(--line);
+  gap: 16px;
+}
+#app-view .client-guide-list li {
+  min-width: 0;
+  padding: 0 14px;
+  border-left: 1px solid var(--line);
+}
+#app-view .client-guide-index {
+  display: block;
+  font-size: 12px;
+  color: var(--copper);
+  margin-bottom: 12px;
+}
+#app-view .client-guide-list h3 {
+  font: 600 14px/1.5 Manrope, Arial, sans-serif;
+  margin: 0 0 8px;
+}
+#app-view .client-guide-list p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1000px) {
+  #app-view .client-guide-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 22px;
+  }
+}
+@media (max-width: 600px) {
+  #app-view .client-guide-top { align-items: stretch; flex-direction: column; gap: 14px; }
+  #app-view .client-guide-toggle { align-self: flex-start; }
+  #app-view .client-guide-list { grid-template-columns: 1fr; }
+}
