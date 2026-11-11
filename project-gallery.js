@@ -1,6 +1,6 @@
 "use strict";
 (() => {
-  const { node, button, materialTitle } = window.ITDUI;
+  const { node, button } = window.ITDUI;
   const selections = new Map();
   function render(project) {
     const host = document.getElementById("project-gallery");
@@ -53,13 +53,22 @@
     const bottom = node("div", undefined, "album-bottom"),
       caption = node("div");
     caption.append(
-      node("h3", materialTitle(selected.name)),
+      node(
+        "h3",
+        window.ITDUI.materialLabel({
+          file: selected,
+          stage: project.stages.find((s) => s.id === selected.stageId),
+        }),
+      ),
+      node("p", selected.name, "album-filename"),
       node(
         "p",
         "Откройте изображение, чтобы рассмотреть детали.",
         "album-hint",
       ),
     );
+    caption.querySelector("h3").title = caption.querySelector("h3").textContent;
+    caption.querySelector(".album-filename").title = selected.name;
     const thumbs = node("div", undefined, "album-thumbnails");
     thumbs.setAttribute("aria-label", "Ракурсы проекта");
     for (const file of images) {

@@ -405,7 +405,14 @@
       caption.append(field);
       form.append(caption);
     }
-    form.append(save);
+    form.append(
+      node(
+        "p",
+        "«Согласован» — решения клиента получены. «Завершён» — студия выполнила все работы по этапу. Для завершения выберите этот статус и сохраните этап; процент согласованных или завершённых этапов при этом не удваивается.",
+        "stage-status-help",
+      ),
+      save,
+    );
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       const values = Object.fromEntries(new FormData(form));
@@ -492,21 +499,16 @@
         openTab: selectTab,
       }),
     );
-    const completed = project.stages.filter(
-      (stage) => stage.status === "completed",
-    ).length;
-    const progress = project.stages.length
-      ? Math.round((completed / project.stages.length) * 100)
-      : 0;
+    const state = window.ITDProjectState.progress(project.stages);
+    const completed = state.completed,
+      progress = state.percent;
     $("project-header-progress").value = progress;
-    $("project-header-progress").hidden = !project.stages.length;
-    $("project-header-progress-text").textContent = project.stages.length
-      ? `${progress}% · ${completed} из ${project.stages.length} этапов`
-      : "Нет этапов";
-    const current =
-      project.stages.find((stage) => stage.status === "in_progress") ||
-      project.stages.find((stage) => stage.status === "planned") ||
-      project.stages.find((stage) => stage.status !== "completed");
+    $("project-header-progress").hidden = !state.total;
+    $("project-header-progress").setAttribute("aria-label", state.label);
+    $("project-header-progress-text").textContent = state.total
+      ? `${progress}% · ${state.label}. ${state.detail}`
+      : state.label;
+    const current = window.ITDProjectState.currentStage(project.stages);
     const setText = (id, value) => {
       if ($(id)) $(id).textContent = value;
     };
@@ -518,16 +520,15 @@
     );
     if ($("project-progress")) {
       $("project-progress").value = progress;
-      $("project-progress").setAttribute(
-        "aria-label",
-        `Завершено этапов: ${completed} из ${project.stages.length}`,
-      );
+      $("project-progress").setAttribute("aria-label", state.label);
     }
     setText(
       "overview-next-stage",
       current?.title ||
         (project.stages.length
-          ? "Все этапы завершены"
+          ? state.approved
+            ? "Согласованные этапы ожидают завершения студией"
+            : "Все этапы завершены"
           : "Этапы ещё не добавлены"),
     );
     setText(
@@ -537,7 +538,9 @@
           ? "Следите за решениями в разделе «Согласования». Добавляйте материалы из этапа проекта."
           : "Посмотрите материалы этапа. Решения и комментарии доступны в разделе «Согласования»."
         : project.stages.length
-          ? "Все этапы завершены. Доступные результаты и документы можно скачать в соответствующих разделах."
+          ? state.approved
+            ? "Согласование не меняет этап на «Завершён» автоматически. Завершение отмечает администратор после выполнения работ."
+            : "Все этапы завершены. Доступные результаты и документы можно скачать в соответствующих разделах."
           : admin
             ? "Нажмите «Добавить этап», чтобы составить план проекта."
             : "Новые этапы и материалы появятся здесь после публикации студией.",
@@ -629,7 +632,8 @@
           "muted",
         ),
       );
-      content.append(
+      const stageActions = node("div", undefined, "stage-actions");
+      stageActions.append(
         projectAction(
           selectedStageId === stage.id ? "Все этапы" : "Открыть этап",
           () => {
@@ -640,9 +644,18 @@
         ),
       );
       if (admin)
-        content.append(
+        stageActions.append(
           projectAction("Загрузить материал в этап", () =>
             openUpload(stage.id),
+          ),
+        );
+      content.append(stageActions);
+      if (stage.status === "approved")
+        content.append(
+          node(
+            "p",
+            "Материалы согласованы. Завершение этапа отмечает студия после выполнения всех работ.",
+            "stage-status-help",
           ),
         );
       const reviewHost = node("div", undefined, "stage-review-materials");

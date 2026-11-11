@@ -2752,3 +2752,217 @@ progress::-moz-progress-bar {
     pointer-events: none;
   }
 }
+/* Route corrections: accepted progress is distinct from administrative closure. */
+#app-view .route-progress {
+  min-width: 0;
+  width: min(100%, 340px);
+}
+#app-view .route-progress-meta {
+  gap: 16px;
+  align-items: center;
+}
+#app-view .route-progress-meta > span {
+  font-size: 12px;
+}
+#app-view .route-progress-count,
+#app-view .route-progress-detail {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 5px 0 0;
+}
+#project-heading .project-heading-progress {
+  max-width: 340px;
+}
+#project-header-progress-text {
+  font-size: 12px;
+  line-height: 1.7;
+}
+#app-view .route-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  overflow: visible;
+  max-width: 100%;
+}
+#app-view .route-step {
+  min-width: 0;
+  min-height: 112px;
+  width: 100%;
+  background: var(--ivory);
+  border: 0;
+  padding: 16px;
+  gap: 10px;
+}
+#app-view .route-step.is-current {
+  background: var(--ink);
+}
+#app-view .route-step > span {
+  min-width: 0;
+  flex: 1;
+  line-height: 1.5;
+}
+#app-view .route-step-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+#app-view .route-step small {
+  font-size: 11px;
+  margin-top: 8px;
+}
+#app-view .route-step[data-status="approved"]:not(.is-current) small {
+  color: #786649;
+}
+#app-view .route-step[data-status="completed"]:not(.is-current) small {
+  color: #40634c;
+}
+#app-view .route-feature-copy h3,
+#app-view .review-detail-heading h2,
+#app-view .review-material-card h3,
+#app-view .album-bottom h3,
+#client-review-panel h3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+#app-view .route-feature-copy .file-meta,
+#app-view .review-actual-file,
+#app-view .album-filename,
+#app-view .material-filename {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  font-size: 11px;
+  min-width: 0;
+}
+#app-view .album-filename {
+  color: #c6c1b6;
+  margin: 6px 0;
+}
+#app-view .stage-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 18px 0;
+}
+#app-view .stage-actions button {
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  text-align: left;
+}
+#app-view .stage-status-help {
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--muted);
+  padding: 12px 0;
+  margin: 8px 0;
+  border-top: 1px solid var(--line);
+}
+#app-view .stage-body {
+  min-width: 0;
+}
+#panel-workspace > .section-title {
+  margin-bottom: 12px;
+  align-items: flex-start;
+}
+#panel-workspace > .section-title h1 {
+  margin: 8px 0 12px;
+}
+#workspace-calendar {
+  margin-bottom: 0;
+}
+#workspace-message:empty {
+  display: none;
+}
+#workspace-metrics {
+  margin-top: 18px;
+  margin-bottom: 18px;
+}
+#app-view .workspace-quick-actions {
+  margin-bottom: 18px;
+  min-height: 44px;
+}
+#app-view .studio-task-queue .workspace-task-card {
+  min-height: 94px;
+}
+@media (max-width: 767px) {
+  #app-view .route-home-heading {
+    gap: 16px;
+  }
+  #app-view .route-progress {
+    width: 100%;
+    max-width: none;
+  }
+  #app-view .route-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 18px 0;
+    gap: 1px;
+  }
+  #app-view .route-step {
+    min-width: 0;
+    min-height: 128px;
+    gap: 8px;
+    padding: 12px 10px;
+  }
+  #app-view .route-step > strong {
+    font-size: 18px;
+  }
+  #app-view .route-step-title {
+    font-size: 11px;
+  }
+  #app-view .route-step small {
+    font-size: 10px;
+  }
+  #app-view .stage-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  #app-view .stage-actions button {
+    width: 100%;
+  }
+  #app-view .route-feature-copy h3 {
+    font-size: 21px;
+  }
+  #project-heading .project-heading-progress {
+    max-width: none;
+  }
+}
+#app-view .client-events,
+#app-view .client-event,
+#app-view .notification-card,
+#app-view .workspace-attention-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#app-view .client-events p,
+#app-view .notification-card .review-context {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+#app-view .route-feature-copy,
+#app-view .route-feature-head,
+#app-view .route-stage-heading {
+  min-width: 0;
+}
+#app-view .workspace-attention-card h3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}

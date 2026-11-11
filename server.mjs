@@ -691,6 +691,7 @@ export function createApp(options = {}) {
         "/project-gallery.js": "project-gallery.js",
         "/cabinet.css": "cabinet.css",
         "/cabinet-route.css": "cabinet-route.css",
+        "/project-state.js": "project-state.js",
         "/cabinet-ui.js": "cabinet-ui.js",
         "/assets/brand/itd-logo.svg": "assets/brand/itd-logo.svg",
         "/assets/fonts/fonts.css": "assets/fonts/fonts.css",

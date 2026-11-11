@@ -64,7 +64,11 @@ try {
     { width: 1024, height: 900 },
     { width: 390, height: 844 },
     { width: 360, height: 800 },
-  ].filter(v => !process.env.ITD_TEST_WIDTHS || process.env.ITD_TEST_WIDTHS.split(",").map(Number).includes(v.width))) {
+  ].filter(
+    (v) =>
+      !process.env.ITD_TEST_WIDTHS ||
+      process.env.ITD_TEST_WIDTHS.split(",").map(Number).includes(v.width),
+  )) {
     const email = `owner${viewport.width}@example.test`;
     const { user: owner } = await api("/api/register", {
       body: { name: "Анна · демонстрация", email, password },
@@ -324,7 +328,9 @@ try {
       .locator(
         "#workspace-attention > .workspace-section .workspace-attention-card",
       )
-      .filter({ hasText: "Планировка-v1" });
+      .and(
+        admin.locator(`[data-material-id="${mid}"][data-version-id="${v1}"]`),
+      );
     await oldThread
       .getByRole("button", { name: "Открыть материал →", exact: true })
       .click();

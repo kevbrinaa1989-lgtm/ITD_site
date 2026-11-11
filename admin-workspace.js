@@ -418,13 +418,22 @@
   }
   function materialCard(material, waiting = false) {
     const card = node("article", undefined, "workspace-attention-card");
+    card.dataset.materialId = material.materialId;
+    card.dataset.versionId = material.versionId;
     card.append(
       node(
         "p",
         `${material.projectTitle} · ${material.stageTitle}${material.clientName ? ` · ${material.clientName}` : ""}`,
         "workspace-context",
       ),
-      node("h3", window.ITDUI.materialTitle(material.title)),
+      node(
+        "h3",
+        window.ITDUI.materialLabel({
+          title: material.title,
+          file: { review: { materialId: material.materialId } },
+          stage: { title: material.stageTitle },
+        }),
+      ),
     );
     if (waiting) {
       card.append(
@@ -685,7 +694,7 @@
       form.scrollIntoView({ block: "start" });
       form.elements.namedItem("title").focus({ preventScroll: true });
     });
-    $("workspace-refresh").addEventListener("click", loadDashboard);
+
     for (const id of ["workspace-project-filter", "workspace-type-filter"])
       $(id).addEventListener("change", renderAttention);
   }

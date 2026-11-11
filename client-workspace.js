@@ -54,7 +54,8 @@
       "panel project-card client-project-card",
     );
     const stages = project.stages || [],
-      completed = stages.filter((stage) => stage.status === "completed").length;
+      state = window.ITDProjectState.progress(stages),
+      completed = state.completed;
     const current = stages.filter((stage) =>
       ["in_progress", "pending_approval", "changes_requested"].includes(
         stage.status,
@@ -66,7 +67,7 @@
       node(
         "p",
         stages.length
-          ? `Завершено ${completed} из ${stages.length} этапов · ${Math.round((completed / stages.length) * 100)}%`
+          ? `${state.label} · ${state.percent}% · ${state.detail}`
           : "Этапы пока не добавлены",
         "muted",
       ),
@@ -74,11 +75,8 @@
     if (stages.length) {
       const progress = node("progress");
       progress.max = stages.length;
-      progress.value = completed;
-      progress.setAttribute(
-        "aria-label",
-        `Завершено ${completed} из ${stages.length} этапов`,
-      );
+      progress.value = state.accepted;
+      progress.setAttribute("aria-label", state.label);
       card.append(progress);
       card.append(
         node(
@@ -87,7 +85,9 @@
             ? `В работе: ${current.map((s) => s.title).join(" · ")}`
             : completed === stages.length
               ? "Все этапы завершены"
-              : "Этапы запланированы",
+              : state.approved
+                ? "Согласование получено; завершение отмечает студия"
+                : "Этапы запланированы",
           "muted",
         ),
       );
@@ -112,7 +112,8 @@
         `${project.title}${stage ? ` · ${stage.title}` : ""}${project.status === "Архив" ? " · Архив" : ""}`,
         "review-context",
       ),
-      node("h3", file.name),
+      node("h3", window.ITDUI.materialLabel({ file, stage })),
+      node("p", file.name, "file-meta material-filename"),
       node(
         "p",
         `Версия ${file.review.versionNumber} · Ожидает согласования`,
@@ -215,12 +216,12 @@
             ),
         }),
       );
-      const other = waiting.filter(
-        (item) =>
-          item.project.id !== project.id ||
-          item.file.id !==
-            waiting.find((w) => w.project.id === project.id)?.file.id,
+      const currentStage = window.ITDProjectState.currentStage(project.stages);
+      const featured = waiting.find(
+        (w) =>
+          w.project.id === project.id && w.file.stageId === currentStage?.id,
       );
+      const other = waiting.filter((item) => item !== featured);
       if (other.length) {
         const attention = node("section", undefined, "client-other-decisions");
         attention.append(node("h2", "Также ждут вашего решения"));

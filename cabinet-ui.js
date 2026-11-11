@@ -43,25 +43,27 @@
     });
   }
   function progress(project) {
-    const stages = project.stages || [],
-      done = stages.filter((s) => s.status === "completed").length;
+    const state = window.ITDProjectState.progress(project.stages);
     const box = node("div", undefined, "route-progress");
     const meta = node("div", undefined, "route-progress-meta");
     meta.append(
-      node("span", "Готовность проекта"),
-      node(
-        "strong",
-        stages.length ? Math.round((done / stages.length) * 100) + "%" : "—",
-      ),
+      node("span", "Согласовано или завершено"),
+      node("strong", state.total ? `${state.percent}%` : "—"),
     );
     const bar = node("progress");
-    bar.max = stages.length || 1;
-    bar.value = done;
-    bar.setAttribute(
-      "aria-label",
-      `Завершено ${done} из ${stages.length} этапов`,
+    bar.max = state.total || 1;
+    bar.value = state.accepted;
+    bar.setAttribute("aria-label", state.label);
+    box.append(
+      meta,
+      bar,
+      node(
+        "p",
+        `${state.accepted} из ${state.total} этапов`,
+        "route-progress-count",
+      ),
+      node("p", state.detail, "route-progress-detail"),
     );
-    box.append(meta, bar);
     return box;
   }
   function journey(project, actions) {
@@ -78,18 +80,20 @@
           (f) => f.review?.isCurrent && f.review.status === "pending_approval",
         )
       : [];
+    const stage = window.ITDProjectState.currentStage(stages);
+    const stageFiles = files.filter(
+      (f) =>
+        f.category === "result" &&
+        stage &&
+        f.stageId === stage.id &&
+        (!f.review || f.review.isCurrent),
+    );
     const chosen =
-      waiting[0] ||
-      files
-        .filter(
-          (f) =>
-            (!f.review || f.review.isCurrent) && window.ITDViewer?.image(f),
-        )
-        .at(-1);
-    const stage =
-      stages.find((s) => s.id === chosen?.stageId) ||
-      underway[0] ||
-      stages.find((s) => s.status !== "completed");
+      stageFiles.find((f) => f.review?.status === "pending_approval") ||
+      stageFiles.at(-1);
+    const needsDecision =
+      chosen?.review?.status === "pending_approval" && active(project);
+    const state = window.ITDProjectState.progress(stages);
     const strip = node("div", undefined, "route-strip");
     strip.setAttribute("aria-label", "Маршрут проекта");
     stages.forEach((s, i) => {
@@ -97,7 +101,9 @@
       b.dataset.status = s.status;
       b.classList.toggle("is-current", s.id === stage?.id);
       b.append(node("strong", String(i + 1).padStart(2, "0")));
-      const text = node("span", s.title);
+      b.title = `${s.title} — ${labels[s.status] || s.status}`;
+      const text = node("span");
+      text.append(node("span", s.title, "route-step-title"));
       text.append(node("small", labels[s.status] || s.status));
       b.append(text);
       strip.append(b);
@@ -128,7 +134,10 @@
         active(project) ? "Сейчас в проекте" : "История проекта",
         "eyebrow",
       ),
-      node("h2", stage?.title || project.status),
+      node(
+        "h2",
+        stage?.title || (state.approved ? "Этапы согласованы" : project.status),
+      ),
     );
     stageHeading.append(title);
     head.append(
@@ -162,18 +171,25 @@
     }
     const copy = node("div", undefined, "route-feature-copy");
     copy.append(
-      node("p", waiting.length ? "Следующий шаг" : "Ваш проект", "eyebrow"),
+      node("p", needsDecision ? "Следующий шаг" : "Ваш проект", "eyebrow"),
       node(
         "h3",
-        chosen ? materialTitle(chosen.name) : stage?.title || "Всё по порядку",
+        chosen
+          ? window.ITDProjectState.materialLabel({ file: chosen, stage })
+          : stage?.title ||
+              (state.approved
+                ? "Ожидается завершение этапов студией"
+                : "Все доступные материалы — в альбоме проекта"),
       ),
     );
     copy.append(
       node(
         "p",
-        waiting.length
+        needsDecision
           ? "Посмотрите текущую версию и сообщите, всё ли вам подходит."
-          : stage?.description ||
+          : (!stage && state.approved
+              ? "Согласование зафиксировано. Студия отметит завершение этапов после выполнения всех работ."
+              : stage?.description) ||
               "Все доступные материалы и документы собраны в разделах проекта.",
         "muted",
       ),
@@ -189,7 +205,7 @@
     if (chosen?.review)
       copy.append(
         button(
-          waiting.length ? "Посмотреть и решить →" : "Открыть материал →",
+          needsDecision ? "Посмотреть и решить →" : "Открыть материал →",
           () => actions.openMaterial(chosen),
           "primary",
         ),
@@ -207,6 +223,10 @@
           "primary",
         ),
       );
+    if (chosen && !chosen.review)
+      copy.append(node("p", chosen.name, "file-meta"));
+    copy.querySelector("h3").title = copy.querySelector("h3").textContent;
+    copy.querySelector(".file-meta")?.setAttribute("title", chosen?.name || "");
     body.append(copy);
     card.append(body);
     root.append(card);
@@ -356,6 +376,7 @@
     button,
     active,
     materialTitle,
+    materialLabel: window.ITDProjectState.materialLabel,
     date,
     progress,
     journey,

@@ -112,7 +112,14 @@
   }
 
   const materialTitle = (material) =>
-    window.ITDUI.materialTitle(material.title);
+    window.ITDUI.materialLabel({
+      title: material.title,
+      file: {
+        ...material.currentVersion.file,
+        review: { materialId: material.id },
+      },
+      stage: project?.stages.find((s) => s.id === material.stageId),
+    });
   const drafts = new Map();
   let sheet = null;
   function closeSheet() {
@@ -461,6 +468,7 @@
       ),
       statusTag(v.status),
     );
+    description.querySelector("h2").title = materialTitle(material);
     summary.append(fileTile(v.file), description);
     const back = button(
       "← Материалы проекта",
@@ -493,7 +501,9 @@
       }),
     );
     host.append(versionTools);
-    host.append(el("p", v.file.name, "review-actual-file file-meta"));
+    const actualFile = el("p", v.file.name, "review-actual-file file-meta");
+    actualFile.title = v.file.name;
+    host.append(actualFile);
     const workspace = el("div", undefined, "review-workspace");
     const visual = el("div", undefined, "review-visual");
     const preview = el("div", undefined, "material-preview");
