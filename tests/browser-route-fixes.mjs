@@ -205,6 +205,8 @@ try {
       assert.equal(await page.evaluate((id) =>
         localStorage.getItem("itd-client-tour-v2:" + id), user.id
       ), "done");
+      if (!(await page.locator("#client-guide-trigger").isVisible()))
+        await page.locator("#mobile-menu-button").click();
       await page.locator("#client-guide-trigger").click();
       await page.locator("#itd-tour-layer").waitFor({ state: "visible" });
       await page.getByRole("button", { name: /Пропустить/ }).click();
