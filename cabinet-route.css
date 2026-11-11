@@ -3120,3 +3120,12 @@ progress::-moz-progress-bar {
 @media (prefers-reduced-motion: reduce) {
   .itd-tour-focus { transition: none; }
 }
+
+/* Keep the replay control reachable without horizontal overflow at 320px. */
+@media (max-width: 359px) {
+  #app-view .workspace-topbar { padding-inline: 8px; gap: 6px; }
+  #app-view .shell-brand { min-width: 72px; }
+  #app-view .shell-brand img { width: 72px; height: 26px; }
+  #app-view .topbar-actions { gap: 4px; }
+  #app-view #client-guide-trigger { width: 40px; min-width: 40px; }
+}
