@@ -1,0 +1,59 @@
+name: Cabinet checks
+on:
+  pull_request:
+    branches: [main, feature/client-cabinet]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm test
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          [
+            route,
+            review,
+            workspace,
+            preview,
+            admin,
+            approved-interface,
+            upload-context,
+            invitations,
+            recovery,
+          ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm install --no-save --package-lock=false playwright@1.58.2
+      - run: npx playwright install --with-deps chromium
+      - name: Browser regression on disposable data
+        env:
+          ITD_SCREENSHOT_DIR: test-results/screenshots
+        run: |
+          export ITD_CHROMIUM="$(node --input-type=module -e 'import {chromium} from "playwright"; console.log(chromium.executablePath())')"
+          node "tests/browser-${{ matrix.suite }}.mjs"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots-${{ matrix.suite }}
+          path: test-results/screenshots
+          if-no-files-found: ignore
+          retention-days: 7

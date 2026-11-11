@@ -1,7 +1,7 @@
 {
   "updatedAt": "2026-11-10T19:26:54.746773+00:00",
   "branch": "feature/itd-superdesign-redesign",
-  "approval": "awaiting-user-review",
+  "approval": "approved-for-implementation",
   "screens": [
     {
       "view": "client",
@@ -171,5 +171,10 @@
       "visualDirection": "Unified Route: C client, A administrator, B gallery",
       "displayTitle": "Маршрут · Единая концепция · Галерея · Телефон"
     }
-  ]
+  ],
+  "implementation": {
+    "branch": "feature/itd-superdesign-redesign",
+    "productionDeploymentAuthorized": false,
+    "report": "docs/redesign/IMPLEMENTATION.md"
+  }
 }
