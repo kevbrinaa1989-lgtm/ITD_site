@@ -250,12 +250,15 @@ try {
     // A horizontal stage card is a preview, not navigation to the stage list.
     const clientRoute = page.locator("#client-home-panel .project-journey");
     const clientPreview = clientRoute.locator(".route-feature");
+    const stageCount = await clientRoute.locator(".route-step").count();
+    assert.equal(stageCount, stages.length);
     const routeStage = clientRoute.locator(".route-step").nth(2);
     await routeStage.click();
     assert.equal(await page.locator("#tab-client-home").getAttribute("aria-selected"), "true");
     assert.equal(await clientRoute.locator(".route-strip").isVisible(), true);
     assert.equal(await clientPreview.isVisible(), true);
     assert.equal(await clientRoute.locator(".route-links").isVisible(), true);
+    assert.equal(await clientRoute.locator(".route-step").count(), stageCount);
     assert.match(await clientPreview.locator(".route-stage-heading h2").innerText(), /Концепция интерьера/);
     assert.equal(await routeStage.getAttribute("aria-pressed"), "true");
     assert.match(await clientPreview.locator(".route-stage-heading .eyebrow").innerText(), /Просмотр этапа/i);
