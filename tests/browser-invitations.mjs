@@ -119,6 +119,12 @@ try {
     assert.equal(await recipient.locator("#login-email").inputValue(), email);
     await recipient.locator("#login-password").fill(password);
     await recipient.locator("#login-form button[type=submit]").click();
+    await recipient.locator("#itd-tour-layer").waitFor({ state: "visible" });
+    assert.match(
+      await recipient.locator("#itd-tour-layer h2").textContent(),
+      /Добро пожаловать, Клиент/,
+      "The first login from an invitation must show the tour, even without a project",
+    );
     await openGlobal(recipient, "client-projects");
     assert.equal(
       await recipient
