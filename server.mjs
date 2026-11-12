@@ -696,6 +696,12 @@ export function createApp(options = {}) {
         "/project-state.js": "project-state.js",
         "/cabinet-ui.js": "cabinet-ui.js",
         "/assets/brand/itd-logo.svg": "assets/brand/itd-logo.svg",
+        ...Object.fromEntries(
+          Array.from({ length: 7 }, (_, index) => {
+            const number = String(index + 1).padStart(2, "0");
+            return [`/assets/stages/${number}.webp`, `assets/stages/${number}.webp`];
+          }),
+        ),
         "/assets/fonts/fonts.css": "assets/fonts/fonts.css",
         "/assets/fonts/itd-font-0.ttf": "assets/fonts/itd-font-0.ttf",
         "/assets/fonts/itd-font-1.ttf": "assets/fonts/itd-font-1.ttf",
@@ -731,6 +737,7 @@ export function createApp(options = {}) {
             ? "text/css; charset=utf-8"
             : file.endsWith(".wasm") ? "application/wasm"
             : file.endsWith(".svg") ? "image/svg+xml"
+            : file.endsWith(".webp") ? "image/webp"
             : file.endsWith(".ttf") ? "font/ttf"
             : asset ? "application/octet-stream" : "text/html; charset=utf-8",
         "Content-Length": bytes.length,
