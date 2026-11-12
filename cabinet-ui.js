@@ -15,6 +15,21 @@
     completed: "Завершён",
   };
   const active = (project) => !["Архив", "Завершён"].includes(project.status);
+  // Editorial artwork is independent of uploaded project files and stage order.
+  const stageArtwork = (stage) => {
+    const title = String(stage?.title || "")
+      .toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/\s+/g, " ").trim();
+    const patterns = [
+      [/^обмер/, "01"],
+      [/^планировоч/, "02"],
+      [/^концепц/, "03"],
+      [/^визуализац/, "04"],
+      [/^(?:техническое описание|техническая документация|рабочая документация)/, "05"],
+      [/^(?:спецификац|ведомость материалов)/, "06"],
+      [/^авторский надзор/, "07"],
+    ];
+    return patterns.find(([pattern]) => pattern.test(title))?.[1] || null;
+  };
   const materialTitle = (value) =>
     String(value || "Материал").replace(
       /\.(pdf|jpe?g|png|webp|gif|svg|dwg|dxf|docx?|xlsx?|pptx?|txt|zip|rar|7z)$/i,
@@ -159,10 +174,16 @@
     );
     card.append(head);
     const body = node("div", undefined, "route-feature-body");
-    if (chosen && window.ITDViewer?.image(chosen)) {
-      const image = window.ITDViewer.thumbnail(chosen, files);
-      image.className = "route-feature-image";
-      body.append(image);
+    const artwork = stageArtwork(stage);
+    if (artwork) {
+      const visual = node("div", undefined, "route-feature-image route-stage-artwork");
+      const image = node("img");
+      image.src = `/assets/stages/${artwork}.webp`;
+      image.alt = `Условная иллюстрация этапа «${stage.title}»`;
+      image.decoding = "async";
+      image.loading = "lazy";
+      visual.append(image);
+      body.append(visual);
     } else {
       const placeholder = node("div", undefined, "route-feature-placeholder");
       placeholder.append(
@@ -170,7 +191,7 @@
           "span",
           stage ? String(stages.indexOf(stage) + 1).padStart(2, "0") : "ITD",
         ),
-        node("p", chosen ? "Документ проекта" : "От идеи — к пространству"),
+        node("p", "От идеи — к пространству"),
       );
       body.append(placeholder);
     }
