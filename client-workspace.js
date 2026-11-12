@@ -13,7 +13,8 @@
     notifications = [],
     notificationError = "",
     profileBusy = false,
-    notificationsRequest = null;
+    notificationsRequest = null,
+    viewedStages = new Map();
   const client = () => hooks?.getUser()?.role === "client";
   const valid = (generation, user) =>
     generation === epoch && client() && hooks.getUser() === user;
@@ -206,7 +207,10 @@
         );
       host.append(
         window.ITDUI.journey(project, {
-          openStage: (id) => hooks.openStage(project.id, id),
+          openStage: (id) => {
+            viewedStages.set(project.id, id);
+            renderHome();
+          },
           openTab: (tab) => hooks.openProject(project.id, { tab }),
           openMaterial: (file) =>
             hooks.openMaterial(
@@ -214,7 +218,7 @@
               file.review.materialId,
               file.review.versionId,
             ),
-        }),
+        }, viewedStages.get(project.id) ?? null),
       );
       const currentStage = window.ITDProjectState.currentStage(project.stages);
       const featured = waiting.find(
@@ -343,6 +347,7 @@
     notificationError = "";
     profileBusy = false;
     notificationsRequest = null;
+    viewedStages.clear();
     $("profile-form")
       ?.querySelectorAll("input,button")
       .forEach((control) => (control.disabled = false));
