@@ -227,7 +227,7 @@ try {
       }
       await page.locator("#itd-tour-layer").waitFor({ state: "detached" });
       assert.equal(await page.evaluate((account) =>
-        localStorage.getItem("itd-client-tour-v3:" + account.id + ":" + account.createdAt),
+        localStorage.getItem("itd-client-tour-v4:" + account.id + ":" + account.createdAt + ":project"),
         user
       ), "done");
       assert.equal(await page.evaluate((id) =>
