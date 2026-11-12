@@ -61,8 +61,18 @@
       token = "";
       form.reset();
       form.hidden = true;
+      const email = typeof result.email === "string" ? result.email : "";
+      if (email) {
+        try {
+          sessionStorage.setItem("itd-invitation-login-email", email);
+        } catch {
+          // Browsers may disable session storage; the address stays visible.
+        }
+      }
       say(
-        "Аккаунт создан. Войдите с email, который вы согласовали со студией, и новым паролем.",
+        email
+          ? "Аккаунт создан. Для входа используйте email " + email + " и установленный пароль."
+          : "Аккаунт создан. Войдите с email из приглашения и установленным паролем.",
       );
       const login = document.getElementById("invitation-login");
       login.hidden = false;
