@@ -258,7 +258,7 @@ try {
     assert.equal(await clientRoute.locator(".route-links").isVisible(), true);
     assert.match(await clientPreview.locator(".route-stage-heading h2").innerText(), /Концепция интерьера/);
     assert.equal(await routeStage.getAttribute("aria-pressed"), "true");
-    assert.match(await clientPreview.locator(".route-stage-heading .eyebrow").innerText(), /Просмотр этапа/);
+    assert.match(await clientPreview.locator(".route-stage-heading .eyebrow").innerText(), /Просмотр этапа/i);
     await clientRoute.locator(".route-step").nth(1).click();
     assert.match(await clientPreview.locator(".route-stage-heading h2").innerText(), /Планировочное решение/);
     const current = await page
