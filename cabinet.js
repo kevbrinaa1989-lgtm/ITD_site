@@ -1539,6 +1539,7 @@
     api,
     getUser: () => user,
     selectTab,
+    openProject: (id) => openWorkspaceProject(id, "overview"),
     openMaterial: async (pid, mid, vid) => {
       await openWorkspaceProject(pid, "review");
       await window.ITDReview.open(mid, vid);
