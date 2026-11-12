@@ -221,18 +221,20 @@ export function createApp(options = {}) {
           };
           throttle("login-ip:" + ip, 300);
           const b = await body(req);
+          const normalizedEmail =
+            typeof b.email === "string" ? b.email.trim().toLowerCase() : "";
           if (
-            !email(b.email) ||
+            !email(normalizedEmail) ||
             typeof b.password !== "string" ||
             b.password.length > 256
           )
             fail(400, "Укажите email и пароль");
           const pairKey =
-            "login-pair:" + ip + ":" + hash(b.email.toLowerCase());
+            "login-pair:" + ip + ":" + hash(normalizedEmail);
           throttle(pairKey, 15);
           const u = get(
             "SELECT * FROM users WHERE email=?",
-            b.email.toLowerCase(),
+            normalizedEmail,
           );
           const stored =
             u?.password ||
