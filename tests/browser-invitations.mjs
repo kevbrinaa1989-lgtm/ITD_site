@@ -125,6 +125,39 @@ try {
       /Добро пожаловать, Клиент/,
       "The first login from an invitation must show the tour, even without a project",
     );
+    assert.match(
+      await recipient.locator("#itd-tour-layer").innerText(),
+      /Проект пока не назначен/,
+    );
+    await recipient.getByRole("button", { name: /Начать обзор/ }).click();
+    for (const [index, title] of [
+      "Главная страница",
+      "Мои проекты",
+      "Уведомления",
+      "Мой профиль",
+    ].entries()) {
+      await recipient.waitForFunction(
+        (expected) => document.querySelector("#itd-tour-layer h2")?.textContent === expected,
+        title,
+      );
+      assert.match(
+        await recipient.locator("#itd-tour-layer .itd-tour-eyebrow").textContent(),
+        new RegExp("ШАГ " + String(index + 1).padStart(2, "0") + " / 04"),
+      );
+      const highlighted = await recipient.locator(".itd-tour-focus").isVisible();
+      assert.equal(highlighted, true, "Spotlight must be attached to an existing section");
+      if (index < 3)
+        await recipient.getByRole("button", { name: /Далее/ }).click();
+      else
+        await recipient.getByRole("button", { name: /Завершить/ }).click();
+    }
+    await recipient.locator("#itd-tour-layer").waitFor({ state: "detached" });
+    assert.ok(await recipient.evaluate(() =>
+      Object.keys(localStorage).some((key) =>
+        key.startsWith("itd-client-tour-v4:") && key.endsWith(":empty") &&
+        localStorage.getItem(key) === "done"
+      )
+    ));
     await openGlobal(recipient, "client-projects");
     assert.equal(
       await recipient
