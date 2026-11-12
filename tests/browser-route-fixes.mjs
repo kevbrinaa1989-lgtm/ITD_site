@@ -260,10 +260,19 @@ try {
     assert.equal(await clientRoute.locator(".route-links").isVisible(), true);
     assert.equal(await clientRoute.locator(".route-step").count(), stageCount);
     assert.match(await clientPreview.locator(".route-stage-heading h2").innerText(), /Концепция интерьера/);
+    assert.equal(
+      await clientPreview.locator(".route-stage-artwork img").getAttribute("src"),
+      "/assets/stages/03.webp",
+      "Stage artwork is independent of uploaded materials",
+    );
     assert.equal(await routeStage.getAttribute("aria-pressed"), "true");
     assert.match(await clientPreview.locator(".route-stage-heading .eyebrow").innerText(), /Просмотр этапа/i);
     await clientRoute.locator(".route-step").nth(1).click();
     assert.match(await clientPreview.locator(".route-stage-heading h2").innerText(), /Планировочное решение/);
+    assert.equal(
+      await clientPreview.locator(".route-stage-artwork img").getAttribute("src"),
+      "/assets/stages/02.webp",
+    );
     const current = await page
       .locator("#client-home-panel .route-stage-heading h2")
       .textContent();
@@ -350,6 +359,10 @@ try {
     assert.equal(await adminRoute.locator(".route-feature").isVisible(), true);
     assert.equal(await adminRoute.locator(".route-links").isVisible(), true);
     assert.match(await adminRoute.locator(".route-stage-heading h2").innerText(), /Концепция интерьера/);
+    assert.equal(
+      await adminRoute.locator(".route-stage-artwork img").getAttribute("src"),
+      "/assets/stages/03.webp",
+    );
     assert.equal(await adminRoute.locator(".route-step").nth(2).getAttribute("aria-pressed"), "true");
     assert.equal(await page.locator("#project-header-progress-text").innerText(), beforeProgress);
     await adminRoute.locator(".route-step").nth(1).click();
