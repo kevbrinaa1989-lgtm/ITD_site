@@ -1573,6 +1573,15 @@
       selectTab(tabs[next].dataset.tab);
     });
   });
+  try {
+    const invitedEmail = sessionStorage.getItem("itd-invitation-login-email");
+    if (invitedEmail) {
+      $("login-email").value = invitedEmail;
+      sessionStorage.removeItem("itd-invitation-login-email");
+    }
+  } catch {
+    // Storage can be disabled; standard login remains available.
+  }
   $("show-login").addEventListener("click", () => authTab(false));
   $("show-register").addEventListener("click", () => authTab(true));
   for (const [id, endpoint] of [
