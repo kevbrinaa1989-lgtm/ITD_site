@@ -112,6 +112,10 @@ try {
       "Invitation does not auto login",
     );
     await recipient.locator("#invitation-login").click();
+    await recipient.waitForFunction(
+      (expected) => document.getElementById("login-email")?.value === expected,
+      email,
+    );
     assert.equal(await recipient.locator("#login-email").inputValue(), email);
     await recipient.locator("#login-password").fill(password);
     await recipient.locator("#login-form button[type=submit]").click();
