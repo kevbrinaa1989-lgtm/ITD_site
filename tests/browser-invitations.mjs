@@ -102,13 +102,17 @@ try {
     await recipient.locator("#invitation-password-confirm").fill(password);
     await recipient.locator("#invitation-accept-form button").click();
     await recipient.locator("#invitation-login").waitFor({ state: "visible" });
+    assert.match(
+      await recipient.locator("#invitation-accept-message").textContent(),
+      new RegExp(email),
+    );
     assert.equal(
       (await recipient.request.get(base + "/api/me")).status(),
       401,
       "Invitation does not auto login",
     );
     await recipient.locator("#invitation-login").click();
-    await recipient.locator("#login-email").fill(email);
+    assert.equal(await recipient.locator("#login-email").inputValue(), email);
     await recipient.locator("#login-password").fill(password);
     await recipient.locator("#login-form button[type=submit]").click();
     await openGlobal(recipient, "client-projects");
