@@ -795,40 +795,23 @@
     // the account creation time so a new client never inherits an old
     // browser's "already completed" marker.
     const key = (account, mode) =>
-      `itd-client-tour-v4:${account.id}:${account.createdAt ?? "legacy"}:${mode}`;
+      `itd-client-tour-v5:${account.id}:${account.createdAt ?? "legacy"}:${mode}`;
+
+    // Global navigation is at the top on desktop and in the opened menu on mobile.
+    // The tour always highlights the navigation button, not empty page content.
     const emptySteps = [
-      {
-        title: "Главная страница",
-        text: "Сейчас проект ещё не назначен. Это нормально: когда студия добавит его, здесь появятся название, текущий этап и прогресс. Пока от вас ничего не требуется.",
-        tab: "client-home",
-        target: "#client-home-panel .empty-note",
-      },
-      {
-        title: "Мои проекты",
-        text: "После назначения студией ваш проект появится здесь. Тогда вы сможете открыть его маршрут, материалы и документы. Создавать проект самостоятельно не нужно.",
-        tab: "client-projects",
-        target: "#client-projects-panel .empty-note",
-      },
-      {
-        title: "Уведомления",
-        text: "Здесь будут появляться новые события, когда студия начнёт работу над вашим проектом. Сейчас раздел может быть пустым.",
-        tab: "notifications",
-        target: "#panel-notifications .section-title",
-      },
-      {
-        title: "Мой профиль",
-        text: "Здесь можно проверить и обновить контактные данные. Когда проект появится, вы сможете пройти отдельный подробный обзор работы с ним.",
-        tab: "profile",
-        target: "#profile-panel .section-title",
-      },
+      { title: "Главная", text: "Когда студия назначит вам проект, здесь появятся его название, текущий этап и прогресс. Сейчас проект ещё не назначен — это нормально.", tab: "client-home", target: "#tab-client-home" },
+      { title: "Мои проекты", text: "Все назначенные студией проекты появятся в этом разделе. Здесь вы сможете открыть проект и посмотреть этапы, материалы и документы.", tab: "client-projects", target: "#tab-client-projects" },
+      { title: "На согласование", text: "Когда студия подготовит решения, они появятся здесь. Вы сможете согласовать материал или оставить замечания.", tab: "client-review", target: "#tab-client-review" },
+      { title: "Уведомления", text: "Здесь появятся сообщения о новых материалах и событиях проекта. Пока раздел может быть пустым.", tab: "notifications", target: "#tab-notifications" },
+      { title: "Мой профиль", text: "Здесь можно проверить и обновить контактные данные. Когда проект появится, вы сможете пройти отдельный обзор работы с ним.", tab: "profile", target: "#tab-profile" },
     ];
     const projectSteps = [
-      { title: "Обзор проекта", text: "На главной видны ваш проект, текущий этап и общий прогресс. Если работа только началась, некоторые разделы пока могут быть пустыми.", tab: "client-home", target: "#client-home-panel .route-home-heading" },
-      { title: "Этапы работы", text: "Здесь можно посмотреть выполненные этапы и то, над чем студия работает сейчас.", tab: "stages", target: "#tab-stages" },
-      { title: "Согласование решений", text: "Когда материал будет готов, здесь можно будет подтвердить решение или оставить замечания с комментарием.", tab: "review", target: "#tab-review" },
-      { title: "Материалы проекта", text: "Планировки, визуализации и другие материалы появятся здесь по мере подготовки студией.", tab: "results", target: "#tab-results" },
-      { title: "Уведомления и комментарии", text: "Следите за событиями проекта в уведомлениях, а замечания к материалам оставляйте при согласовании.", tab: "notifications", target: "#panel-notifications .section-title" },
-      { title: "Документы проекта", text: "Договоры и другие документы будут доступны в этом разделе после их добавления студией.", tab: "documents", target: "#tab-documents" },
+      { title: "Главная", text: "На главной странице видно текущее состояние проекта, его этапы и общий прогресс работы.", tab: "client-home", target: "#tab-client-home" },
+      { title: "Мои проекты", text: "Здесь собраны ваши проекты. Откройте нужный, чтобы посмотреть его этапы, материалы и документы.", tab: "client-projects", target: "#tab-client-projects" },
+      { title: "На согласование", text: "Здесь появляются материалы, ожидающие вашего решения. Вы можете их подтвердить или оставить комментарий.", tab: "client-review", target: "#tab-client-review" },
+      { title: "Уведомления", text: "Здесь отображаются события и обновления по проекту.", tab: "notifications", target: "#tab-notifications" },
+      { title: "Мой профиль", text: "Здесь можно изменить контактные данные и проверить сведения своей учётной записи.", tab: "profile", target: "#tab-profile" },
     ];
     let steps = [], mode = null;
     let layer = null, panel = null, frame = null, owner = null;
@@ -932,7 +915,7 @@
             : "Ваш проект уже доступен. Покажем, где смотреть его этапы, материалы, согласования и документы.",
           "itd-tour-description",
         ),
-        notice(`${steps.length} коротких шага · меньше минуты`.replace("6 коротких шага", "6 коротких шагов"), "itd-tour-caption"),
+        notice(`${steps.length} коротких шагов · меньше минуты`, "itd-tour-caption"),
       );
       const actions = node("div", undefined, "itd-tour-actions");
       actions.append(
@@ -943,27 +926,17 @@
       actions.lastElementChild.focus();
     }
     async function navigate(step) {
-      const project = projects.find((p) => p.status !== "Архив") || projects[0];
-      if (["client-home", "client-projects", "notifications", "profile"].includes(step.tab))
-        selectTab(step.tab);
-      else if (project)
-        await openProject(project.id, { tab: step.tab });
-      else
-        throw new Error("Проект пока не назначен.");
-      const visible = (element) =>
-        element && element.getClientRects().length > 0 &&
-        element.getBoundingClientRect().width > 0 &&
-        element.getBoundingClientRect().height > 0;
+      selectTab(step.tab);
+      // At <= 1100px global navigation moves to the mobile sidebar.
+      // Open the menu after switching tabs so the highlighted button is visible.
+      const mobile = matchMedia("(max-width: 1100px)").matches;
+      document.body.classList.toggle("menu-open", mobile);
+      document.getElementById("mobile-menu-button")
+        ?.setAttribute("aria-expanded", String(mobile));
       const candidate = document.querySelector(step.target);
-      if (visible(candidate)) return candidate;
-      const panelTarget = document.querySelector(
-        `[data-tab-panel="${activeTab}"] .section-title`,
-      );
-      if (visible(panelTarget)) return panelTarget;
-      const activePanel = document.querySelector(
-        `[data-tab-panel="${activeTab}"]`,
-      );
-      return visible(activePanel) ? activePanel : document.querySelector("#shell-location");
+      if (!candidate || candidate.hidden || !candidate.getClientRects().length)
+        throw new Error("Пункт меню недоступен: " + step.tab);
+      return candidate;
     }
     async function showStep(index) {
       if (!layer || busy) return;
@@ -1030,6 +1003,9 @@
       window.removeEventListener("resize", position);
       window.removeEventListener("scroll", position, true);
       if (user?.role === "client") selectTab("client-home");
+      document.body.classList.remove("menu-open");
+      document.getElementById("mobile-menu-button")
+        ?.setAttribute("aria-expanded", "false");
       if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
       previousFocus = null;
     }
