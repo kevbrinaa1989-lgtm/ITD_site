@@ -58,10 +58,12 @@ export function initInvitations({db, passwordHash, now = Date.now}) {
     const candidate=eligible(b.token,now());if(!candidate||get("SELECT id FROM users WHERE email=?",candidate.email))fail(400,INVALID);
     const encoded=await passwordHash(b.password);
     req.itdRecheckSession?.();
+    let acceptedEmail;
     tx(()=>{const time=now(),row=eligible(b.token,time);if(!row||get("SELECT id FROM users WHERE email=?",row.email))fail(400,INVALID);
       const id=Number(run("INSERT INTO users(email,name,role,password,createdAt) VALUES(?,?,'client',?,?)",row.email,b.name.trim(),encoded,time).lastInsertRowid);
       const result=run("UPDATE invitations SET status='used',tokenHash=NULL,processedAt=?,usedBy=? WHERE id=? AND status='active'",time,id,row.id);if(!result.changes)fail(400,INVALID);event(row.id,"used",id,time);
-    });json(res,200,{ok:true});return true;
+      acceptedEmail=row.email;
+    });json(res,200,{ok:true,email:acceptedEmail});return true;
   }
   return handle;
 }
