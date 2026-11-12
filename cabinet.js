@@ -315,6 +315,10 @@
   }
   function fileRow(file, project, admin = false) {
     const item = node("div", undefined, "file-item");
+    const document = file.category === "document" ? file.document ?? {
+      title: file.name.replace(/\.[^.]+$/, ""), kind: "Документ", number: "", date: "",
+    } : null;
+    if (document) item.classList.add("document-card");
     const ext = file.name.split(".").pop().toUpperCase();
     const icon = node("span", ext.length <= 5 ? ext : "FILE", "file-icon");
     icon.setAttribute("aria-hidden", "true");
@@ -325,13 +329,24 @@
         ? `${(file.size / (1024 * 1024)).toFixed(1)} МБ`
         : `${(file.size / 1024).toFixed(1)} КБ`;
     info.append(
-      node("span", file.name, "file-name"),
+      node("span", document?.title || file.name, "file-name"),
       node(
         "span",
         `${size}${stage ? ` · ${stage.title}` : " · Без привязки к этапу"}`,
         "file-meta",
       ),
     );
+    if (document) {
+      const requisites = [
+        document.kind || "Документ",
+        document.number ? `№ ${document.number}` : "",
+        document.date ? `от ${new Date(document.date + "T00:00:00").toLocaleDateString("ru-RU")}` : "",
+      ].filter(Boolean).join(" · ");
+      info.append(
+        node("span", requisites, "document-card-requisites"),
+        node("span", `Файл: ${file.name}`, "document-card-filename"),
+      );
+    }
     item.append(icon, info);
     if (window.ITDViewer?.supported(file))
       item.append(window.ITDViewer.control(file, project.files));
@@ -1725,7 +1740,8 @@
     });
     if (!result || user !== uploadUser) return;
     await refresh();
-    message("Файл загружен");
+    const count = result.count || 1;
+    message(count === 1 ? "Файл загружен" : `Загружено файлов: ${count}`);
   });
   window.addEventListener("itd-preview-session-expired", () => {
     if (user) {
