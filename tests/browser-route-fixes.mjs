@@ -208,26 +208,34 @@ try {
       await page.locator("#itd-tour-layer").waitFor({ state: "visible" });
       assert.match(await page.locator("#itd-tour-layer h2").textContent(), /Добро пожаловать, Заказчик/);
       await page.getByRole("button", { name: /Начать обзор/ }).click();
-      for (const [i, title] of [
-        "Обзор проекта",
-        "Этапы работы",
-        "Согласование решений",
-        "Материалы проекта",
-        "Уведомления и комментарии",
-        "Документы проекта",
+      for (const [i, [title, tabId]] of [
+        ["Главная", "tab-client-home"],
+        ["Мои проекты", "tab-client-projects"],
+        ["На согласование", "tab-client-review"],
+        ["Уведомления", "tab-notifications"],
+        ["Мой профиль", "tab-profile"],
       ].entries()) {
         await page.waitForFunction(
           (title) => document.querySelector("#itd-tour-layer h2")?.textContent === title,
           title,
         );
-        if (i < 5)
+        const tab = page.locator("#" + tabId);
+        assert.equal(await tab.isVisible(), true, "Global menu item must be visible");
+        assert.equal(await tab.getAttribute("aria-selected"), "true");
+        await page.waitForFunction((id) => {
+          const a = document.getElementById(id)?.getBoundingClientRect();
+          const b = document.querySelector(".itd-tour-focus")?.getBoundingClientRect();
+          return a && b && Math.abs(a.left - b.left) < 12 &&
+            Math.abs(a.top - b.top) < 12 && Math.abs(a.width - b.width) < 24;
+        }, tabId);
+        if (i < 4)
           await page.getByRole("button", { name: /Далее/ }).click();
         else
           await page.getByRole("button", { name: /Завершить/ }).click();
       }
       await page.locator("#itd-tour-layer").waitFor({ state: "detached" });
       assert.equal(await page.evaluate((account) =>
-        localStorage.getItem("itd-client-tour-v4:" + account.id + ":" + account.createdAt + ":project"),
+        localStorage.getItem("itd-client-tour-v5:" + account.id + ":" + account.createdAt + ":project"),
         user
       ), "done");
       assert.equal(await page.evaluate((id) =>
