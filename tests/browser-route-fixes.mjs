@@ -273,6 +273,16 @@ try {
       await clientPreview.locator(".route-stage-artwork img").getAttribute("src"),
       "/assets/stages/02.webp",
     );
+    // All seven editorial illustrations are based on stage meaning, not uploads.
+    for (let i = 0; i < 7; i++) {
+      await clientRoute.locator(".route-step").nth(i).click();
+      assert.equal(
+        await clientPreview.locator(".route-stage-artwork img").getAttribute("src"),
+        `/assets/stages/${String(i + 1).padStart(2, "0")}.webp`,
+        `Art for stage ${i + 1} should match the semantic stage title`,
+      );
+    }
+    await clientRoute.locator(".route-step").nth(1).click();
     const current = await page
       .locator("#client-home-panel .route-stage-heading h2")
       .textContent();
@@ -286,7 +296,7 @@ try {
       assert.match(progress, /Завершено: 0/);
       assert.equal(
         await page.locator("#client-home-panel .route-feature-image").count(),
-        0,
+        1,
       );
       assert.equal(
         await page.locator("#client-home-panel .route-step.is-current").count(),
