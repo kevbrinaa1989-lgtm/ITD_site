@@ -269,6 +269,16 @@ try {
       "true",
     );
     await dashboard(admin);
+    // Projects on the "Сегодня в студии" home must open the real project
+    // overview directly; previously the workspace hook was not wired up.
+    const homeTile = admin.locator("#workspace-project-strip .studio-project-tile").first();
+    await homeTile.waitFor({ state: "visible" });
+    const homeProjectTitle = await homeTile.locator("strong").textContent();
+    await homeTile.click();
+    await admin.locator("#project-heading").waitFor({ state: "visible" });
+    assert.equal(await admin.locator("#project-title").textContent(), homeProjectTitle);
+    assert.equal(await admin.locator("#tab-overview").getAttribute("aria-selected"), "true");
+    await dashboard(admin);
     await filterProject(admin);
     assert.ok(
       workspaceQueries.some(
