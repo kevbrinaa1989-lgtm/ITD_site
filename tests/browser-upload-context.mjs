@@ -316,6 +316,57 @@ try {
     await waitCleared();
     assert.deepEqual(await fileBytes(aPdf, a), pdf);
     await fileBytes(aPdf, b, 403);
+    // Multi-file upload: one selection, individual requisites, one secure intent per file.
+    await choose([
+      { name: "Договор-подряда.txt", mimeType: "text/plain", buffer: Buffer.from("Agreement file") },
+      { name: "Акт-приёмки.txt", mimeType: "text/plain", buffer: Buffer.from("Acceptance act") },
+      { name: "План-квартиры.pdf", mimeType: pdfType, buffer: pdf },
+    ]);
+    await form.locator("select[name=category]").selectOption("document");
+    const cards = form.locator("#upload-file-cards .upload-document-card");
+    assert.equal(await cards.count(), 3);
+    await cards.nth(0).locator('[data-document-field="title"]').fill("Договор на дизайн-проект");
+    await cards.nth(0).locator('[data-document-field="kind"]').selectOption("Договор");
+    await cards.nth(0).locator('[data-document-field="number"]').fill("ДП-15");
+    await cards.nth(0).locator('[data-document-field="date"]').fill("2026-11-12");
+    await cards.nth(1).locator('[data-document-field="title"]').fill("Акт сдачи-приёмки");
+    await cards.nth(1).locator('[data-document-field="kind"]').selectOption("Акт");
+    await cards.nth(1).locator('[data-document-field="number"]').fill("2");
+    await cards.nth(2).locator('[data-document-field="kind"]').selectOption("План");
+    await shot("three-documents");
+    const beforeBatch = posts.length;
+    await form.locator("button[type=submit]").click();
+    await page.waitForFunction(() => {
+      const upload = document.getElementById("upload-file-form");
+      return !upload.dataset.busy &&
+        upload.querySelector("input[type=file]").files.length === 0;
+    });
+    assert.equal(posts.length - beforeBatch, 3, "Exactly three uploads are sent");
+    assert.equal(
+      new Set(posts.slice(beforeBatch).map((p) => p.body.uploadIntent)).size,
+      3, "Every file receives its own secure upload intent",
+    );
+    const latestProject = (await api("/api/projects", { cookie: a.cookie }))
+      .projects.find((p) => p.id === pa.id);
+    const batchNames = ["Договор-подряда.txt", "Акт-приёмки.txt", "План-квартиры.pdf"];
+    const uploaded = batchNames.map((name) =>
+      latestProject.files.find((f) => f.name === name),
+    );
+    assert.ok(uploaded.every(Boolean));
+    assert.deepEqual(uploaded[0].document, {
+      title: "Договор на дизайн-проект", kind: "Договор",
+      number: "ДП-15", date: "2026-11-12",
+    });
+    assert.equal(uploaded[1].document.number, "2");
+    assert.equal(uploaded[2].document.kind, "План");
+    await fileBytes(uploaded[0], b, 403);
+    await page.locator("#tab-documents").click();
+    const savedCard = page.locator("#document-list .document-card")
+      .filter({ hasText: "Договор на дизайн-проект" });
+    await savedCard.waitFor();
+    assert.match(await savedCard.textContent(), /ДП-15/);
+    assert.match(await savedCard.textContent(), /12.11.2026/);
+    await select(pa);
     // During the request, navigation is blocked; it cannot retarget an already captured body.
     await choose({
       name: "В-процессе-Анна.txt",
@@ -545,7 +596,7 @@ try {
     assert.deepEqual(external, []);
     await context.close();
     console.log(
-      `Upload context ${viewport.width}px: delayed preparation, stay/discard, explicit reselection, image/PDF/document recipients, in-flight block, lost-response idempotent retry, version isolation and reassigned recipient refresh PASS`,
+      `Upload context ${viewport.width}px: delayed preparation, stay/discard, explicit reselection, image/PDF/document recipients, three-file batch with document cards, in-flight block, lost-response idempotent retry, version isolation and reassigned recipient refresh PASS`,
     );
   }
 } finally {
