@@ -40,7 +40,8 @@
     "management",
   ];
   let returnClientId = null,
-    selectedStageId = null;
+    selectedStageId = null,
+    routeStageId = null;
   let activeTab = "overview";
   const node = (tag, text, className) => {
     const el = document.createElement(tag);
@@ -72,6 +73,7 @@
     window.ITDClientWorkspace?.reset();
     returnClientId = null;
     selectedStageId = null;
+    routeStageId = null;
     document.body.classList.remove("menu-open");
     window.ITDViewer?.invalidate();
     window.ITDGallery?.reset();
@@ -261,7 +263,10 @@
     if (!user || user !== currentUser) throw new Error("Сессия изменилась.");
     if (!projects.some((project) => project.id === id))
       throw new Error("Проект недоступен.");
-    if (selectedId !== id) selectedStageId = null;
+    if (selectedId !== id) {
+      selectedStageId = null;
+      routeStageId = null;
+    }
     selectedId = id;
     returnClientId = options.clientId || null;
     activeTab = options.tab || "overview";
@@ -492,14 +497,13 @@
     $("project-route").replaceChildren(
       window.ITDUI.journey(project, {
         openStage: (id) => {
-          selectedStageId = id;
-          selectTab("stages");
+          routeStageId = id;
           render();
         },
         openMaterial: (file) =>
           window.ITDReview.open(file.review.materialId, file.review.versionId),
         openTab: selectTab,
-      }),
+      }, routeStageId),
     );
     const state = window.ITDProjectState.progress(project.stages);
     const completed = state.completed,
@@ -1033,6 +1037,7 @@
     user = nextUser;
     selectedId = null;
     selectedStageId = null;
+    routeStageId = null;
     returnClientId = null;
     activeTab = user.role === "admin" ? "workspace" : "client-home";
     $("project-overview-label").textContent =
@@ -1660,6 +1665,7 @@
     });
     selectedId = result.id;
     selectedStageId = null;
+    routeStageId = null;
     returnClientId = null;
     activeTab = "overview";
     form.reset();
