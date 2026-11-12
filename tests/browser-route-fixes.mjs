@@ -194,6 +194,15 @@ try {
           fullPage: true,
         });
     }
+    // Simulate a reused numeric user ID after the previous test database was
+    // cleared: this browser still remembers that old account's walkthrough.
+    if (!before) {
+      await page.goto(base + "/cabinet");
+      await page.evaluate((id) => {
+        localStorage.setItem("itd-client-tour-v2:" + id, "done");
+        localStorage.setItem("itd-client-tour-v3:" + id + ":old-account-created-at", "done");
+      }, user.id);
+    }
     await signIn("client@example.test");
     if (!before) {
       await page.locator("#itd-tour-layer").waitFor({ state: "visible" });
@@ -217,9 +226,13 @@ try {
           await page.getByRole("button", { name: /Завершить/ }).click();
       }
       await page.locator("#itd-tour-layer").waitFor({ state: "detached" });
+      assert.equal(await page.evaluate((account) =>
+        localStorage.getItem("itd-client-tour-v3:" + account.id + ":" + account.createdAt),
+        user
+      ), "done");
       assert.equal(await page.evaluate((id) =>
         localStorage.getItem("itd-client-tour-v2:" + id), user.id
-      ), "done");
+      ), "done", "Legacy marker must stay untouched and must not block new onboarding");
       assert.equal(await page.locator("#client-guide-trigger").isVisible(), true);
       await page.locator("#client-guide-trigger").click();
       await page.locator("#itd-tour-layer").waitFor({ state: "visible" });
