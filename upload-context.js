@@ -23,6 +23,7 @@
   function clear(record) {
     record.draft = null;
     record.form.reset();
+    renderCards(record);
     showRecipient(record);
   }
   function prune() {
@@ -34,7 +35,80 @@
     record.projectLine.textContent = `Загрузка в проект: ${context?.projectTitle || "не выбран"}`;
     record.clientLine.textContent = `Клиент: ${context?.clientLabel || "не выбран"}`;
   }
-  async function prepare(record, draft) {
+  const MAX_FILES = 20;
+  const fileSize = (size) =>
+    size >= 1048576 ? (size / 1048576).toFixed(1) + " МБ" :
+      Math.max(0.1, size / 1024).toFixed(1) + " КБ";
+  function renderCards(record) {
+    const host = record.cards;
+    if (!host) return;
+    host.replaceChildren();
+    const draft = record.draft;
+    host.hidden = !draft;
+    if (!draft) {
+      if (record.statusLine) record.statusLine.textContent = "";
+      return;
+    }
+    const documents = record.form.elements.category.value === "document";
+    for (const [index, item] of draft.items.entries()) {
+      const card = document.createElement("section");
+      card.className = "upload-document-card";
+      const heading = document.createElement("div");
+      heading.className = "upload-document-head";
+      const name = document.createElement("strong");
+      name.textContent = item.file.name;
+      const meta = document.createElement("span");
+      meta.textContent = fileSize(item.file.size);
+      const state = document.createElement("span");
+      state.className = "upload-document-state";
+      state.textContent = item.result ? "Загружен" : "Ожидает загрузки";
+      item.status = state;
+      heading.append(name, meta, state);
+      card.append(heading);
+      if (documents) {
+        const fields = document.createElement("div");
+        fields.className = "upload-document-fields";
+        const field = (text, key, kind, values = []) => {
+          const label = document.createElement("label");
+          label.textContent = text;
+          const control = document.createElement(kind);
+          control.dataset.documentField = key;
+          control.dataset.documentIndex = String(index);
+          if (kind === "select") {
+            for (const title of values) {
+              const option = document.createElement("option");
+              option.value = title;
+              option.textContent = title;
+              control.append(option);
+            }
+          } else {
+            control.type = kind === "input" && key === "date" ? "date" : "text";
+            control.maxLength = key === "title" ? 160 : 64;
+          }
+          control.value = item.metadata[key];
+          control.disabled = !!item.result;
+          control.addEventListener("input", () => {
+            item.metadata[key] = control.value;
+          });
+          label.append(control);
+          fields.append(label);
+        };
+        field("Название", "title", "input");
+        field("Вид", "kind", "select", [
+          "Документ", "Договор", "Акт", "Смета", "План", "Чертёж",
+          "Проектная документация", "Счёт", "Другое",
+        ]);
+        field("Номер", "number", "input");
+        field("Дата", "date", "input");
+        card.append(fields);
+      }
+      host.append(card);
+    }
+    if (record.statusLine)
+      record.statusLine.textContent =
+        `Выбрано файлов: ${draft.items.length}. Максимум ${MAX_FILES} файлов за один раз, до 10 МБ каждый.`;
+  }
+  async function prepare(record, draft, item) {
     try {
       const context = draft.context;
       const result = await h.api(
@@ -55,14 +129,14 @@
         result.clientId !== context.clientId
       )
         throw new Error(
-          "Получатель проекта изменился. Выберите файл заново после проверки клиента.",
+          "Получатель проекта изменился. Выберите файлы заново после проверки клиента.",
         );
-      draft.ticket = result.uploadIntent;
-      draft.error = null;
+      item.ticket = result.uploadIntent;
+      item.error = null;
     } catch (error) {
       if (record.draft === draft) {
-        draft.error = networkError(error);
-        h.message(draft.error.message, true);
+        item.error = networkError(error);
+        h.message(item.error.message, true);
       }
     }
   }
@@ -82,21 +156,42 @@
       input: form.querySelector('input[type="file"]'),
       projectLine: box.children[0],
       clientLine: box.children[1],
+      cards: form.querySelector("#upload-file-cards"),
+      statusLine: form.querySelector("#upload-batch-status"),
       draft: null,
       busy: false,
     };
     records.set(form, record);
     record.input.addEventListener("change", () => {
-      const file = record.input.files[0],
+      const files = [...record.input.files],
         current = context();
       record.draft = null;
-      if (file && current && h.getUser()?.role === "admin") {
-        const draft = { context: { ...current }, file, user: h.getUser() };
+      if (files.length > MAX_FILES) {
+        record.input.value = "";
+        h.message(`За один раз можно выбрать не более ${MAX_FILES} файлов.`, true);
+      } else if (files.length && current && h.getUser()?.role === "admin") {
+        const draft = {
+          context: { ...current },
+          user: h.getUser(),
+          items: files.map((file) => ({
+            file,
+            metadata: {
+              title: file.name.replace(/\.[^.]+$/, "").slice(0, 160),
+              kind: "Документ",
+              number: "",
+              date: "",
+            },
+          })),
+        };
         record.draft = draft;
-        draft.ready = prepare(record, draft);
+        // Preserve the existing early intent preparation for the first file.
+        draft.items[0].ready = prepare(record, draft, draft.items[0]);
       }
+      renderCards(record);
       showRecipient(record);
     });
+    form.elements.category?.addEventListener("change", () => renderCards(record));
+    renderCards(record);
     showRecipient(record);
   }
   function check(record, draft) {
@@ -106,16 +201,17 @@
       draft.user !== h.getUser() ||
       !same(draft.context, contextOf(h.getProject())) ||
       !same(draft.context, record.context()) ||
-      record.input.files[0] !== draft.file
+      record.input.files.length !== draft.items.length ||
+      draft.items.some((item, index) => record.input.files[index] !== item.file)
     )
       throw new Error(
-        "Проект загрузки изменился. Отправка заблокирована. Выберите файл заново в нужном проекте.",
+        "Проект загрузки изменился. Отправка заблокирована. Выберите файлы заново в нужном проекте.",
       );
   }
   async function send(form, extra) {
     const record = records.get(form),
       draft = record?.draft;
-    if (!draft) throw new Error("Выберите файл для текущего проекта.");
+    if (!draft) throw new Error("Выберите файлы для текущего проекта.");
     if (record.busy) return null;
     check(record, draft);
     record.busy = true;
@@ -124,35 +220,60 @@
     ].map((n) => [n, n.disabled]);
     controls.forEach(([n]) => (n.disabled = true));
     try {
-      await draft.ready;
-      check(record, draft);
-      if (!draft.ticket) {
-        // Retry preparation only for the originally captured recipient.
-        draft.ready = prepare(record, draft);
-        await draft.ready;
+      const parameters = JSON.stringify(extra);
+      if (draft.parameters && draft.parameters !== parameters)
+        throw new Error("Параметры загрузки изменились. Верните прежние или выберите файлы заново.");
+      draft.parameters = parameters;
+      for (const [index, item] of draft.items.entries()) {
+        if (item.result) continue;
         check(record, draft);
-        if (!draft.ticket)
-          throw draft.error || new Error("Не удалось подготовить загрузку.");
-      }
-      if (!draft.payload) {
-        const encoded = await h.encodeFile(draft.file);
+        if (!item.ready) item.ready = prepare(record, draft, item);
+        await item.ready;
         check(record, draft);
-        draft.parameters = JSON.stringify(extra);
-        draft.payload = { ...encoded, ...extra, uploadIntent: draft.ticket };
-      }
-      if (draft.parameters !== JSON.stringify(extra))
-        throw new Error(
-          "Параметры подготовленной загрузки изменились. Для другой загрузки выберите файл заново; для повтора верните прежние параметры.",
+        if (!item.ticket) {
+          item.ready = prepare(record, draft, item);
+          await item.ready;
+          check(record, draft);
+          if (!item.ticket)
+            throw item.error || new Error("Не удалось подготовить загрузку.");
+        }
+        const document = extra.category === "document"
+          ? { document: { ...item.metadata } } : {};
+        const itemParameters = JSON.stringify({ ...extra, ...document });
+        if (!item.payload) {
+          const encoded = await h.encodeFile(item.file);
+          check(record, draft);
+          item.parameters = itemParameters;
+          item.payload = { ...encoded, ...extra, ...document, uploadIntent: item.ticket };
+        }
+        if (item.parameters !== itemParameters)
+          throw new Error(
+            "Реквизиты подготовленной загрузки изменились. Верните прежние данные для повтора или выберите файлы заново.",
+          );
+        if (record.statusLine)
+          record.statusLine.textContent = `Загрузка файла ${index + 1} из ${draft.items.length}: ${item.file.name}`;
+        item.result = await h.api(
+          `/api/projects/${draft.context.projectId}/files`,
+          "POST",
+          item.payload,
         );
-      const result = await h.api(
-        `/api/projects/${draft.context.projectId}/files`,
-        "POST",
-        draft.payload,
-      );
+        if (item.status) item.status.textContent = "Загружен";
+      }
+      const results = draft.items.map((item) => item.result);
       if (record.draft === draft) clear(record);
-      return result;
+      return results.length === 1 ? results[0] : {
+        files: results, count: results.length,
+      };
     } catch (error) {
-      throw networkError(error);
+      const saved = draft.items.filter((item) => item.result).length;
+      if (record.statusLine)
+        record.statusLine.textContent =
+          saved ? `Загружено ${saved} из ${draft.items.length}. Повторная отправка продолжит оставшиеся файлы.`
+            : "Отправка не завершена. Вы можете повторить её с теми же файлами.";
+      const cause = networkError(error);
+      if (saved)
+        throw new Error(`Загружено ${saved} из ${draft.items.length}. ${cause.message}`);
+      throw cause;
     } finally {
       record.busy = false;
       controls.forEach(([n, disabled]) => (n.disabled = disabled));
@@ -216,7 +337,7 @@
     if (!approved) return false;
     if (affected.some((r) => r.busy)) return false;
     affected.forEach(clear);
-    h.message("Подготовленная загрузка отменена. Файл не отправлялся.");
+    h.message("Оставшаяся загрузка отменена. Уже загруженные документы сохраняются.");
     return true;
   }
   window.ITDUploads = {

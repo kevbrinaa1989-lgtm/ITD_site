@@ -40,7 +40,8 @@
     "management",
   ];
   let returnClientId = null,
-    selectedStageId = null;
+    selectedStageId = null,
+    routeStageId = null;
   let activeTab = "overview";
   const node = (tag, text, className) => {
     const el = document.createElement(tag);
@@ -61,6 +62,8 @@
       }, 5000);
   };
   const showAuth = () => {
+    onboarding.close();
+    delete document.body.dataset.cabinetReady;
     window.ITDUploads?.reset();
     clearRecovery();
     window.ITDWorkspace?.reset();
@@ -70,6 +73,7 @@
     window.ITDClientWorkspace?.reset();
     returnClientId = null;
     selectedStageId = null;
+    routeStageId = null;
     document.body.classList.remove("menu-open");
     window.ITDViewer?.invalidate();
     window.ITDGallery?.reset();
@@ -259,7 +263,10 @@
     if (!user || user !== currentUser) throw new Error("Сессия изменилась.");
     if (!projects.some((project) => project.id === id))
       throw new Error("Проект недоступен.");
-    if (selectedId !== id) selectedStageId = null;
+    if (selectedId !== id) {
+      selectedStageId = null;
+      routeStageId = null;
+    }
     selectedId = id;
     returnClientId = options.clientId || null;
     activeTab = options.tab || "overview";
@@ -308,6 +315,10 @@
   }
   function fileRow(file, project, admin = false) {
     const item = node("div", undefined, "file-item");
+    const document = file.category === "document" ? file.document ?? {
+      title: file.name.replace(/\.[^.]+$/, ""), kind: "Документ", number: "", date: "",
+    } : null;
+    if (document) item.classList.add("document-card");
     const ext = file.name.split(".").pop().toUpperCase();
     const icon = node("span", ext.length <= 5 ? ext : "FILE", "file-icon");
     icon.setAttribute("aria-hidden", "true");
@@ -318,13 +329,24 @@
         ? `${(file.size / (1024 * 1024)).toFixed(1)} МБ`
         : `${(file.size / 1024).toFixed(1)} КБ`;
     info.append(
-      node("span", file.name, "file-name"),
+      node("span", document?.title || file.name, "file-name"),
       node(
         "span",
         `${size}${stage ? ` · ${stage.title}` : " · Без привязки к этапу"}`,
         "file-meta",
       ),
     );
+    if (document) {
+      const requisites = [
+        document.kind || "Документ",
+        document.number ? `№ ${document.number}` : "",
+        document.date ? `от ${new Date(document.date + "T00:00:00").toLocaleDateString("ru-RU")}` : "",
+      ].filter(Boolean).join(" · ");
+      info.append(
+        node("span", requisites, "document-card-requisites"),
+        node("span", `Файл: ${file.name}`, "document-card-filename"),
+      );
+    }
     item.append(icon, info);
     if (window.ITDViewer?.supported(file))
       item.append(window.ITDViewer.control(file, project.files));
@@ -405,7 +427,14 @@
       caption.append(field);
       form.append(caption);
     }
-    form.append(save);
+    form.append(
+      node(
+        "p",
+        "«Согласован» — решения клиента получены. «Завершён» — студия выполнила все работы по этапу. Для завершения выберите этот статус и сохраните этап; процент согласованных или завершённых этапов при этом не удваивается.",
+        "stage-status-help",
+      ),
+      save,
+    );
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       const values = Object.fromEntries(new FormData(form));
@@ -483,30 +512,24 @@
     $("project-route").replaceChildren(
       window.ITDUI.journey(project, {
         openStage: (id) => {
-          selectedStageId = id;
-          selectTab("stages");
+          routeStageId = id;
           render();
         },
         openMaterial: (file) =>
           window.ITDReview.open(file.review.materialId, file.review.versionId),
         openTab: selectTab,
-      }),
+      }, routeStageId),
     );
-    const completed = project.stages.filter(
-      (stage) => stage.status === "completed",
-    ).length;
-    const progress = project.stages.length
-      ? Math.round((completed / project.stages.length) * 100)
-      : 0;
+    const state = window.ITDProjectState.progress(project.stages);
+    const completed = state.completed,
+      progress = state.percent;
     $("project-header-progress").value = progress;
-    $("project-header-progress").hidden = !project.stages.length;
-    $("project-header-progress-text").textContent = project.stages.length
-      ? `${progress}% · ${completed} из ${project.stages.length} этапов`
-      : "Нет этапов";
-    const current =
-      project.stages.find((stage) => stage.status === "in_progress") ||
-      project.stages.find((stage) => stage.status === "planned") ||
-      project.stages.find((stage) => stage.status !== "completed");
+    $("project-header-progress").hidden = !state.total;
+    $("project-header-progress").setAttribute("aria-label", state.label);
+    $("project-header-progress-text").textContent = state.total
+      ? `${progress}% · ${state.label}. ${state.detail}`
+      : state.label;
+    const current = window.ITDProjectState.currentStage(project.stages);
     const setText = (id, value) => {
       if ($(id)) $(id).textContent = value;
     };
@@ -518,16 +541,15 @@
     );
     if ($("project-progress")) {
       $("project-progress").value = progress;
-      $("project-progress").setAttribute(
-        "aria-label",
-        `Завершено этапов: ${completed} из ${project.stages.length}`,
-      );
+      $("project-progress").setAttribute("aria-label", state.label);
     }
     setText(
       "overview-next-stage",
       current?.title ||
         (project.stages.length
-          ? "Все этапы завершены"
+          ? state.approved
+            ? "Согласованные этапы ожидают завершения студией"
+            : "Все этапы завершены"
           : "Этапы ещё не добавлены"),
     );
     setText(
@@ -537,7 +559,9 @@
           ? "Следите за решениями в разделе «Согласования». Добавляйте материалы из этапа проекта."
           : "Посмотрите материалы этапа. Решения и комментарии доступны в разделе «Согласования»."
         : project.stages.length
-          ? "Все этапы завершены. Доступные результаты и документы можно скачать в соответствующих разделах."
+          ? state.approved
+            ? "Согласование не меняет этап на «Завершён» автоматически. Завершение отмечает администратор после выполнения работ."
+            : "Все этапы завершены. Доступные результаты и документы можно скачать в соответствующих разделах."
           : admin
             ? "Нажмите «Добавить этап», чтобы составить план проекта."
             : "Новые этапы и материалы появятся здесь после публикации студией.",
@@ -629,7 +653,8 @@
           "muted",
         ),
       );
-      content.append(
+      const stageActions = node("div", undefined, "stage-actions");
+      stageActions.append(
         projectAction(
           selectedStageId === stage.id ? "Все этапы" : "Открыть этап",
           () => {
@@ -640,9 +665,18 @@
         ),
       );
       if (admin)
-        content.append(
+        stageActions.append(
           projectAction("Загрузить материал в этап", () =>
             openUpload(stage.id),
+          ),
+        );
+      content.append(stageActions);
+      if (stage.status === "approved")
+        content.append(
+          node(
+            "p",
+            "Материалы согласованы. Завершение этапа отмечает студия после выполнения всех работ.",
+            "stage-status-help",
           ),
         );
       const reviewHost = node("div", undefined, "stage-review-materials");
@@ -773,6 +807,240 @@
     )
       select.value = previous;
   }
+
+  // Guided onboarding, scoped to the signed-in client and stored per account.
+  const onboarding = (() => {
+    // Account IDs can be reused after a database reset. Pair the ID with
+    // the account creation time so a new client never inherits an old
+    // browser's "already completed" marker.
+    const key = (account, mode) =>
+      `itd-client-tour-v5:${account.id}:${account.createdAt ?? "legacy"}:${mode}`;
+
+    // Global navigation is at the top on desktop and in the opened menu on mobile.
+    // The tour always highlights the navigation button, not empty page content.
+    const emptySteps = [
+      { title: "Главная", text: "Когда студия назначит вам проект, здесь появятся его название, текущий этап и прогресс. Сейчас проект ещё не назначен — это нормально.", tab: "client-home", target: "#tab-client-home" },
+      { title: "Мои проекты", text: "Все назначенные студией проекты появятся в этом разделе. Здесь вы сможете открыть проект и посмотреть этапы, материалы и документы.", tab: "client-projects", target: "#tab-client-projects" },
+      { title: "На согласование", text: "Когда студия подготовит решения, они появятся здесь. Вы сможете согласовать материал или оставить замечания.", tab: "client-review", target: "#tab-client-review" },
+      { title: "Уведомления", text: "Здесь появятся сообщения о новых материалах и событиях проекта. Пока раздел может быть пустым.", tab: "notifications", target: "#tab-notifications" },
+      { title: "Мой профиль", text: "Здесь можно проверить и обновить контактные данные. Когда проект появится, вы сможете пройти отдельный обзор работы с ним.", tab: "profile", target: "#tab-profile" },
+    ];
+    const projectSteps = [
+      { title: "Главная", text: "На главной странице видно текущее состояние проекта, его этапы и общий прогресс работы.", tab: "client-home", target: "#tab-client-home" },
+      { title: "Мои проекты", text: "Здесь собраны ваши проекты. Откройте нужный, чтобы посмотреть его этапы, материалы и документы.", tab: "client-projects", target: "#tab-client-projects" },
+      { title: "На согласование", text: "Здесь появляются материалы, ожидающие вашего решения. Вы можете их подтвердить или оставить комментарий.", tab: "client-review", target: "#tab-client-review" },
+      { title: "Уведомления", text: "Здесь отображаются события и обновления по проекту.", tab: "notifications", target: "#tab-notifications" },
+      { title: "Мой профиль", text: "Здесь можно изменить контактные данные и проверить сведения своей учётной записи.", tab: "profile", target: "#tab-profile" },
+    ];
+    let steps = [], mode = null;
+    let layer = null, panel = null, frame = null, owner = null;
+    let activeStep = -1, target = null, busy = false, session = 0, previousFocus = null;
+    const hasSeen = (account, journey) => {
+      try { return window.localStorage.getItem(key(account, journey)) === "done"; }
+      catch { return false; }
+    };
+    const markSeen = (account, journey) => {
+      try { window.localStorage.setItem(key(account, journey), "done"); }
+      catch { /* Private browsing can disable storage. */ }
+    };
+    const makeButton = (label, onClick, className) => {
+      const el = node("button", label, className);
+      el.type = "button";
+      el.addEventListener("click", onClick);
+      return el;
+    };
+    const onKeys = (event) => {
+      if (!layer) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        finish(true);
+      } else if (event.key === "Tab") {
+        const items = [...panel.querySelectorAll("button:not([disabled])")];
+        if (!items.length) return;
+        const first = items[0], last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault(); first.focus();
+        }
+      }
+    };
+    function mount() {
+      previousFocus = document.activeElement;
+      layer = node("div", undefined, "itd-tour-layer is-intro");
+      layer.id = "itd-tour-layer";
+      layer.setAttribute("role", "dialog");
+      layer.setAttribute("aria-modal", "true");
+      layer.setAttribute("aria-label", "Знакомство с личным кабинетом");
+      frame = node("div", undefined, "itd-tour-focus");
+      frame.setAttribute("aria-hidden", "true");
+      panel = node("section", undefined, "itd-tour-panel");
+      layer.append(frame, panel);
+      document.body.append(layer);
+      document.addEventListener("keydown", onKeys, true);
+      window.addEventListener("resize", position);
+      window.addEventListener("scroll", position, true);
+    }
+    function position() {
+      if (!layer || activeStep < 0 || !target || !target.isConnected) return;
+      const rect = target.getBoundingClientRect();
+      const pad = 8, vw = innerWidth, vh = innerHeight;
+      const left = Math.max(8, rect.left - pad);
+      const top = Math.max(8, rect.top - pad);
+      frame.style.left = left + "px";
+      frame.style.top = top + "px";
+      frame.style.width = Math.min(vw - left - 8, rect.width + 2 * pad) + "px";
+      frame.style.height = Math.min(vh - top - 8, rect.height + 2 * pad) + "px";
+      if (vw < 720) {
+        panel.style.left = "12px";
+        panel.style.right = "12px";
+        panel.style.top = "auto";
+        panel.style.bottom = "12px";
+      } else {
+        const width = Math.min(410, vw - 32);
+        const height = panel.offsetHeight || 260;
+        const below = rect.bottom + 20;
+        const above = rect.top - height - 20;
+        const y = below + height <= vh - 14 ? below
+          : above >= 14 ? above : Math.max(14, vh - height - 14);
+        panel.style.width = width + "px";
+        panel.style.left = Math.max(14, Math.min(vw - width - 14, rect.left)) + "px";
+        panel.style.top = y + "px";
+        panel.style.right = "auto";
+        panel.style.bottom = "auto";
+      }
+    }
+    const notice = (text, klass) => node("p", text, klass);
+    function showWelcome() {
+      activeStep = -1;
+      target = null;
+      layer.classList.add("is-intro");
+      panel.removeAttribute("style");
+      frame.hidden = true;
+      panel.replaceChildren();
+      const brand = node("img");
+      brand.src = "/assets/brand/itd-logo.svg";
+      brand.alt = "ITD Studio";
+      brand.className = "itd-tour-logo";
+      const name = String(owner.name || "").trim().split(/\s+/)[0];
+      panel.append(
+        brand,
+        notice("ВАШЕ ПРОСТРАНСТВО ПРОЕКТА", "itd-tour-eyebrow"),
+        node("h2", name ? `Добро пожаловать, ${name}!` : "Добро пожаловать!"),
+        notice(
+          mode === "empty"
+            ? "Вы получили доступ к кабинету ITD Studio. Проект пока не назначен — покажем, где он появится и как следить за новостями студии."
+            : "Ваш проект уже доступен. Покажем, где смотреть его этапы, материалы, согласования и документы.",
+          "itd-tour-description",
+        ),
+        notice(`${steps.length} коротких шагов · меньше минуты`, "itd-tour-caption"),
+      );
+      const actions = node("div", undefined, "itd-tour-actions");
+      actions.append(
+        makeButton("Пропустить", () => finish(true), "itd-tour-secondary"),
+        makeButton("Начать обзор →", () => void showStep(0), "itd-tour-primary"),
+      );
+      panel.append(actions);
+      actions.lastElementChild.focus();
+    }
+    async function navigate(step) {
+      selectTab(step.tab);
+      // At <= 1100px global navigation moves to the mobile sidebar.
+      // Open the menu after switching tabs so the highlighted button is visible.
+      const mobile = matchMedia("(max-width: 1100px)").matches;
+      document.body.classList.toggle("menu-open", mobile);
+      document.getElementById("mobile-menu-button")
+        ?.setAttribute("aria-expanded", String(mobile));
+      const candidate = document.querySelector(step.target);
+      if (!candidate || candidate.hidden || !candidate.getClientRects().length)
+        throw new Error("Пункт меню недоступен: " + step.tab);
+      return candidate;
+    }
+    async function showStep(index) {
+      if (!layer || busy) return;
+      if (index >= steps.length) { finish(true); return; }
+      if (index < 0) { showWelcome(); return; }
+      busy = true;
+      const ticket = session;
+      const step = steps[index];
+      try {
+        const found = await navigate(step);
+        if (!layer || ticket !== session || user !== owner) return;
+        activeStep = index;
+        target = found;
+        layer.classList.remove("is-intro");
+        frame.hidden = false;
+        panel.replaceChildren();
+        panel.removeAttribute("style");
+        panel.append(
+          notice(`ШАГ ${String(index + 1).padStart(2, "0")} / ${String(steps.length).padStart(2, "0")}`, "itd-tour-eyebrow"),
+          node("h2", step.title),
+          notice(step.text, "itd-tour-description"),
+        );
+        const bar = node("div", undefined, "itd-tour-progress");
+        bar.style.gridTemplateColumns = `repeat(${steps.length}, minmax(0, 1fr))`;
+        for (let i = 0; i < steps.length; i++) {
+          const dash = node("span");
+          if (i <= index) dash.className = "is-done";
+          bar.append(dash);
+        }
+        const actions = node("div", undefined, "itd-tour-actions");
+        actions.append(
+          makeButton("Пропустить", () => finish(true), "itd-tour-secondary"),
+          makeButton("← Назад", () => void showStep(index - 1), "itd-tour-secondary"),
+          makeButton(index === steps.length - 1 ? "Завершить ✓" : "Далее →",
+            () => void showStep(index + 1), "itd-tour-primary"),
+        );
+        panel.append(bar, actions);
+        const back = actions.children[1];
+        back.disabled = index === 0;
+        target?.scrollIntoView({ behavior: "instant", block: "nearest", inline: "nearest" });
+        requestAnimationFrame(() => { if (layer && ticket === session) position(); });
+        actions.lastElementChild.focus();
+      } catch (error) {
+        if (layer && ticket === session) {
+          message("Не удалось открыть шаг экскурсии: " + (error.message || "ошибка"), true);
+          finish(false);
+        }
+      } finally {
+        busy = false;
+      }
+    }
+    function finish(save) {
+      session++;
+      if (save && owner) markSeen(owner, mode);
+      if (!layer) return;
+      layer.remove();
+      layer = panel = frame = target = null;
+      activeStep = -1;
+      busy = false;
+      owner = null;
+      mode = null;
+      steps = [];
+      document.removeEventListener("keydown", onKeys, true);
+      window.removeEventListener("resize", position);
+      window.removeEventListener("scroll", position, true);
+      if (user?.role === "client") selectTab("client-home");
+      document.body.classList.remove("menu-open");
+      document.getElementById("mobile-menu-button")
+        ?.setAttribute("aria-expanded", "false");
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+      previousFocus = null;
+    }
+    function start(force = false) {
+      if (user?.role !== "client" || layer) return;
+      const nextMode = projects.length ? "project" : "empty";
+      if (!force && hasSeen(user, nextMode)) return;
+      mode = nextMode;
+      steps = nextMode === "empty" ? emptySteps : projectSteps;
+      owner = user;
+      session++;
+      mount();
+      showWelcome();
+    }
+    return { start, close: () => finish(false) };
+  })();
   async function enter(nextUser) {
     window.ITDUploads?.reset();
     window.ITDWorkspace?.reset();
@@ -784,6 +1052,7 @@
     user = nextUser;
     selectedId = null;
     selectedStageId = null;
+    routeStageId = null;
     returnClientId = null;
     activeTab = user.role === "admin" ? "workspace" : "client-home";
     $("project-overview-label").textContent =
@@ -815,6 +1084,9 @@
     await refresh();
     await refreshClients();
     window.ITDReview?.start();
+    $("client-guide-trigger").hidden = user.role !== "client";
+    document.body.dataset.cabinetReady = "true";
+    onboarding.start();
   }
   function authTab(register) {
     if (register && !registrationAllowed) register = false;
@@ -1269,6 +1541,7 @@
       }
     },
   });
+  $("client-guide-trigger")?.addEventListener("click", () => onboarding.start(true));
   $("mobile-menu-button")?.addEventListener("click", () => {
     window.ITDUI.toggleMenu();
   });
@@ -1281,6 +1554,7 @@
     api,
     getUser: () => user,
     selectTab,
+    openProject: (id) => openWorkspaceProject(id, "overview"),
     openMaterial: async (pid, mid, vid) => {
       await openWorkspaceProject(pid, "review");
       await window.ITDReview.open(mid, vid);
@@ -1349,6 +1623,15 @@
       selectTab(tabs[next].dataset.tab);
     });
   });
+  try {
+    const invitedEmail = sessionStorage.getItem("itd-invitation-login-email");
+    if (invitedEmail) {
+      $("login-email").value = invitedEmail;
+      sessionStorage.removeItem("itd-invitation-login-email");
+    }
+  } catch {
+    // Storage can be disabled; standard login remains available.
+  }
   $("show-login").addEventListener("click", () => authTab(false));
   $("show-register").addEventListener("click", () => authTab(true));
   for (const [id, endpoint] of [
@@ -1398,6 +1681,7 @@
     });
     selectedId = result.id;
     selectedStageId = null;
+    routeStageId = null;
     returnClientId = null;
     activeTab = "overview";
     form.reset();
@@ -1456,7 +1740,8 @@
     });
     if (!result || user !== uploadUser) return;
     await refresh();
-    message("Файл загружен");
+    const count = result.count || 1;
+    message(count === 1 ? "Файл загружен" : `Загружено файлов: ${count}`);
   });
   window.addEventListener("itd-preview-session-expired", () => {
     if (user) {
@@ -1465,6 +1750,7 @@
     }
   });
   window.addEventListener("pagehide", () => {
+    onboarding.close();
     window.ITDUploads?.reset();
     clearRecovery();
     window.ITDWorkspace?.reset();

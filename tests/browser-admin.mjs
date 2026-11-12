@@ -1,4 +1,4 @@
-import { openGlobal, openProject } from "./browser-navigation.mjs";
+import { openGlobal, openProject, dismissWelcome } from "./browser-navigation.mjs";
 import { prepareFixtureUpload } from "./upload-fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir } from "node:fs/promises";
@@ -377,6 +377,7 @@ try {
       .getByRole("button", { name: "Восстановить из архива", exact: true })
       .waitFor();
     await screenshot(admin, "archived-project");
+    await dismissWelcome(nextClient);
     await nextClient.locator("#refresh-button").click();
     await nextClient.waitForFunction(
       () => !document.getElementById("app-view").dataset.busy,

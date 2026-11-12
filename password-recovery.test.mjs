@@ -621,7 +621,7 @@ test("legacy five-table stores migrate additively without changing existing rows
     const legacy = new DatabaseSync(join(f.dataDir, "itd.sqlite"));
     try {
       legacy.exec(
-        `DROP TABLE admin_tasks; ALTER TABLE stages DROP COLUMN startDate; ALTER TABLE stages DROP COLUMN plannedEndDate;
+        `DROP TABLE document_cards; DROP TABLE admin_tasks; ALTER TABLE stages DROP COLUMN startDate; ALTER TABLE stages DROP COLUMN plannedEndDate;
          DROP TABLE review_views; DROP TABLE review_notifications; DROP TABLE review_events;
          DROP TABLE review_versions; DROP TABLE review_materials;
          DROP TABLE invitation_events; DROP TABLE invitation_limits; DROP TABLE invitations;

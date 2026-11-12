@@ -93,9 +93,21 @@ export function initAdminManagement({ db, now = Date.now }) {
         row.id,
       ),
       files: decorateReviewFiles(db, all(
-        "SELECT id,name,contentType,category,stageId,size FROM files WHERE projectId=? ORDER BY id",
+        `SELECT f.id,f.name,f.contentType,f.category,f.stageId,f.size,
+          d.title AS docTitle,d.kind AS docKind,d.docNumber,d.docDate
+         FROM files f LEFT JOIN document_cards d ON d.fileId=f.id
+         WHERE f.projectId=? ORDER BY f.id`,
         row.id,
-      )),
+      ).map(({ docTitle, docKind, docNumber, docDate, ...file }) => ({
+        ...file,
+        ...(file.category === "document"
+          ? { document: {
+            title: docTitle || file.name.replace(/\.[^.]+$/, ""),
+            kind: docKind || "Документ",
+            number: docNumber || "",
+            date: docDate || "",
+          } } : {}),
+      }))),
     };
   function history(where, args, clientId) {
     const events = all(

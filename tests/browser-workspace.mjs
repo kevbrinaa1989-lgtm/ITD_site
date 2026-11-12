@@ -64,7 +64,11 @@ try {
     { width: 1024, height: 900 },
     { width: 390, height: 844 },
     { width: 360, height: 800 },
-  ].filter(v => !process.env.ITD_TEST_WIDTHS || process.env.ITD_TEST_WIDTHS.split(",").map(Number).includes(v.width))) {
+  ].filter(
+    (v) =>
+      !process.env.ITD_TEST_WIDTHS ||
+      process.env.ITD_TEST_WIDTHS.split(",").map(Number).includes(v.width),
+  )) {
     const email = `owner${viewport.width}@example.test`;
     const { user: owner } = await api("/api/register", {
       body: { name: "Анна · демонстрация", email, password },
@@ -265,6 +269,19 @@ try {
       "true",
     );
     await dashboard(admin);
+    // Projects on the "Сегодня в студии" home must open the real project
+    // overview directly; previously the workspace hook was not wired up.
+    const homeTile = admin.locator("#workspace-project-strip .studio-project-tile").first();
+    // The dashboard tile is intentionally hidden at phone breakpoints.
+    // Exercise its direct click only in layouts where the tile is exposed.
+    if (await homeTile.isVisible()) {
+      const homeProjectTitle = await homeTile.locator("strong").textContent();
+      await homeTile.click();
+      await admin.locator("#project-heading").waitFor({ state: "visible" });
+      assert.equal(await admin.locator("#project-title").textContent(), homeProjectTitle);
+      assert.equal(await admin.locator("#tab-overview").getAttribute("aria-selected"), "true");
+      await dashboard(admin);
+    }
     await filterProject(admin);
     assert.ok(
       workspaceQueries.some(
@@ -324,7 +341,9 @@ try {
       .locator(
         "#workspace-attention > .workspace-section .workspace-attention-card",
       )
-      .filter({ hasText: "Планировка-v1" });
+      .and(
+        admin.locator(`[data-material-id="${mid}"][data-version-id="${v1}"]`),
+      );
     await oldThread
       .getByRole("button", { name: "Открыть материал →", exact: true })
       .click();

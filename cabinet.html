@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/assets/fonts/fonts.css" />
     <link rel="stylesheet" href="/cabinet.css" />
     <link rel="stylesheet" href="/cabinet-route.css" />
+    <script src="/project-state.js" defer></script>
     <script src="/cabinet-ui.js" defer></script>
     <script src="/file-viewer.js" defer></script>
     <script src="/project-gallery.js" defer></script>
@@ -345,7 +346,10 @@
             <div class="topbar-actions">
               <button id="refresh-button" type="button" class="text-button">
                 <span aria-hidden="true">↻</span> Обновить</button
-              ><a href="https://itdstudio.ru/">На сайт →</a>
+              ><button id="client-guide-trigger" class="text-button" type="button"
+                aria-label="Пройти обзор повторно" title="Пройти обзор повторно" hidden>
+                <span aria-hidden="true">?</span> Обзор кабинета
+              </button><a href="https://itdstudio.ru/">На сайт →</a>
               <button
                 id="logout-button"
                 type="button"
@@ -898,8 +902,9 @@
                   class="admin-form"
                   enctype="multipart/form-data"
                 >
-                  <label for="upload-file">Файл</label
-                  ><input id="upload-file" name="file" type="file" required />
+                  <label for="upload-file">Файлы (можно выбрать несколько)</label
+                  ><input id="upload-file" name="file" type="file" multiple required />
+                  <p class="muted upload-batch-hint">Выберите до 20 файлов за один раз (до 10 МБ каждый). Для документов можно указать реквизиты отдельно.</p>
                   <label for="upload-category">Раздел</label
                   ><select id="upload-category" name="category">
                     <option value="result">Результаты</option>
@@ -921,8 +926,12 @@
                     ></label
                   >
                   <p class="muted review-upload-help">
-                    Обычная загрузка сохраняет файл без запроса согласования.
+                    Обычная загрузка сохраняет файлы без запроса согласования.
+                    При загрузке нескольких материалов на согласование каждый
+                    будет отдельным материалом.
                   </p>
+                  <div id="upload-file-cards" class="upload-file-cards" hidden></div>
+                  <p id="upload-batch-status" class="upload-batch-status" role="status" aria-live="polite"></p>
                   <div
                     id="upload-recipient"
                     class="upload-recipient"
@@ -931,7 +940,7 @@
                     <p id="upload-project-name">Проект: не выбран</p>
                     <p id="upload-client-name">Клиент: не выбран</p>
                   </div>
-                  <button type="submit" class="primary">Загрузить файл</button>
+                  <button type="submit" class="primary">Загрузить выбранные файлы</button>
                 </form>
               </details>
             </section>
@@ -1155,13 +1164,6 @@
                   <h1>Сегодня в студии</h1>
                   <p id="workspace-calendar" class="muted"></p>
                 </div>
-                <button
-                  id="workspace-refresh"
-                  class="text-button"
-                  type="button"
-                >
-                  Обновить
-                </button>
               </div>
               <p id="workspace-message" role="status" class="muted"></p>
               <div id="workspace-metrics" class="workspace-metrics"></div>
