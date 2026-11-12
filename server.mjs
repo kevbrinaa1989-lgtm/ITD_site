@@ -52,6 +52,11 @@ export function createApp(options = {}) {
     `PRAGMA foreign_keys=ON; CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT NOT NULL,role TEXT NOT NULL,password TEXT NOT NULL); CREATE TABLE IF NOT EXISTS projects(id INTEGER PRIMARY KEY,title TEXT NOT NULL,clientId INTEGER REFERENCES users(id),status TEXT NOT NULL DEFAULT 'В работе'); CREATE TABLE IF NOT EXISTS stages(id INTEGER PRIMARY KEY,projectId INTEGER NOT NULL REFERENCES projects(id),title TEXT NOT NULL,status TEXT NOT NULL,description TEXT NOT NULL); CREATE TABLE IF NOT EXISTS files(id INTEGER PRIMARY KEY,projectId INTEGER NOT NULL REFERENCES projects(id),stageId INTEGER REFERENCES stages(id),name TEXT NOT NULL,contentType TEXT NOT NULL,category TEXT NOT NULL,path TEXT NOT NULL,size INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,userId INTEGER NOT NULL REFERENCES users(id),expires INTEGER NOT NULL);`,
   );
   migrateProjectProfile(db, {dataDir});
+  // Separate optional metadata table: existing file records remain intact.
+  db.exec(`CREATE TABLE IF NOT EXISTS document_cards(
+    fileId INTEGER PRIMARY KEY REFERENCES files(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,kind TEXT NOT NULL,docNumber TEXT,docDate TEXT
+  )`);
   const management = initAdminManagement({db});
   const workspace = initAdminWorkspace({
     db,
@@ -586,11 +591,39 @@ export function createApp(options = {}) {
                   "review",
                   "materialId",
                   "expectedVersionId",
+                  "document",
                   "uploadIntent",
                 ].includes(key),
             )
           )
             fail(400, "Недопустимые поля запроса");
+          let document = null;
+          if (b.category === "result" && "document" in b)
+            fail(400, "Реквизиты допускаются только для документов");
+          if (b.category === "document") {
+            const d = b.document ?? {};
+            if (
+              !d || typeof d !== "object" || Array.isArray(d) ||
+              Object.keys(d).some((key) => !["title", "kind", "number", "date"].includes(key))
+            )
+              fail(400, "Некорректные реквизиты документа");
+            const title = d.title ?? b.name.replace(/\.[^.]+$/, "").slice(0, 160),
+              kind = d.kind ?? "Документ",
+              number = d.number ?? "",
+              date = d.date ?? "";
+            if (
+              !text(title, 160) || typeof kind !== "string" || kind.length > 60 ||
+              !kind.trim() || typeof number !== "string" || number.length > 64 ||
+              typeof date !== "string" || date.length > 10 ||
+              (date && (!/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+                Number.isNaN(Date.parse(date + "T00:00:00Z")) ||
+                new Date(date + "T00:00:00Z").toISOString().slice(0, 10) !== date))
+            )
+              fail(400, "Проверьте название, вид, номер и дату документа");
+            document = {
+              title: title.trim(), kind: kind.trim(), number: number.trim(), date,
+            };
+          }
           review.validateUpload(b, p.id, user, fail);
           const storage = randomBytes(24).toString("hex");
           writeFileSync(join(dataDir, "files", storage), bytes, {
@@ -613,6 +646,11 @@ export function createApp(options = {}) {
                   bytes.length,
                 ).lastInsertRowid,
               );
+              if (document)
+                run(
+                  "INSERT INTO document_cards(fileId,title,kind,docNumber,docDate) VALUES(?,?,?,?,?)",
+                  id, document.title, document.kind, document.number || null, document.date || null,
+                );
               const fileReview = review.attachFile(id, b, p.id, user, fail);
               return {
                 id,
@@ -621,6 +659,7 @@ export function createApp(options = {}) {
                 category: b.category,
                 stageId: b.stageId ?? null,
                 size: bytes.length,
+                ...(document ? { document } : {}),
                 ...(fileReview ? { review: fileReview } : {}),
               };
             });
