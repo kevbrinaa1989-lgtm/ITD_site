@@ -3142,3 +3142,92 @@ progress::-moz-progress-bar {
   #app-view .topbar-actions { gap: 4px; }
   #app-view #client-guide-trigger { width: 40px; min-width: 40px; }
 }
+
+/* Bulk project uploads and compact document cards. */
+#app-view .upload-batch-hint {
+  margin: 4px 0 14px;
+  line-height: 1.6;
+}
+#app-view .upload-file-cards {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+#app-view .upload-file-cards[hidden] { display: none; }
+#app-view .upload-document-card {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #dcd7cd;
+  padding: 14px;
+}
+#app-view .upload-document-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+}
+#app-view .upload-document-head strong {
+  min-width: 0;
+  font: 600 13px/1.5 Manrope, Arial, sans-serif;
+  overflow-wrap: anywhere;
+}
+#app-view .upload-document-head > span {
+  font-size: 11px;
+  color: #827869;
+}
+#app-view .upload-document-state { margin-left: auto; }
+#app-view .upload-document-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+#app-view .upload-document-fields label {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  font-size: 11px;
+  color: #756e63;
+}
+#app-view .upload-document-fields input,
+#app-view .upload-document-fields select {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  min-height: 40px;
+  margin: 0;
+  padding: 9px;
+}
+#app-view .upload-batch-status {
+  font-size: 12px;
+  color: #766850;
+  line-height: 1.6;
+}
+#app-view .document-card {
+  border-radius: 0;
+  align-items: flex-start;
+  padding: 16px 18px;
+}
+#app-view .document-card .file-name {
+  font: 600 14px/1.4 Manrope, Arial, sans-serif;
+  margin: 0 0 4px;
+}
+#app-view .document-card .document-card-requisites {
+  display: block;
+  color: #685b47;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+#app-view .document-card .document-card-filename {
+  display: block;
+  color: #89847d;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  margin-top: 5px;
+}
+@media (max-width: 540px) {
+  #app-view .upload-document-fields { grid-template-columns: minmax(0, 1fr); }
+  #app-view .upload-document-state { margin-left: 0; }
+}
