@@ -791,7 +791,11 @@
 
   // Guided onboarding, scoped to the signed-in client and stored per account.
   const onboarding = (() => {
-    const key = (id) => `itd-client-tour-v2:${id}`;
+    // Account IDs can be reused after a database reset. Pair the ID with
+    // the account creation time so a new client never inherits an old
+    // browser's "already completed" marker.
+    const key = (account) =>
+      `itd-client-tour-v3:${account.id}:${account.createdAt ?? "legacy"}`;
     const steps = [
       { title: "Обзор проекта", text: "На главной вы видите свой проект, его текущий этап и общий прогресс. Это отправная точка для всей работы.", tab: "client-home", target: "#client-home-panel .route-home-heading" },
       { title: "Этапы работы", text: "Посмотрите, какие этапы завершены, что выполняется сейчас и что запланировано дальше.", tab: "stages", target: "#tab-stages" },
@@ -802,12 +806,12 @@
     ];
     let layer = null, panel = null, frame = null, owner = null;
     let activeStep = -1, target = null, busy = false, session = 0, previousFocus = null;
-    const hasSeen = (id) => {
-      try { return window.localStorage.getItem(key(id)) === "done"; }
+    const hasSeen = (account) => {
+      try { return window.localStorage.getItem(key(account)) === "done"; }
       catch { return false; }
     };
-    const markSeen = (id) => {
-      try { window.localStorage.setItem(key(id), "done"); }
+    const markSeen = (account) => {
+      try { window.localStorage.setItem(key(account), "done"); }
       catch { /* Private browsing can disable storage. */ }
     };
     const makeButton = (label, onClick, className) => {
@@ -970,7 +974,7 @@
     }
     function finish(save) {
       session++;
-      if (save && owner) markSeen(owner.id);
+      if (save && owner) markSeen(owner);
       if (!layer) return;
       layer.remove();
       layer = panel = frame = target = null;
@@ -985,7 +989,7 @@
       previousFocus = null;
     }
     function start(force = false) {
-      if (user?.role !== "client" || layer || (!force && hasSeen(user.id))) return;
+      if (user?.role !== "client" || layer || (!force && hasSeen(user))) return;
       owner = user;
       session++;
       mount();
