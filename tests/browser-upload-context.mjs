@@ -592,11 +592,34 @@ try {
     const reassigned = await (await reassignedResponse).json();
     assert.deepEqual(await fileBytes(reassigned, b), pdf);
     await fileBytes(reassigned, a, 403);
+    // Bulk results also work; each item retains the selected stage and recipient.
+    await select(pa);
+    await choose([
+      { name: "Комплект-01.jpg", mimeType: jpgType, buffer: jpg },
+      { name: "Комплект-02.jpg", mimeType: jpgType, buffer: jpg },
+    ], pa);
+    await form.locator("select[name=category]").selectOption("result");
+    await form.locator("select[name=stageId]").selectOption(String(sa.id));
+    const resultBefore = posts.length;
+    await form.locator("button[type=submit]").click();
+    await page.waitForFunction(() => {
+      const form = document.querySelector("#upload-file-form");
+      return !form.dataset.busy && form.querySelector("input[type=file]").files.length === 0;
+    });
+    assert.equal(posts.length - resultBefore, 2);
+    const updated = (await api("/api/projects", { cookie: b.cookie })).projects
+      .find((p) => p.id === pa.id);
+    for (const name of ["Комплект-01.jpg", "Комплект-02.jpg"]) {
+      const file = updated.files.find((f) => f.name === name);
+      assert.ok(file && file.category === "result" && file.stageId === sa.id);
+      assert.deepEqual(await fileBytes(file, b), jpg);
+      await fileBytes(file, a, 403);
+    }
     assert.deepEqual(errors, []);
     assert.deepEqual(external, []);
     await context.close();
     console.log(
-      `Upload context ${viewport.width}px: delayed preparation, stay/discard, explicit reselection, image/PDF/document recipients, three-file batch with document cards, in-flight block, lost-response idempotent retry, version isolation and reassigned recipient refresh PASS`,
+      `Upload context ${viewport.width}px: delayed preparation, stay/discard, explicit reselection, image/PDF/document recipients, three-file batch with document cards, two-file results batch, in-flight block, lost-response idempotent retry, version isolation and reassigned recipient refresh PASS`,
     );
   }
 } finally {
