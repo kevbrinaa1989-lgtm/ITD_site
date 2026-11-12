@@ -303,3 +303,43 @@ test("asynchronous reset consumes a token once and revokes the original sessions
     200,
   );
 });
+
+test("an invited client can sign in with the password they just set and a normalized email", async (t) => {
+  const f = await setup(t);
+  const admin = await f.call("/api/login", {
+    email: "admin@example.test",
+    password,
+  });
+  assert.equal(admin.status, 200);
+  const cookie = admin.cookie.split(";")[0];
+  const issued = await f.call(
+    "/api/admin/invitations",
+    { email: "  New.Client@Example.Test  ", name: "New client", confirmVerified: true },
+    { cookie },
+  );
+  assert.equal(issued.status, 201);
+  const token = issued.value.invitationPath.split("#")[1];
+  const firstPassword = "First-invitation-password-456";
+  const accepted = await f.call("/api/invitations/accept", {
+    token,
+    name: "Client name",
+    password: firstPassword,
+    passwordConfirm: firstPassword,
+  });
+  assert.equal(accepted.status, 200);
+  assert.equal(accepted.value.email, "new.client@example.test");
+  assert.equal(accepted.cookie, undefined, "Acceptance must not silently create a session");
+
+  const signedIn = await f.call("/api/login", {
+    email: "  NEW.CLIENT@EXAMPLE.TEST  ",
+    password: firstPassword,
+  });
+  assert.equal(signedIn.status, 200);
+  assert.equal(signedIn.value.user.email, accepted.value.email);
+
+  const wrongPassword = await f.call("/api/login", {
+    email: "new.client@example.test",
+    password: "Not-the-created-password-999",
+  });
+  assert.equal(wrongPassword.status, 401);
+});
