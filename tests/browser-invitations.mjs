@@ -130,11 +130,12 @@ try {
       /Проект пока не назначен/,
     );
     await recipient.getByRole("button", { name: /Начать обзор/ }).click();
-    for (const [index, title] of [
-      "Главная страница",
-      "Мои проекты",
-      "Уведомления",
-      "Мой профиль",
+    for (const [index, [title, tabId]] of [
+      ["Главная", "tab-client-home"],
+      ["Мои проекты", "tab-client-projects"],
+      ["На согласование", "tab-client-review"],
+      ["Уведомления", "tab-notifications"],
+      ["Мой профиль", "tab-profile"],
     ].entries()) {
       await recipient.waitForFunction(
         (expected) => document.querySelector("#itd-tour-layer h2")?.textContent === expected,
@@ -142,11 +143,20 @@ try {
       );
       assert.match(
         await recipient.locator("#itd-tour-layer .itd-tour-eyebrow").textContent(),
-        new RegExp("ШАГ " + String(index + 1).padStart(2, "0") + " / 04"),
+        new RegExp("ШАГ " + String(index + 1).padStart(2, "0") + " / 05"),
       );
       const highlighted = await recipient.locator(".itd-tour-focus").isVisible();
-      assert.equal(highlighted, true, "Spotlight must be attached to an existing section");
-      if (index < 3)
+      assert.equal(highlighted, true, "Spotlight must be visible");
+      const nav = recipient.locator("#" + tabId);
+      assert.equal(await nav.isVisible(), true, "Highlighted global menu entry must be visible");
+      assert.equal(await nav.getAttribute("aria-selected"), "true");
+      await recipient.waitForFunction((id) => {
+        const a = document.getElementById(id)?.getBoundingClientRect();
+        const b = document.querySelector(".itd-tour-focus")?.getBoundingClientRect();
+        return a && b && Math.abs(a.left - b.left) < 12 &&
+          Math.abs(a.top - b.top) < 12 && Math.abs(a.width - b.width) < 24;
+      }, tabId);
+      if (index < 4)
         await recipient.getByRole("button", { name: /Далее/ }).click();
       else
         await recipient.getByRole("button", { name: /Завершить/ }).click();
@@ -154,7 +164,7 @@ try {
     await recipient.locator("#itd-tour-layer").waitFor({ state: "detached" });
     assert.ok(await recipient.evaluate(() =>
       Object.keys(localStorage).some((key) =>
-        key.startsWith("itd-client-tour-v4:") && key.endsWith(":empty") &&
+        key.startsWith("itd-client-tour-v5:") && key.endsWith(":empty") &&
         localStorage.getItem(key) === "done"
       )
     ));
