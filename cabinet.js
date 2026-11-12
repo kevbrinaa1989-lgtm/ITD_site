@@ -794,24 +794,51 @@
     // Account IDs can be reused after a database reset. Pair the ID with
     // the account creation time so a new client never inherits an old
     // browser's "already completed" marker.
-    const key = (account) =>
-      `itd-client-tour-v3:${account.id}:${account.createdAt ?? "legacy"}`;
-    const steps = [
-      { title: "Обзор проекта", text: "На главной вы видите свой проект, его текущий этап и общий прогресс. Это отправная точка для всей работы.", tab: "client-home", target: "#client-home-panel .route-home-heading" },
-      { title: "Этапы работы", text: "Посмотрите, какие этапы завершены, что выполняется сейчас и что запланировано дальше.", tab: "stages", target: "#tab-stages" },
-      { title: "Согласование решений", text: "Открывайте материалы на согласование, подтверждайте решения или оставляйте замечания и комментарии.", tab: "review", target: "#tab-review" },
-      { title: "Материалы проекта", text: "Здесь собраны планировки, визуализации и другие результаты работы студии.", tab: "results", target: "#tab-results" },
-      { title: "Общение со студией", text: "Комментарии к материалам и уведомления помогут следить за ответами студии и важными обновлениями.", tab: "notifications", target: "#tab-notifications" },
-      { title: "Документы проекта", text: "Договоры и другие документы проекта всегда доступны в соответствующем разделе.", tab: "documents", target: "#tab-documents" },
+    const key = (account, mode) =>
+      `itd-client-tour-v4:${account.id}:${account.createdAt ?? "legacy"}:${mode}`;
+    const emptySteps = [
+      {
+        title: "Главная страница",
+        text: "Сейчас проект ещё не назначен. Это нормально: когда студия добавит его, здесь появятся название, текущий этап и прогресс. Пока от вас ничего не требуется.",
+        tab: "client-home",
+        target: "#client-home-panel .empty-note",
+      },
+      {
+        title: "Мои проекты",
+        text: "После назначения студией ваш проект появится здесь. Тогда вы сможете открыть его маршрут, материалы и документы. Создавать проект самостоятельно не нужно.",
+        tab: "client-projects",
+        target: "#client-projects-panel .empty-note",
+      },
+      {
+        title: "Уведомления",
+        text: "Здесь будут появляться новые события, когда студия начнёт работу над вашим проектом. Сейчас раздел может быть пустым.",
+        tab: "notifications",
+        target: "#panel-notifications .section-title",
+      },
+      {
+        title: "Мой профиль",
+        text: "Здесь можно проверить и обновить контактные данные. Когда проект появится, вы сможете пройти отдельный подробный обзор работы с ним.",
+        tab: "profile",
+        target: "#profile-panel .section-title",
+      },
     ];
+    const projectSteps = [
+      { title: "Обзор проекта", text: "На главной видны ваш проект, текущий этап и общий прогресс. Если работа только началась, некоторые разделы пока могут быть пустыми.", tab: "client-home", target: "#client-home-panel .route-home-heading" },
+      { title: "Этапы работы", text: "Здесь можно посмотреть выполненные этапы и то, над чем студия работает сейчас.", tab: "stages", target: "#tab-stages" },
+      { title: "Согласование решений", text: "Когда материал будет готов, здесь можно будет подтвердить решение или оставить замечания с комментарием.", tab: "review", target: "#tab-review" },
+      { title: "Материалы проекта", text: "Планировки, визуализации и другие материалы появятся здесь по мере подготовки студией.", tab: "results", target: "#tab-results" },
+      { title: "Уведомления и комментарии", text: "Следите за событиями проекта в уведомлениях, а замечания к материалам оставляйте при согласовании.", tab: "notifications", target: "#panel-notifications .section-title" },
+      { title: "Документы проекта", text: "Договоры и другие документы будут доступны в этом разделе после их добавления студией.", tab: "documents", target: "#tab-documents" },
+    ];
+    let steps = [], mode = null;
     let layer = null, panel = null, frame = null, owner = null;
     let activeStep = -1, target = null, busy = false, session = 0, previousFocus = null;
-    const hasSeen = (account) => {
-      try { return window.localStorage.getItem(key(account)) === "done"; }
+    const hasSeen = (account, journey) => {
+      try { return window.localStorage.getItem(key(account, journey)) === "done"; }
       catch { return false; }
     };
-    const markSeen = (account) => {
-      try { window.localStorage.setItem(key(account), "done"); }
+    const markSeen = (account, journey) => {
+      try { window.localStorage.setItem(key(account, journey), "done"); }
       catch { /* Private browsing can disable storage. */ }
     };
     const makeButton = (label, onClick, className) => {
@@ -899,8 +926,13 @@
         brand,
         notice("ВАШЕ ПРОСТРАНСТВО ПРОЕКТА", "itd-tour-eyebrow"),
         node("h2", name ? `Добро пожаловать, ${name}!` : "Добро пожаловать!"),
-        notice("Здесь будет рождаться ваш интерьер. Мы покажем, как следить за ходом проекта, изучать материалы и согласовывать решения.", "itd-tour-description"),
-        notice("6 коротких шагов · около минуты", "itd-tour-caption"),
+        notice(
+          mode === "empty"
+            ? "Вы получили доступ к кабинету ITD Studio. Проект пока не назначен — покажем, где он появится и как следить за новостями студии."
+            : "Ваш проект уже доступен. Покажем, где смотреть его этапы, материалы, согласования и документы.",
+          "itd-tour-description",
+        ),
+        notice(`${steps.length} коротких шага · меньше минуты`.replace("6 коротких шага", "6 коротких шагов"), "itd-tour-caption"),
       );
       const actions = node("div", undefined, "itd-tour-actions");
       actions.append(
@@ -912,16 +944,26 @@
     }
     async function navigate(step) {
       const project = projects.find((p) => p.status !== "Архив") || projects[0];
-      if (step.tab === "client-home") selectTab("client-home");
-      else if (step.tab === "notifications") selectTab("notifications");
-      else if (project) await openProject(project.id, { tab: step.tab });
-      else selectTab("client-projects");
-      const selector = project || ["client-home", "notifications"].includes(step.tab)
-        ? step.target
-        : "#tab-client-projects";
-      const candidate = document.querySelector(selector);
-      return candidate && !candidate.hidden && candidate.getClientRects().length
-        ? candidate : document.querySelector("#shell-location");
+      if (["client-home", "client-projects", "notifications", "profile"].includes(step.tab))
+        selectTab(step.tab);
+      else if (project)
+        await openProject(project.id, { tab: step.tab });
+      else
+        throw new Error("Проект пока не назначен.");
+      const visible = (element) =>
+        element && element.getClientRects().length > 0 &&
+        element.getBoundingClientRect().width > 0 &&
+        element.getBoundingClientRect().height > 0;
+      const candidate = document.querySelector(step.target);
+      if (visible(candidate)) return candidate;
+      const panelTarget = document.querySelector(
+        `[data-tab-panel="${activeTab}"] .section-title`,
+      );
+      if (visible(panelTarget)) return panelTarget;
+      const activePanel = document.querySelector(
+        `[data-tab-panel="${activeTab}"]`,
+      );
+      return visible(activePanel) ? activePanel : document.querySelector("#shell-location");
     }
     async function showStep(index) {
       if (!layer || busy) return;
@@ -940,11 +982,12 @@
         panel.replaceChildren();
         panel.removeAttribute("style");
         panel.append(
-          notice(`ШАГ ${String(index + 1).padStart(2, "0")} / 06`, "itd-tour-eyebrow"),
+          notice(`ШАГ ${String(index + 1).padStart(2, "0")} / ${String(steps.length).padStart(2, "0")}`, "itd-tour-eyebrow"),
           node("h2", step.title),
           notice(step.text, "itd-tour-description"),
         );
         const bar = node("div", undefined, "itd-tour-progress");
+        bar.style.gridTemplateColumns = `repeat(${steps.length}, minmax(0, 1fr))`;
         for (let i = 0; i < steps.length; i++) {
           const dash = node("span");
           if (i <= index) dash.className = "is-done";
@@ -974,13 +1017,15 @@
     }
     function finish(save) {
       session++;
-      if (save && owner) markSeen(owner);
+      if (save && owner) markSeen(owner, mode);
       if (!layer) return;
       layer.remove();
       layer = panel = frame = target = null;
       activeStep = -1;
       busy = false;
       owner = null;
+      mode = null;
+      steps = [];
       document.removeEventListener("keydown", onKeys, true);
       window.removeEventListener("resize", position);
       window.removeEventListener("scroll", position, true);
@@ -989,7 +1034,11 @@
       previousFocus = null;
     }
     function start(force = false) {
-      if (user?.role !== "client" || layer || (!force && hasSeen(user))) return;
+      if (user?.role !== "client" || layer) return;
+      const nextMode = projects.length ? "project" : "empty";
+      if (!force && hasSeen(user, nextMode)) return;
+      mode = nextMode;
+      steps = nextMode === "empty" ? emptySteps : projectSteps;
       owner = user;
       session++;
       mount();
