@@ -66,7 +66,7 @@
     );
     return box;
   }
-  function journey(project, actions) {
+  function journey(project, actions, selectedStageId = null) {
     const root = node("div", undefined, "project-journey"),
       stages = project.stages || [],
       files = project.files || [];
@@ -80,7 +80,10 @@
           (f) => f.review?.isCurrent && f.review.status === "pending_approval",
         )
       : [];
-    const stage = window.ITDProjectState.currentStage(stages);
+    // Selecting a card is a view-only action, not a workflow state change.
+    const currentStage = window.ITDProjectState.currentStage(stages);
+    const stage = stages.find((item) => item.id === selectedStageId) || currentStage;
+    const isPreview = !!stage && stage.id !== currentStage?.id;
     const stageFiles = files.filter(
       (f) =>
         f.category === "result" &&
@@ -100,6 +103,8 @@
       const b = button("", () => actions.openStage(s.id), "route-step");
       b.dataset.status = s.status;
       b.classList.toggle("is-current", s.id === stage?.id);
+      b.dataset.workflowCurrent = String(s.id === currentStage?.id);
+      b.setAttribute("aria-pressed", String(s.id === stage?.id));
       b.append(node("strong", String(i + 1).padStart(2, "0")));
       b.title = `${s.title} — ${labels[s.status] || s.status}`;
       const text = node("span");
@@ -131,7 +136,7 @@
     title.append(
       node(
         "p",
-        active(project) ? "Сейчас в проекте" : "История проекта",
+        isPreview ? "Просмотр этапа" : active(project) ? "Сейчас в проекте" : "История проекта",
         "eyebrow",
       ),
       node(
