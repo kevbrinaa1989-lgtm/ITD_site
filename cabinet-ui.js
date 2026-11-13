@@ -244,8 +244,8 @@
     else
       copy.append(
         button(
-          chosen ? "Смотреть материалы →" : "Открыть этапы →",
-          () => actions.openTab(chosen ? "results" : "stages"),
+          chosen ? "Смотреть материалы →" : "Смотреть файлы проекта →",
+          () => actions.openTab("results"),
           "primary",
         ),
       );
