@@ -258,7 +258,20 @@ try {
     assert.equal(await clientRoute.locator(".route-strip").isVisible(), true);
     assert.equal(await clientPreview.isVisible(), true);
     assert.equal(await clientRoute.locator(".route-links").isVisible(), true);
+    assert.equal(await clientPreview.locator(".route-feature-body > .route-links").count(), 1);
     assert.equal(await clientRoute.locator(".route-step").count(), stageCount);
+    // The shortcuts are INSIDE the selected stage card. No overlap or horizontal overflow.
+    const geometry = await clientPreview.evaluate((element) => {
+      const feature = element.getBoundingClientRect();
+      const image = element.querySelector(".route-stage-artwork, .route-feature-placeholder").getBoundingClientRect();
+      const shortcuts = element.querySelector(".route-feature-body > .route-links").getBoundingClientRect();
+      return {
+        withinCard: shortcuts.left >= feature.left - 1 && shortcuts.right <= feature.right + 1,
+        separated: image.right <= shortcuts.left + 1 || image.bottom <= shortcuts.top + 1,
+      };
+    });
+    assert.ok(geometry.withinCard, "Album and documents cannot extend outside the stage feature");
+    assert.ok(geometry.separated, "Album and documents cannot overlap the illustration");
     assert.match(await clientPreview.locator(".route-stage-heading h2").innerText(), /Концепция интерьера/);
     assert.equal(
       await clientPreview.locator(".route-stage-artwork img").getAttribute("src"),
@@ -368,6 +381,7 @@ try {
     assert.equal(await adminRoute.locator(".route-strip").isVisible(), true);
     assert.equal(await adminRoute.locator(".route-feature").isVisible(), true);
     assert.equal(await adminRoute.locator(".route-links").isVisible(), true);
+    assert.equal(await adminRoute.locator(".route-feature-body > .route-links").count(), 1);
     assert.match(await adminRoute.locator(".route-stage-heading h2").innerText(), /Концепция интерьера/);
     assert.equal(
       await adminRoute.locator(".route-stage-artwork img").getAttribute("src"),
@@ -377,6 +391,14 @@ try {
     assert.equal(await page.locator("#project-header-progress-text").innerText(), beforeProgress);
     await adminRoute.locator(".route-step").nth(1).click();
     assert.match(await adminRoute.locator(".route-stage-heading h2").innerText(), /Планировочное решение/);
+    // The redesigned right-hand shortcuts still open the unified file library.
+    await adminRoute.locator(".route-links > .panel").nth(0).getByRole("button").click();
+    assert.equal(await page.locator("#tab-files").getAttribute("aria-selected"), "true");
+    assert.equal(await page.locator('[data-library-category="result"]').getAttribute("aria-pressed"), "true");
+    await page.locator("#tab-overview").click();
+    await page.locator("#project-route .route-links > .panel").nth(1).getByRole("button").click();
+    assert.equal(await page.locator("#tab-files").getAttribute("aria-selected"), "true");
+    assert.equal(await page.locator('[data-library-category="document"]').getAttribute("aria-pressed"), "true");
     await page.locator("#tab-stages").click();
     await page
       .locator(`[data-stage-id="${stages[1].id}"]`)
