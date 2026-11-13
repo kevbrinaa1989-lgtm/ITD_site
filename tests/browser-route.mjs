@@ -222,7 +222,8 @@ try {
     }
     await openProject(page, project.id);
     for (const tab of ["overview", "settings", "documents"]) {
-      if (tab === "documents") await openFiles(page, "document");
+      if (tab === "documents")
+        await openFiles(page, "document", { stageIndex: 3 });
       else await page.locator("#tab-" + tab).click();
       await capture("admin-" + tab);
     }
@@ -240,7 +241,7 @@ try {
       await capture(section);
     }
     await openProject(page, project.id, { client: true });
-    await openFiles(page, "result", { album: true });
+    await openFiles(page, "result", { album: true, stageIndex: 3 });
     await page.locator(".album-hero-media img").waitFor();
     await page.waitForFunction(
       () => document.querySelector(".album-hero-media img")?.naturalWidth > 0,

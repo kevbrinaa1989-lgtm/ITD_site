@@ -214,7 +214,7 @@ try {
     await openProject(page, "Квартира · тест просмотра", {
       client: viewport.width !== 1440,
     });
-    await openFiles(page, "result");
+    await openFiles(page, "result", { stageIndex: 0 });
     await page.locator("#library-sort").selectOption("oldest");
     for (const card of await page
       .locator("#library-content .gallery-card")
@@ -561,7 +561,7 @@ try {
     );
     await page.keyboard.press("Escape");
     assert.equal(await page.locator("dialog[open]").count(), 0);
-    await openFiles(page, "document");
+    await openFiles(page, "document", { stageIndex: 0 });
     await page
       .locator(
         `#library-content [data-file-id="${files.find((f) => f.contentType === "application/pdf").id}"] .library-document-open`,
