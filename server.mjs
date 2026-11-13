@@ -18,6 +18,8 @@ import { initPasswordRecovery } from "./password-recovery.mjs";
 import { initAdminManagement } from "./admin-management.mjs";
 import { initMaterialReview } from "./material-review.mjs";
 import { initAdminWorkspace, validateStageDates } from "./admin-workspace.mjs";
+import { migrateFileOwnership } from "./file-ownership-migration.mjs";
+import { initFileOwnership } from "./file-ownership.mjs";
 import { createUploadIntents } from "./upload-intents.mjs";
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PDF_ASSETS = new Set(Object.keys(JSON.parse(readFileSync(join(ROOT, "vendor/pdfjs/assets.json"), "utf8"))));
@@ -105,6 +107,8 @@ export function createApp(options = {}) {
     validatePreview: (file) =>
       previewType(file, readFileSync(join(dataDir, "files", file.path))),
   });
+  migrateFileOwnership(db, {dataDir});
+  const fileOwnership = initFileOwnership({db, transaction:review.transaction, removeFile: f => {try {unlinkSync(join(dataDir,"files",f.path));} catch(e) {if(e.code!=="ENOENT")throw e;}}});
   const invitations = initInvitations({db, passwordHash: hashPassword, now: options.invitationNow});
   const uploadIntents = createUploadIntents({ now: options.uploadIntentNow });
   const limits = new Map();
@@ -210,6 +214,7 @@ export function createApp(options = {}) {
         ) return;
         if (await review.handle({ req, res, path, method, user, body, json, fail }))
           return;
+        if (await fileOwnership.handle({req,res,path,method,url,user,project,admin,body,json,fail})) return;
         if (await management({req,res,path,method,url,user,body,json,fail})) return;
         if (path === "/api/login" && method === "POST") {
           const now = Date.now(),
@@ -461,11 +466,13 @@ export function createApp(options = {}) {
           const b = await body(req);
           if (
             Object.keys(b).some(
-              (key) => !["materialId", "expectedVersionId"].includes(key),
+              (key) => !["materialId", "expectedVersionId", "stageId"].includes(key),
             )
           )
             fail(400, "Недопустимые поля запроса");
           const p = project(Number(match[1]));
+          let stageId = b.stageId ?? null;
+          if(stageId !== null && (!Number.isSafeInteger(stageId) || !get("SELECT id FROM stages WHERE id=? AND projectId=?",stageId,p.id))) fail(400,"Этап не принадлежит проекту");
           let materialId = null,
             expectedVersionId = null,
             revision = null;
@@ -490,6 +497,8 @@ export function createApp(options = {}) {
             );
             if (!current || current.id !== b.expectedVersionId)
               fail(409, "Текущая версия изменилась. Обновите данные.");
+            if (Object.hasOwn(b,"stageId") && stageId !== material.stageId) fail(409,"Материал перемещён. Обновите данные.");
+            stageId = material.stageId;
             materialId = material.id;
             expectedVersionId = current.id;
             revision = current.revision;
@@ -501,6 +510,7 @@ export function createApp(options = {}) {
               sessionHash: hash(cookie),
               adminId: user.id,
               projectId: p.id,
+              stageId,
               clientId: p.clientId,
               materialId,
               expectedVersionId,
@@ -534,8 +544,12 @@ export function createApp(options = {}) {
               currentRevision: currentVersion?.revision ?? null,
             });
           };
+          if (b.stageId != null && (!Number.isSafeInteger(b.stageId) || !get("SELECT id FROM stages WHERE id=? AND projectId=?", b.stageId, p.id))) fail(400,"Этап не принадлежит проекту");
           const prepared = checkIntent();
-          if (prepared.result) return json(res, 201, prepared.result);
+          if (prepared.result) {
+            if(!get("SELECT id FROM files WHERE id=? AND projectId=? AND stageId IS ?",prepared.result.id,p.id,b.stageId??null)) fail(409,"Файл уже перемещён или удалён. Обновите данные.");
+            return json(res, 201, prepared.result);
+          }
           const types = {
             pdf: "application/pdf",
             png: "image/png",
