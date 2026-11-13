@@ -67,6 +67,9 @@ export async function openFiles(
 ) {
   await closeUpload(page);
   await page.locator("#tab-files").click();
+  // This test helper deliberately opens the entire library: unlike the
+  // user-facing top tab (unassigned documents), tests using it check every stage.
+  await page.locator("#library-stage").selectOption("");
   await page.locator(`[data-library-category="${category}"]`).click();
   if (album) await page.locator("#library-album-toggle").click();
 }
