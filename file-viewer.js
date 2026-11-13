@@ -194,10 +194,14 @@
   viewport.addEventListener("dblclick", (e) => {
     if (image(current) && e.target === source) setZoom(zoom > 1 ? 1 : 2);
   });
-  dialog.addEventListener("keydown", (e) => {
-    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-    // Photo navigation works even if this image was zoomed; swipe is restricted
-    // to fit-to-screen so panning a magnified photo stays possible on touch.
+  // Listen at document level: a disabled edge arrow may lose focus and
+  // otherwise prevent the next keyboard event from reaching the dialog.
+  document.addEventListener("keydown", (e) => {
+    if (!dialog.open || e.defaultPrevented ||
+        e.altKey || e.ctrlKey || e.metaKey || e.shiftKey ||
+        e.target?.matches?.("input,textarea,select,[contenteditable]")) return;
+    // Photo navigation works even if the picture was zoomed. Swipes at zoom >1
+    // stay reserved for panning the enlarged image on touch screens.
     if (e.key === "ArrowRight" && (image(current) || zoom === 1)) {
       e.preventDefault();
       navigate(1);
