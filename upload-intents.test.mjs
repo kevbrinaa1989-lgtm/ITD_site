@@ -246,7 +246,7 @@ test("project reassignment after preparation invalidates the destination snapsho
 test("identical ordinary and review upload retries return original receipts and never duplicate rows", async (t) => {
   const f = await fixture(t);
   for (const review of [false, true]) {
-    const intent = await f.prepare(),
+    const intent = await f.prepare(f.project.id, {stageId: review ? f.stage.id : null}),
       body = {
         ...payload,
         category: review ? "result" : "document",
@@ -280,7 +280,7 @@ test("identical ordinary and review upload retries return original receipts and 
 });
 test("new-version tickets bind material current-version revision and cannot enroll another group", async (t) => {
   const f = await fixture(t),
-    initial = await f.prepare(),
+    initial = await f.prepare(f.project.id, {stageId:f.stage.id}),
     first = await f.upload({
       ...payload,
       category: "result",

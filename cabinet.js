@@ -32,7 +32,7 @@
   ];
   const projectTabNames = [
     "overview",
-    "stages",
+    "files",
     "results",
     "review",
     "documents",
@@ -40,7 +40,6 @@
     "management",
   ];
   let returnClientId = null,
-    selectedStageId = null,
     routeStageId = null;
   let activeTab = "overview";
   const node = (tag, text, className) => {
@@ -53,6 +52,9 @@
   const message = (text, error = false) => {
     clearTimeout(messageTimer);
     const el = $("status-message");
+    if ($("library-upload-message"))
+      $("library-upload-message").textContent =
+        error && $("library-upload-dialog")?.open ? text : "";
     el.textContent = text;
     el.classList.toggle("is-error", error);
     el.setAttribute("role", error ? "alert" : "status");
@@ -65,6 +67,8 @@
     onboarding.close();
     delete document.body.dataset.cabinetReady;
     window.ITDUploads?.reset();
+    $("library-upload-dialog")?.close();
+    window.ITDLibrary?.reset();
     clearRecovery();
     window.ITDWorkspace?.reset();
     window.ITDInvitations?.reset();
@@ -72,7 +76,6 @@
     window.ITDReview?.reset();
     window.ITDClientWorkspace?.reset();
     returnClientId = null;
-    selectedStageId = null;
     routeStageId = null;
     document.body.classList.remove("menu-open");
     window.ITDViewer?.invalidate();
@@ -109,7 +112,7 @@
     $("app-view").hidden = true;
     $("user-name").textContent = "";
     $("user-role").textContent = "";
-    for (const id of ["stage-list", "result-list", "document-list"])
+    for (const id of ["stage-list", "library-content", "project-gallery"])
       $(id).replaceChildren();
     for (const id of ["project-title", "project-client", "project-status"])
       $(id).textContent = "";
@@ -185,6 +188,20 @@
     list.replaceChildren(node("p", text, "empty-note"));
   }
   function selectTab(tab, options = {}) {
+    // Compatibility: old stage links now land on the overview timeline.
+    if (tab === "stages") tab = "overview";
+    if (tab === "results" || tab === "documents") {
+      const category = tab === "documents" ? "document" : "result";
+      if (Object.hasOwn(options, "stageId"))
+        window.ITDLibrary?.showScope(category, options.stageId);
+      else window.ITDLibrary?.category(category);
+      tab = "files";
+    } else if (tab === "files" && options.projectDocuments) {
+      // Top-level "Файлы проекта" shows ALL files without a stage:
+      // general documents and miscellaneous materials, not stage-specific files.
+      // Scoped timeline links use "results"/"documents" above.
+      window.ITDLibrary?.showScope("all", "unassigned");
+    }
     const admin = user?.role === "admin";
     const home = admin ? "workspace" : "client-home";
     const hasProject = projects.some((project) => project.id === selectedId);
@@ -251,6 +268,7 @@
     window.ITDInvitations?.onTab(tab);
     window.ITDAdmin?.onTab(tab);
     window.ITDReview?.onTab(tab);
+    window.ITDLibrary?.onTab(tab);
     window.ITDClientWorkspace?.onTab(tab);
     window.ITDUI?.syncShell(user, tab, inProject, selectTab);
   }
@@ -264,7 +282,6 @@
     if (!projects.some((project) => project.id === id))
       throw new Error("Проект недоступен.");
     if (selectedId !== id) {
-      selectedStageId = null;
       routeStageId = null;
     }
     selectedId = id;
@@ -283,27 +300,29 @@
     return button;
   }
   function openUpload(stageId = null, category = "result") {
-    const form = $("upload-file-form");
-    // Never silently retarget a file already prepared for another stage/category.
+    const form = $("upload-file-form"),
+      dialog = $("library-upload-dialog");
+    const prepared = form.querySelector('input[type="file"]').files.length;
     if (
-      form.querySelector('input[type="file"]').files.length &&
+      prepared &&
       (form.elements.stageId.value !== String(stageId ?? "") ||
         form.elements.category.value !== category)
     ) {
-      selectTab("management");
-      form.closest("details").open = true;
-      form.scrollIntoView({ block: "start" });
-      message(
-        "В форме уже выбран файл. Сохранены его проект и этап: сначала завершите эту загрузку или выберите другой файл.",
-        true,
-      );
-      return;
+      if (
+        !window.confirm(
+          "Выбраны файлы для другого раздела. Отменить подготовленную очередь и открыть новую загрузку?",
+        )
+      )
+        return;
+      window.ITDUploads.discard(form);
     }
-    selectTab("management");
+    $("library-upload-message").textContent = "";
     form.elements.stageId.value = String(stageId ?? "");
+    form.elements.stageId.disabled = true;
+    form.dataset.scopeStage = String(stageId ?? "");
     form.elements.category.value = category;
-    form.closest("details").open = true;
-    form.scrollIntoView({ block: "start" });
+    form.elements.category.dispatchEvent(new Event("change"));
+    if (!dialog.open) dialog.showModal();
     form.querySelector('input[type="file"]').focus({ preventScroll: true });
   }
   function download(file, label = "Скачать") {
@@ -315,9 +334,15 @@
   }
   function fileRow(file, project, admin = false) {
     const item = node("div", undefined, "file-item");
-    const document = file.category === "document" ? file.document ?? {
-      title: file.name.replace(/\.[^.]+$/, ""), kind: "Документ", number: "", date: "",
-    } : null;
+    const document =
+      file.category === "document"
+        ? (file.document ?? {
+            title: file.name.replace(/\.[^.]+$/, ""),
+            kind: "Документ",
+            number: "",
+            date: "",
+          })
+        : null;
     if (document) item.classList.add("document-card");
     const ext = file.name.split(".").pop().toUpperCase();
     const icon = node("span", ext.length <= 5 ? ext : "FILE", "file-icon");
@@ -340,8 +365,12 @@
       const requisites = [
         document.kind || "Документ",
         document.number ? `№ ${document.number}` : "",
-        document.date ? `от ${new Date(document.date + "T00:00:00").toLocaleDateString("ru-RU")}` : "",
-      ].filter(Boolean).join(" · ");
+        document.date
+          ? `от ${new Date(document.date + "T00:00:00").toLocaleDateString("ru-RU")}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
       info.append(
         node("span", requisites, "document-card-requisites"),
         node("span", `Файл: ${file.name}`, "document-card-filename"),
@@ -349,7 +378,17 @@
     }
     item.append(icon, info);
     if (window.ITDViewer?.supported(file))
-      item.append(window.ITDViewer.control(file, project.files));
+      item.append(
+        window.ITDViewer.control(
+          file,
+          project.files.filter(
+            (candidate) =>
+              candidate.category === "result" &&
+              candidate.stageId === file.stageId &&
+              (!candidate.review || candidate.review.isCurrent),
+          ),
+        ),
+      );
     item.append(download(file));
     if (file.review) item.append(window.ITDReview.reviewControl(file));
     if (admin)
@@ -367,7 +406,11 @@
     button.addEventListener("click", () => {
       if (window.confirm(`Удалить файл «${file.name}»?`))
         busy(container, async () => {
-          await api(`/api/files/${file.id}`, "DELETE", {});
+          await api(
+            `/api/projects/${file.projectId ?? selectedId}/files/${file.id}`,
+            "DELETE",
+            { expectedStageId: file.stageId ?? null },
+          );
           await refresh();
           message("Файл удалён");
         });
@@ -471,6 +514,7 @@
     selectTab(activeTab);
     if (!project) {
       window.ITDReview?.setProject(null);
+      window.ITDLibrary?.setProject(null);
       return;
     }
     $("project-title").textContent = project.title;
@@ -510,15 +554,22 @@
     $("project-status").textContent = project.status;
     window.ITDViewer.releaseWithin($("project-route"));
     $("project-route").replaceChildren(
-      window.ITDUI.journey(project, {
-        openStage: (id) => {
-          routeStageId = id;
-          render();
+      window.ITDUI.journey(
+        project,
+        {
+          openStage: (id) => {
+            routeStageId = id;
+            render();
+          },
+          openMaterial: (file) =>
+            window.ITDReview.open(
+              file.review.materialId,
+              file.review.versionId,
+            ),
+          openTab: selectTab,
         },
-        openMaterial: (file) =>
-          window.ITDReview.open(file.review.materialId, file.review.versionId),
-        openTab: selectTab,
-      }, routeStageId),
+        routeStageId,
+      ),
     );
     const state = window.ITDProjectState.progress(project.stages);
     const completed = state.completed,
@@ -582,19 +633,8 @@
         recent.append(fileRow(file, project));
       if (!project.files.length) empty(recent, "Материалы пока не загружены.");
     }
-    $("stage-list").replaceChildren();
-    if (
-      selectedStageId &&
-      !project.stages.some((stage) => stage.id === selectedStageId)
-    )
-      selectedStageId = null;
-    if (selectedStageId)
-      $("stage-list").append(
-        projectAction("← Все этапы", () => {
-          selectedStageId = null;
-          render();
-        }),
-      );
+    const stageList = $("stage-list");
+    stageList.replaceChildren();
     const stageSelect = $("upload-file-form").elements.namedItem("stageId");
     const previousStage = stageSelect.value;
     stageSelect.replaceChildren(new Option("Без привязки к этапу", ""));
@@ -606,7 +646,6 @@
         `stage-card stage-${stage.status}`,
       );
       item.dataset.stageId = String(stage.id);
-      item.hidden = selectedStageId !== null && selectedStageId !== stage.id;
       const number = node("span", String(index + 1), "stage-number");
       number.setAttribute("aria-hidden", "true");
       const content = node("div", undefined, "stage-body");
@@ -629,48 +668,21 @@
         !["Архив", "Завершён"].includes(project.status)
       )
         content.append(node("span", "Срок этапа прошёл", "deadline-warning"));
-      const results = project.files.filter(
-        (file) =>
-          file.stageId === stage.id &&
-          file.category === "result" &&
-          !file.review,
+      const stageFiles = window.ITDProjectFiles.entries(project).filter(
+        (e) => e.file.stageId === stage.id,
       );
-      if (results.length) {
-        const links = node("div", undefined, "stage-results");
-        for (const file of results) {
-          if (window.ITDViewer?.supported(file))
-            links.append(
-              window.ITDViewer.control(file, project.files, file.name),
-            );
-          else links.append(download(file, file.name));
-        }
-        content.append(links);
-      }
       content.append(
-        node(
-          "p",
-          `Материалов: ${project.files.filter((file) => file.stageId === stage.id).length}`,
-          "muted",
-        ),
-      );
-      const stageActions = node("div", undefined, "stage-actions");
-      stageActions.append(
-        projectAction(
-          selectedStageId === stage.id ? "Все этапы" : "Открыть этап",
-          () => {
-            selectedStageId = selectedStageId === stage.id ? null : stage.id;
-            selectTab("stages");
-            render();
-          },
-        ),
+        projectAction(`Файлы этапа · ${stageFiles.length}`, () => {
+          window.ITDLibrary.filterStage(stage.id);
+          selectTab("files");
+        }),
       );
       if (admin)
-        stageActions.append(
+        content.append(
           projectAction("Загрузить материал в этап", () =>
             openUpload(stage.id),
           ),
         );
-      content.append(stageActions);
       if (stage.status === "approved")
         content.append(
           node(
@@ -679,73 +691,17 @@
             "stage-status-help",
           ),
         );
-      const reviewHost = node("div", undefined, "stage-review-materials");
-      reviewHost.dataset.reviewStage = String(stage.id);
-      content.append(reviewHost);
       if (admin) content.append(stageEditor(stage));
       item.append(number, content);
-      $("stage-list").append(item);
+      if (admin) stageList.append(item);
     });
-    if (!project.stages.length)
-      empty($("stage-list"), "Этапы пока не добавлены.");
-    for (const [category, id] of [
-      ["result", "result-list"],
-      ["document", "document-list"],
-    ]) {
-      const list = $(id);
-      list.replaceChildren();
-      const categoryFiles = project.files.filter(
-        (file) => file.category === category,
-      );
-      if (category === "result") {
-        const groups = new Map();
-        for (const file of categoryFiles.filter((file) =>
-          window.ITDViewer?.image(file),
-        )) {
-          const key = file.stageId ?? "unassigned";
-          if (!groups.has(key)) groups.set(key, []);
-          groups.get(key).push(file);
-        }
-        for (const [stageId, files] of groups) {
-          const section = node("section", undefined, "gallery-section");
-          const stage = project.stages.find((stage) => stage.id === stageId);
-          section.append(node("h3", stage?.title || "Без привязки к этапу"));
-          const gallery = node("div", undefined, "material-gallery");
-          for (const file of files) {
-            const card = window.ITDViewer.thumbnail(file, files);
-            const actions = node("div", undefined, "gallery-actions");
-            actions.append(download(file));
-            if (file.review)
-              actions.append(window.ITDReview.reviewControl(file));
-            if (admin)
-              actions.append(
-                deleteFileButton(file, card),
-                window.ITDReview.sendControl(file),
-              );
-            card.append(actions);
-            gallery.append(card);
-          }
-          section.append(gallery);
-          list.append(section);
-        }
-      }
-      for (const file of categoryFiles) {
-        if (category === "result" && window.ITDViewer?.image(file)) continue;
-        list.append(fileRow(file, project, admin));
-      }
-      if (!list.childElementCount)
-        empty(
-          list,
-          category === "result"
-            ? "Результаты пока не загружены."
-            : "Документы пока не загружены.",
-        );
-    }
+    if (admin && !project.stages.length)
+      empty(stageList, "Рабочий план пока не заполнен.");
     if (
       [...stageSelect.options].some((option) => option.value === previousStage)
     )
       stageSelect.value = previousStage;
-    window.ITDGallery?.render(project);
+    window.ITDLibrary?.setProject(project);
     window.ITDReview?.setProject(project);
     window.ITDUploads?.reconcile();
   }
@@ -819,29 +775,93 @@
     // Global navigation is at the top on desktop and in the opened menu on mobile.
     // The tour always highlights the navigation button, not empty page content.
     const emptySteps = [
-      { title: "Главная", text: "Когда студия назначит вам проект, здесь появятся его название, текущий этап и прогресс. Сейчас проект ещё не назначен — это нормально.", tab: "client-home", target: "#tab-client-home" },
-      { title: "Мои проекты", text: "Все назначенные студией проекты появятся в этом разделе. Здесь вы сможете открыть проект и посмотреть этапы, материалы и документы.", tab: "client-projects", target: "#tab-client-projects" },
-      { title: "На согласование", text: "Когда студия подготовит решения, они появятся здесь. Вы сможете согласовать материал или оставить замечания.", tab: "client-review", target: "#tab-client-review" },
-      { title: "Уведомления", text: "Здесь появятся сообщения о новых материалах и событиях проекта. Пока раздел может быть пустым.", tab: "notifications", target: "#tab-notifications" },
-      { title: "Мой профиль", text: "Здесь можно проверить и обновить контактные данные. Когда проект появится, вы сможете пройти отдельный обзор работы с ним.", tab: "profile", target: "#tab-profile" },
+      {
+        title: "Главная",
+        text: "Когда студия назначит вам проект, здесь появятся его название, текущий этап и прогресс. Сейчас проект ещё не назначен — это нормально.",
+        tab: "client-home",
+        target: "#tab-client-home",
+      },
+      {
+        title: "Мои проекты",
+        text: "Все назначенные студией проекты появятся в этом разделе. Здесь вы сможете открыть проект и посмотреть этапы, материалы и документы.",
+        tab: "client-projects",
+        target: "#tab-client-projects",
+      },
+      {
+        title: "На согласование",
+        text: "Когда студия подготовит решения, они появятся здесь. Вы сможете согласовать материал или оставить замечания.",
+        tab: "client-review",
+        target: "#tab-client-review",
+      },
+      {
+        title: "Уведомления",
+        text: "Здесь появятся сообщения о новых материалах и событиях проекта. Пока раздел может быть пустым.",
+        tab: "notifications",
+        target: "#tab-notifications",
+      },
+      {
+        title: "Мой профиль",
+        text: "Здесь можно проверить и обновить контактные данные. Когда проект появится, вы сможете пройти отдельный обзор работы с ним.",
+        tab: "profile",
+        target: "#tab-profile",
+      },
     ];
     const projectSteps = [
-      { title: "Главная", text: "На главной странице видно текущее состояние проекта, его этапы и общий прогресс работы.", tab: "client-home", target: "#tab-client-home" },
-      { title: "Мои проекты", text: "Здесь собраны ваши проекты. Откройте нужный, чтобы посмотреть его этапы, материалы и документы.", tab: "client-projects", target: "#tab-client-projects" },
-      { title: "На согласование", text: "Здесь появляются материалы, ожидающие вашего решения. Вы можете их подтвердить или оставить комментарий.", tab: "client-review", target: "#tab-client-review" },
-      { title: "Уведомления", text: "Здесь отображаются события и обновления по проекту.", tab: "notifications", target: "#tab-notifications" },
-      { title: "Мой профиль", text: "Здесь можно изменить контактные данные и проверить сведения своей учётной записи.", tab: "profile", target: "#tab-profile" },
+      {
+        title: "Главная",
+        text: "На главной странице видно текущее состояние проекта, его этапы и общий прогресс работы.",
+        tab: "client-home",
+        target: "#tab-client-home",
+      },
+      {
+        title: "Мои проекты",
+        text: "Здесь собраны ваши проекты. Откройте нужный, чтобы посмотреть его этапы, материалы и документы.",
+        tab: "client-projects",
+        target: "#tab-client-projects",
+      },
+      {
+        title: "На согласование",
+        text: "Здесь появляются материалы, ожидающие вашего решения. Вы можете их подтвердить или оставить комментарий.",
+        tab: "client-review",
+        target: "#tab-client-review",
+      },
+      {
+        title: "Уведомления",
+        text: "Здесь отображаются события и обновления по проекту.",
+        tab: "notifications",
+        target: "#tab-notifications",
+      },
+      {
+        title: "Мой профиль",
+        text: "Здесь можно изменить контактные данные и проверить сведения своей учётной записи.",
+        tab: "profile",
+        target: "#tab-profile",
+      },
     ];
-    let steps = [], mode = null;
-    let layer = null, panel = null, frame = null, owner = null;
-    let activeStep = -1, target = null, busy = false, session = 0, previousFocus = null;
+    let steps = [],
+      mode = null;
+    let layer = null,
+      panel = null,
+      frame = null,
+      owner = null;
+    let activeStep = -1,
+      target = null,
+      busy = false,
+      session = 0,
+      previousFocus = null;
     const hasSeen = (account, journey) => {
-      try { return window.localStorage.getItem(key(account, journey)) === "done"; }
-      catch { return false; }
+      try {
+        return window.localStorage.getItem(key(account, journey)) === "done";
+      } catch {
+        return false;
+      }
     };
     const markSeen = (account, journey) => {
-      try { window.localStorage.setItem(key(account, journey), "done"); }
-      catch { /* Private browsing can disable storage. */ }
+      try {
+        window.localStorage.setItem(key(account, journey), "done");
+      } catch {
+        /* Private browsing can disable storage. */
+      }
     };
     const makeButton = (label, onClick, className) => {
       const el = node("button", label, className);
@@ -858,11 +878,14 @@
       } else if (event.key === "Tab") {
         const items = [...panel.querySelectorAll("button:not([disabled])")];
         if (!items.length) return;
-        const first = items[0], last = items[items.length - 1];
+        const first = items[0],
+          last = items[items.length - 1];
         if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault(); last.focus();
+          event.preventDefault();
+          last.focus();
         } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault(); first.focus();
+          event.preventDefault();
+          first.focus();
         }
       }
     };
@@ -885,7 +908,9 @@
     function position() {
       if (!layer || activeStep < 0 || !target || !target.isConnected) return;
       const rect = target.getBoundingClientRect();
-      const pad = 8, vw = innerWidth, vh = innerHeight;
+      const pad = 8,
+        vw = innerWidth,
+        vh = innerHeight;
       const left = Math.max(8, rect.left - pad);
       const top = Math.max(8, rect.top - pad);
       frame.style.left = left + "px";
@@ -902,10 +927,15 @@
         const height = panel.offsetHeight || 260;
         const below = rect.bottom + 20;
         const above = rect.top - height - 20;
-        const y = below + height <= vh - 14 ? below
-          : above >= 14 ? above : Math.max(14, vh - height - 14);
+        const y =
+          below + height <= vh - 14
+            ? below
+            : above >= 14
+              ? above
+              : Math.max(14, vh - height - 14);
         panel.style.width = width + "px";
-        panel.style.left = Math.max(14, Math.min(vw - width - 14, rect.left)) + "px";
+        panel.style.left =
+          Math.max(14, Math.min(vw - width - 14, rect.left)) + "px";
         panel.style.top = y + "px";
         panel.style.right = "auto";
         panel.style.bottom = "auto";
@@ -923,7 +953,9 @@
       brand.src = "/assets/brand/itd-logo.svg";
       brand.alt = "ITD Studio";
       brand.className = "itd-tour-logo";
-      const name = String(owner.name || "").trim().split(/\s+/)[0];
+      const name = String(owner.name || "")
+        .trim()
+        .split(/\s+/)[0];
       panel.append(
         brand,
         notice("ВАШЕ ПРОСТРАНСТВО ПРОЕКТА", "itd-tour-eyebrow"),
@@ -934,12 +966,19 @@
             : "Ваш проект уже доступен. Покажем, где смотреть его этапы, материалы, согласования и документы.",
           "itd-tour-description",
         ),
-        notice(`${steps.length} коротких шагов · меньше минуты`, "itd-tour-caption"),
+        notice(
+          `${steps.length} коротких шагов · меньше минуты`,
+          "itd-tour-caption",
+        ),
       );
       const actions = node("div", undefined, "itd-tour-actions");
       actions.append(
         makeButton("Пропустить", () => finish(true), "itd-tour-secondary"),
-        makeButton("Начать обзор →", () => void showStep(0), "itd-tour-primary"),
+        makeButton(
+          "Начать обзор →",
+          () => void showStep(0),
+          "itd-tour-primary",
+        ),
       );
       panel.append(actions);
       actions.lastElementChild.focus();
@@ -950,7 +989,8 @@
       // Open the menu after switching tabs so the highlighted button is visible.
       const mobile = matchMedia("(max-width: 1100px)").matches;
       document.body.classList.toggle("menu-open", mobile);
-      document.getElementById("mobile-menu-button")
+      document
+        .getElementById("mobile-menu-button")
         ?.setAttribute("aria-expanded", String(mobile));
       const candidate = document.querySelector(step.target);
       if (!candidate || candidate.hidden || !candidate.getClientRects().length)
@@ -959,8 +999,14 @@
     }
     async function showStep(index) {
       if (!layer || busy) return;
-      if (index >= steps.length) { finish(true); return; }
-      if (index < 0) { showWelcome(); return; }
+      if (index >= steps.length) {
+        finish(true);
+        return;
+      }
+      if (index < 0) {
+        showWelcome();
+        return;
+      }
       busy = true;
       const ticket = session;
       const step = steps[index];
@@ -974,7 +1020,10 @@
         panel.replaceChildren();
         panel.removeAttribute("style");
         panel.append(
-          notice(`ШАГ ${String(index + 1).padStart(2, "0")} / ${String(steps.length).padStart(2, "0")}`, "itd-tour-eyebrow"),
+          notice(
+            `ШАГ ${String(index + 1).padStart(2, "0")} / ${String(steps.length).padStart(2, "0")}`,
+            "itd-tour-eyebrow",
+          ),
           node("h2", step.title),
           notice(step.text, "itd-tour-description"),
         );
@@ -988,19 +1037,35 @@
         const actions = node("div", undefined, "itd-tour-actions");
         actions.append(
           makeButton("Пропустить", () => finish(true), "itd-tour-secondary"),
-          makeButton("← Назад", () => void showStep(index - 1), "itd-tour-secondary"),
-          makeButton(index === steps.length - 1 ? "Завершить ✓" : "Далее →",
-            () => void showStep(index + 1), "itd-tour-primary"),
+          makeButton(
+            "← Назад",
+            () => void showStep(index - 1),
+            "itd-tour-secondary",
+          ),
+          makeButton(
+            index === steps.length - 1 ? "Завершить ✓" : "Далее →",
+            () => void showStep(index + 1),
+            "itd-tour-primary",
+          ),
         );
         panel.append(bar, actions);
         const back = actions.children[1];
         back.disabled = index === 0;
-        target?.scrollIntoView({ behavior: "instant", block: "nearest", inline: "nearest" });
-        requestAnimationFrame(() => { if (layer && ticket === session) position(); });
+        target?.scrollIntoView({
+          behavior: "instant",
+          block: "nearest",
+          inline: "nearest",
+        });
+        requestAnimationFrame(() => {
+          if (layer && ticket === session) position();
+        });
         actions.lastElementChild.focus();
       } catch (error) {
         if (layer && ticket === session) {
-          message("Не удалось открыть шаг экскурсии: " + (error.message || "ошибка"), true);
+          message(
+            "Не удалось открыть шаг экскурсии: " + (error.message || "ошибка"),
+            true,
+          );
           finish(false);
         }
       } finally {
@@ -1023,9 +1088,11 @@
       window.removeEventListener("scroll", position, true);
       if (user?.role === "client") selectTab("client-home");
       document.body.classList.remove("menu-open");
-      document.getElementById("mobile-menu-button")
+      document
+        .getElementById("mobile-menu-button")
         ?.setAttribute("aria-expanded", "false");
-      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+      if (previousFocus?.isConnected)
+        previousFocus.focus({ preventScroll: true });
       previousFocus = null;
     }
     function start(force = false) {
@@ -1043,6 +1110,8 @@
   })();
   async function enter(nextUser) {
     window.ITDUploads?.reset();
+    $("library-upload-dialog")?.close();
+    window.ITDLibrary?.reset();
     window.ITDWorkspace?.reset();
     window.ITDInvitations?.reset();
     window.ITDAdmin?.reset();
@@ -1051,7 +1120,6 @@
     window.ITDClientWorkspace?.reset();
     user = nextUser;
     selectedId = null;
-    selectedStageId = null;
     routeStageId = null;
     returnClientId = null;
     activeTab = user.role === "admin" ? "workspace" : "client-home";
@@ -1481,9 +1549,40 @@
     message,
   });
   window.ITDUploads.register($("upload-file-form"), {
-    context: () =>
-      window.ITDUploads.contextOf(projects.find((p) => p.id === selectedId)),
+    context: () => ({
+      ...window.ITDUploads.contextOf(projects.find((p) => p.id === selectedId)),
+      stageId: $("upload-file-form").dataset.scopeStage
+        ? Number($("upload-file-form").dataset.scopeStage)
+        : null,
+    }),
     receiver: $("upload-recipient"),
+  });
+  window.ITDLibrary.init({
+    getUser: () => user,
+    api,
+    refresh,
+    selectTab,
+    openUpload,
+    deleteControl: deleteFileButton,
+    message,
+    openMaterial: (file, back) =>
+      window.ITDReview.open(
+        file.review.materialId,
+        file.review.versionId,
+        back,
+      ),
+  });
+  const closeUpload = () => {
+    if ($("upload-file-form").dataset.busy) {
+      message("Дождитесь завершения загрузки.", true);
+      return;
+    }
+    $("library-upload-dialog").close();
+  };
+  $("library-upload-close").addEventListener("click", closeUpload);
+  $("library-upload-dialog").addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeUpload();
   });
   window.ITDAdmin?.init({
     api,
@@ -1524,8 +1623,8 @@
     selectTab,
     openProject,
     openStage: async (pid, sid) => {
-      await openProject(pid, { tab: "stages" });
-      selectedStageId = sid;
+      await openProject(pid, { tab: "overview" });
+      routeStageId = Number(sid);
       render();
     },
     message,
@@ -1541,7 +1640,9 @@
       }
     },
   });
-  $("client-guide-trigger")?.addEventListener("click", () => onboarding.start(true));
+  $("client-guide-trigger")?.addEventListener("click", () =>
+    onboarding.start(true),
+  );
   $("mobile-menu-button")?.addEventListener("click", () => {
     window.ITDUI.toggleMenu();
   });
@@ -1560,15 +1661,12 @@
       await window.ITDReview.open(mid, vid);
     },
     openStage: async (pid, sid) => {
-      await openWorkspaceProject(pid, "stages");
-      selectedStageId = Number(sid);
+      await openWorkspaceProject(pid, "overview");
+      routeStageId = Number(sid);
       render();
-      const target = document.querySelector(`[data-stage-id="${Number(sid)}"]`);
-      if (target) {
-        target.tabIndex = -1;
-        target.focus({ preventScroll: true });
-        target.scrollIntoView({ block: "start" });
-      }
+      document
+        .querySelector("#project-route")
+        ?.scrollIntoView({ block: "start" });
     },
   });
   window.ITDInvitations?.init({ api, getUser: () => user });
@@ -1592,7 +1690,11 @@
     }),
   );
   document.querySelectorAll("[data-tab]").forEach((button) => {
-    button.addEventListener("click", () => selectTab(button.dataset.tab));
+    button.addEventListener("click", () =>
+      selectTab(button.dataset.tab, {
+        projectDocuments: button.id === "tab-files",
+      }),
+    );
     button.addEventListener("keydown", (event) => {
       if (
         ![
@@ -1620,7 +1722,9 @@
               tabs.length;
       event.preventDefault();
       tabs[next].focus();
-      selectTab(tabs[next].dataset.tab);
+      selectTab(tabs[next].dataset.tab, {
+        projectDocuments: tabs[next].id === "tab-files",
+      });
     });
   });
   try {
@@ -1680,7 +1784,6 @@
       ].map((input) => input.value),
     });
     selectedId = result.id;
-    selectedStageId = null;
     routeStageId = null;
     returnClientId = null;
     activeTab = "overview";
@@ -1731,15 +1834,22 @@
   bindForm("upload-file-form", async (values, form) => {
     if (!selectedId) throw new Error("Выберите проект");
     const uploadUser = user;
-    if (values.review && (values.category !== "result" || !values.stageId))
-      throw new Error("Для согласования выберите раздел «Результаты» и этап.");
+    const uploadStage = form.dataset.scopeStage
+      ? Number(form.dataset.scopeStage)
+      : null;
+    if (values.review && values.category !== "result")
+      throw new Error("Для согласования выберите раздел «Материалы».");
     const result = await window.ITDUploads.send(form, {
       category: values.category,
       ...(values.review ? { review: true } : {}),
-      ...(values.stageId ? { stageId: Number(values.stageId) } : {}),
+      stageId: uploadStage,
     });
     if (!result || user !== uploadUser) return;
     await refresh();
+    $("library-upload-dialog").close();
+    selectTab(values.category === "document" ? "documents" : "results", {
+      stageId: uploadStage,
+    });
     const count = result.count || 1;
     message(count === 1 ? "Файл загружен" : `Загружено файлов: ${count}`);
   });
@@ -1752,6 +1862,8 @@
   window.addEventListener("pagehide", () => {
     onboarding.close();
     window.ITDUploads?.reset();
+    $("library-upload-dialog")?.close();
+    window.ITDLibrary?.reset();
     clearRecovery();
     window.ITDWorkspace?.reset();
     window.ITDInvitations?.reset();

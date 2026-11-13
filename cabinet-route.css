@@ -3231,3 +3231,176 @@ progress::-moz-progress-bar {
   #app-view .upload-document-fields { grid-template-columns: minmax(0, 1fr); }
   #app-view .upload-document-state { margin-left: 0; }
 }
+
+/* Project overview: stage artwork left, album and documents right.
+   The two shortcuts belong to the stage feature, never to a full-width row. */
+#app-view .route-feature {
+  min-width: 0;
+  overflow: hidden;
+}
+#app-view .route-feature-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.14fr) minmax(0, .86fr);
+  align-items: stretch;
+  min-width: 0;
+}
+#app-view .route-feature-body > .route-stage-artwork {
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+}
+#app-view .route-feature-body > .route-stage-artwork img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  object-fit: cover;
+}
+#app-view .route-feature-body > .route-feature-placeholder {
+  min-width: 0;
+  min-height: 300px;
+  height: 100%;
+}
+#app-view .route-feature-body > .route-links {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 12px;
+  align-content: stretch;
+  min-width: 0;
+  min-height: 0;
+}
+#app-view .route-feature-body > .route-links > .panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
+  margin: 0;
+  padding: 17px 24px;
+  overflow-wrap: anywhere;
+}
+#app-view .route-feature-body > .route-links > .panel h2 {
+  margin: 0 0 10px;
+  font-size: 17px !important;
+  line-height: 1.35;
+}
+#app-view .route-feature-body > .route-links > .panel p {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+#app-view .route-feature-body > .route-links > .panel button {
+  margin: 0;
+  padding: 8px 0;
+  min-height: 38px;
+  align-self: flex-start;
+  font-size: 12px;
+  text-align: left;
+}
+#app-view .route-feature-details {
+  min-width: 0;
+  border-top: 1px solid var(--line);
+}
+#app-view .route-feature-details .route-feature-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 20px;
+  row-gap: 8px;
+  padding: 20px 24px;
+}
+#app-view .route-feature-details .route-feature-copy > .eyebrow {
+  flex: 0 0 100%;
+  margin: 0;
+}
+#app-view .route-feature-details .route-feature-copy > h3 {
+  flex: 1 1 240px;
+  margin: 0;
+  font-size: 19px;
+}
+#app-view .route-feature-details .route-feature-copy > .muted {
+  flex: 2 1 300px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+#app-view .route-feature-details .route-feature-copy > .route-deadline,
+#app-view .route-feature-details .route-feature-copy > .file-meta {
+  margin: 0;
+  font-size: 11px;
+}
+#app-view .route-feature-details .route-feature-copy > .primary {
+  width: auto;
+  margin: 0;
+  flex: 0 0 auto;
+}
+@media (max-width: 1000px) {
+  #app-view .route-feature-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #app-view .route-feature-body > .route-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto;
+  }
+  #app-view .route-feature-body > .route-links > .panel {
+    min-height: 145px;
+  }
+}
+@media (max-width: 560px) {
+  #app-view .route-feature-body > .route-links {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+  #app-view .route-feature-body > .route-links > .panel {
+    min-height: 124px;
+    padding: 17px 18px;
+  }
+  #app-view .route-feature-details .route-feature-copy {
+    padding: 18px;
+  }
+  #app-view .route-feature-details .route-feature-copy > .primary {
+    width: 100%;
+  }
+}
+
+/* Project navigation has no redundant Stages tab; editing is in Settings. */
+#app-view .settings-stage-management {
+  margin-top: 20px;
+  padding: 20px 24px;
+}
+#app-view .settings-stage-management > summary {
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 10px 0;
+}
+#app-view .settings-stage-management > .muted {
+  font-size: 12px;
+  margin: 10px 0 18px;
+}
+#app-view .settings-stage-list {
+  display: grid;
+  grid-template-columns: minmax(0,1fr);
+  gap: 12px;
+}
+#app-view .settings-stage-list .stage-card {
+  padding: 14px 18px;
+  gap: 15px;
+  background: var(--paper);
+}
+#app-view .settings-stage-list .stage-card .stage-number {
+  font-size: 16px;
+}
+#app-view .settings-stage-list .stage-card p {
+  margin-bottom: 6px;
+}
+@media (max-width: 560px) {
+  #app-view .settings-stage-management { padding: 15px; }
+  #app-view .settings-stage-list .stage-card { padding: 12px; }
+}

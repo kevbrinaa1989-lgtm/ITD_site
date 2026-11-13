@@ -1,4 +1,4 @@
-import { openProject, openGlobal } from "./browser-navigation.mjs";
+import { openProject, openGlobal, openFiles } from "./browser-navigation.mjs";
 import { prepareFixtureUpload } from "./upload-fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
@@ -214,8 +214,11 @@ try {
     await openProject(page, "Квартира · тест просмотра", {
       client: viewport.width !== 1440,
     });
-    await page.locator("#tab-results").click();
-    for (const card of await page.locator("#result-list .gallery-card").all()) {
+    await openFiles(page, "result", { stageIndex: 0 });
+    await page.locator("#library-sort").selectOption("oldest");
+    for (const card of await page
+      .locator("#library-content .gallery-card")
+      .all()) {
       await card.scrollIntoViewIfNeeded();
       await card.locator("img").evaluate((img) =>
         img.complete && img.naturalWidth
@@ -230,45 +233,28 @@ try {
             }),
       );
     }
-    assert.equal(await page.locator("#result-list .gallery-card").count(), 8);
-    const cardGeometry = await page
-      .locator("#result-list .gallery-card")
-      .evaluateAll((cards) =>
-        cards.map((card) => {
-          const caption = card.querySelector(".gallery-caption"),
-            style = caption && getComputedStyle(caption);
-          return {
-            height: card.getBoundingClientRect().height,
-            name: card.querySelector("img").alt,
-            caption: caption?.textContent,
-            title: caption?.title,
-            nowrap: style?.whiteSpace,
-            overflow: style?.overflow,
-            ellipsis: style?.textOverflow,
-            clipped: caption
-              ? caption.scrollWidth > caption.clientWidth
-              : false,
-          };
-        }),
-      );
-    assert.ok(
-      Math.max(...cardGeometry.map((c) => c.height)) -
-        Math.min(...cardGeometry.map((c) => c.height)) <=
-        1,
-      "All gallery cards have equal heights",
+    assert.equal(
+      await page.locator("#library-content .gallery-card").count(),
+      8,
     );
-    for (const card of cardGeometry) {
-      assert.equal(card.caption, card.name);
-      assert.equal(card.title, card.name);
-      assert.equal(card.nowrap, "nowrap");
-      assert.equal(card.overflow, "hidden");
-      assert.equal(card.ellipsis, "ellipsis");
-    }
-    for (const [name] of extraFixtures.filter(([name]) => name.length > 50))
-      assert.ok(
-        cardGeometry.find((c) => c.name === name).clipped,
-        "Long captions are visually truncated",
+    const cardGeometry = await page
+      .locator("#library-content .gallery-card")
+      .evaluateAll((cards) =>
+        cards.map((card) => ({
+          width: card.clientWidth,
+          media: card.querySelector(".gallery-open").getBoundingClientRect()
+            .height,
+          title: card.querySelector("h3").textContent,
+          fullTitle: card.querySelector("h3").title,
+          right: card.getBoundingClientRect().right,
+        })),
       );
+    for (const card of cardGeometry) {
+      assert.ok(card.width > 100 && card.media > 80);
+      assert.equal(card.title, card.fullTitle);
+      assert.match(card.title, /Визуализации/);
+      assert.ok(card.right <= viewport.width + 1);
+    }
     const documentToken = await page.evaluate(
       () => (window.__galleryTestToken = crypto.randomUUID()),
     );
@@ -374,9 +360,9 @@ try {
     for (const file of files.filter((f) =>
       f.contentType.startsWith("image/"),
     )) {
-      const card = page
-        .locator("#result-list .gallery-open")
-        .filter({ hasText: file.name });
+      const card = page.locator(
+        `#library-content [data-file-id="${file.id}"] .gallery-open`,
+      );
       await card.click();
       await initialFit();
       if (
@@ -403,15 +389,23 @@ try {
       assert.equal(await page.locator("dialog[open]").count(), 0);
     }
     // Each image retains its own zoom while navigating; a new modal session resets it.
-    const firstLarge = page
-      .locator("#result-list .gallery-open")
-      .filter({ hasText: "short.jpg" });
+    const firstLarge = page.locator(
+      `#library-content [data-file-id="${files.find((f) => f.name === "short.jpg").id}"] .gallery-open`,
+    );
     await firstLarge.scrollIntoViewIfNeeded();
-    const galleryScroll = await page.evaluate(() => ({
-      x: scrollX,
-      y: scrollY,
-    }));
+    await firstLarge.evaluate((el) =>
+      el.addEventListener(
+        "click",
+        () => {
+          window.__viewerClickScroll = { x: scrollX, y: scrollY };
+        },
+        { capture: true, once: true },
+      ),
+    );
     await firstLarge.click();
+    // Playwright may scroll again to avoid a fixed bar before delivering the
+    // actual click. Compare against the user's opening position, not that setup.
+    const galleryScroll = await page.evaluate(() => window.__viewerClickScroll);
     await initialFit();
     const increase = page.getByRole("button", {
         name: "Увеличить",
@@ -471,7 +465,7 @@ try {
     assert.ok(
       Math.abs(restoredScroll.y - galleryScroll.y) <= 1 &&
         Math.abs(restoredScroll.x - galleryScroll.x) <= 1,
-      "Closing preserves gallery page scroll",
+      `Closing preserves gallery page scroll: ${JSON.stringify({ galleryScroll, restoredScroll, click: await page.evaluate(() => window.__viewerClickScroll) })}`,
     );
     await firstLarge.click();
     await initialFit();
@@ -544,7 +538,7 @@ try {
       await page.screenshot({
         path: join(imageScreenshot, `gallery-${viewport.width}.png`),
       });
-    await page.locator("#result-list .gallery-open").first().click();
+    await page.locator("#library-content .gallery-open").first().click();
     await page.waitForFunction(() =>
       document
         .querySelector(".viewer-status")
@@ -568,16 +562,20 @@ try {
     );
     await page.evaluate(() => {
       document.querySelector(".viewer-toolbar button").click();
-      document.querySelector("#result-list .gallery-open").click();
+      document.querySelector("#library-content .gallery-open").click();
     });
     await page.waitForFunction(
       () => document.querySelector(".viewer-content img")?.naturalWidth > 0,
     );
     await page.keyboard.press("Escape");
     assert.equal(await page.locator("dialog[open]").count(), 0);
-    await page.locator("#tab-documents").click();
-    assert.equal(await page.locator("#document-list .file-preview").count(), 1);
-    await page.locator("#document-list .file-preview").click();
+    await openFiles(page, "document", { stageIndex: 0 });
+    await page
+      .locator(
+        `#library-content [data-file-id="${files.find((f) => f.contentType === "application/pdf").id}"] .library-document-open`,
+      )
+      .click();
+    await page.locator("#library-document-detail .file-preview").click();
     // ResizeObserver may replace the canvas between two separate browser calls.
     // Check the page label and rendered pixels together in a single browser turn.
     const waitForPdfColor = async (pageNumber, expected) => {
@@ -635,6 +633,7 @@ try {
         () => document.documentElement.scrollWidth <= innerWidth + 1,
       ),
     );
+    await page.locator("#library-document-close").click();
     await page.locator("#logout-button").click();
     await page.locator("#login-form").waitFor({ state: "visible" });
     assert.equal(

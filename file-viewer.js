@@ -23,7 +23,8 @@
     return b;
   };
   const viewport = el("div", undefined, "viewer-viewport"),
-    content = el("div", undefined, "viewer-content");
+    content = el("div", undefined, "viewer-content"),
+    stage = el("div", undefined, "viewer-stage");
   viewport.append(content);
   // Image zoom belongs to this viewing session, not to the stored file.
   const imageZoom = new Map();
@@ -80,7 +81,16 @@
     opener = null;
   };
   const prev = button("← Предыдущий", () => navigate(-1)),
-    next = button("Следующий →", () => navigate(1));
+    next = button("Следующий →", () => navigate(1)),
+    prevPhoto = button("‹", () => navigate(-1)),
+    nextPhoto = button("›", () => navigate(1));
+  prevPhoto.className = "viewer-side-arrow viewer-side-prev";
+  nextPhoto.className = "viewer-side-arrow viewer-side-next";
+  prevPhoto.setAttribute("aria-label", "Предыдущее фото");
+  nextPhoto.setAttribute("aria-label", "Следующее фото");
+  prevPhoto.setAttribute("aria-keyshortcuts", "ArrowLeft");
+  nextPhoto.setAttribute("aria-keyshortcuts", "ArrowRight");
+  prevPhoto.hidden = nextPhoto.hidden = true;
   const minus = button("Уменьшить", () => setZoom(zoom - 0.25)),
     reset = button("Сбросить масштаб", () => setZoom(1)),
     plus = button("Увеличить", () => setZoom(zoom + 0.25));
@@ -101,7 +111,8 @@
   });
   discuss.hidden = true;
   controls.append(prev, next, minus, reset, plus, download, discuss);
-  dialog.append(toolbar, controls, status, viewport);
+  stage.append(viewport, prevPhoto, nextPhoto);
+  dialog.append(toolbar, controls, status, stage);
   document.body.append(dialog);
   dialog.addEventListener("cancel", (event) => {
     event.preventDefault();
@@ -183,12 +194,19 @@
   viewport.addEventListener("dblclick", (e) => {
     if (image(current) && e.target === source) setZoom(zoom > 1 ? 1 : 2);
   });
-  dialog.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowRight" && zoom === 1) {
+  // Listen at document level: a disabled edge arrow may lose focus and
+  // otherwise prevent the next keyboard event from reaching the dialog.
+  document.addEventListener("keydown", (e) => {
+    if (!dialog.open || e.defaultPrevented ||
+        e.altKey || e.ctrlKey || e.metaKey || e.shiftKey ||
+        e.target?.matches?.("input,textarea,select,[contenteditable]")) return;
+    // Photo navigation works even if the picture was zoomed. Swipes at zoom >1
+    // stay reserved for panning the enlarged image on touch screens.
+    if (e.key === "ArrowRight" && (image(current) || zoom === 1)) {
       e.preventDefault();
       navigate(1);
     }
-    if (e.key === "ArrowLeft" && zoom === 1) {
+    if (e.key === "ArrowLeft" && (image(current) || zoom === 1)) {
       e.preventDefault();
       navigate(-1);
     }
@@ -200,6 +218,10 @@
       current?.contentType === "application/pdf"
         ? page >= pages
         : index >= collection.length - 1;
+    const showArrows = image(current) && collection.length > 1;
+    prevPhoto.hidden = nextPhoto.hidden = !showArrows;
+    prevPhoto.disabled = prev.disabled;
+    nextPhoto.disabled = next.disabled;
     minus.disabled = zoom <= 0.5;
     plus.disabled = zoom >= 4;
     reset.textContent = `Сбросить масштаб (${Math.round(zoom * 100)}%)`;
@@ -369,7 +391,8 @@
   function open(file, files, trigger) {
     if (!dialog.open) imageZoom.clear();
     opener = trigger;
-    collection = image(file) ? files.filter(image) : [file];
+    collection = image(file) ? (files || []).filter(image) : [file];
+    if (!collection.some((item) => item.id === file.id)) collection = [file];
     if (!dialog.open) dialog.showModal();
     load(file);
   }

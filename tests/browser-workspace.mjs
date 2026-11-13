@@ -372,10 +372,16 @@ try {
     await stageCard
       .getByRole("button", { name: "Открыть этап →", exact: true })
       .click();
-    await admin.locator(`#stage-list [data-stage-id="${stage.id}"]`).waitFor();
+    await admin.locator("#project-route .route-stage-heading h2")
+      .getByText("Планировка со сроком").waitFor();
+    assert.equal(await admin.locator("#tab-stages").count(), 0);
     assert.equal(
-      await admin.locator("#tab-stages").getAttribute("aria-selected"),
+      await admin.locator("#tab-overview").getAttribute("aria-selected"),
       "true",
+    );
+    assert.match(
+      await admin.locator("#project-route .route-stage-heading h2").textContent(),
+      /Планировка со сроком/,
     );
     assert.equal(await admin.locator("#project-title").textContent(), title);
     await dashboard(admin);
@@ -607,11 +613,8 @@ try {
         document.querySelector("#status-message").textContent ===
         "Этап добавлен",
     );
-    await admin.locator("#tab-stages").click();
-    const allStages = admin
-      .locator("#stage-list")
-      .getByRole("button", { name: "← Все этапы", exact: true });
-    if (await allStages.isVisible()) await allStages.click();
+    await admin.locator("#tab-settings").click();
+    await admin.locator("#settings-stage-management > summary").click();
     const datesStage = admin
       .locator("#stage-list .stage-card")
       .filter({ hasText: "Этап с проверенными датами" });
@@ -692,11 +695,12 @@ try {
       (await client.context().request.get(base + "/api/admin/tasks")).status(),
       403,
     );
-    await client.locator("#tab-stages").click();
-    await client
-      .locator("#stage-list")
-      .getByRole("heading", { name: "Этап с проверенными датами", exact: true })
-      .waitFor();
+    assert.equal(await client.locator("#tab-stages").count(), 0);
+    assert.equal(await client.locator("#settings-stage-management").isVisible(), false);
+    await client.locator("#project-route .route-step")
+      .filter({ hasText: "Этап с проверенными датами" }).click();
+    await client.locator("#project-route .route-stage-heading h2")
+      .getByText("Этап с проверенными датами").waitFor();
     assert.equal(
       (await client.locator("#app-view").textContent()).includes(
         "Внутренний текст задачи",

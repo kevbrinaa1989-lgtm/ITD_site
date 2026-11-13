@@ -258,7 +258,20 @@ try {
     assert.equal(await clientRoute.locator(".route-strip").isVisible(), true);
     assert.equal(await clientPreview.isVisible(), true);
     assert.equal(await clientRoute.locator(".route-links").isVisible(), true);
+    assert.equal(await clientPreview.locator(".route-feature-body > .route-links").count(), 1);
     assert.equal(await clientRoute.locator(".route-step").count(), stageCount);
+    // The shortcuts are INSIDE the selected stage card. No overlap or horizontal overflow.
+    const geometry = await clientPreview.evaluate((element) => {
+      const feature = element.getBoundingClientRect();
+      const image = element.querySelector(".route-stage-artwork, .route-feature-placeholder").getBoundingClientRect();
+      const shortcuts = element.querySelector(".route-feature-body > .route-links").getBoundingClientRect();
+      return {
+        withinCard: shortcuts.left >= feature.left - 1 && shortcuts.right <= feature.right + 1,
+        separated: image.right <= shortcuts.left + 1 || image.bottom <= shortcuts.top + 1,
+      };
+    });
+    assert.ok(geometry.withinCard, "Album and documents cannot extend outside the stage feature");
+    assert.ok(geometry.separated, "Album and documents cannot overlap the illustration");
     assert.match(await clientPreview.locator(".route-stage-heading h2").innerText(), /Концепция интерьера/);
     assert.equal(
       await clientPreview.locator(".route-stage-artwork img").getAttribute("src"),
@@ -368,6 +381,7 @@ try {
     assert.equal(await adminRoute.locator(".route-strip").isVisible(), true);
     assert.equal(await adminRoute.locator(".route-feature").isVisible(), true);
     assert.equal(await adminRoute.locator(".route-links").isVisible(), true);
+    assert.equal(await adminRoute.locator(".route-feature-body > .route-links").count(), 1);
     assert.match(await adminRoute.locator(".route-stage-heading h2").innerText(), /Концепция интерьера/);
     assert.equal(
       await adminRoute.locator(".route-stage-artwork img").getAttribute("src"),
@@ -377,28 +391,31 @@ try {
     assert.equal(await page.locator("#project-header-progress-text").innerText(), beforeProgress);
     await adminRoute.locator(".route-step").nth(1).click();
     assert.match(await adminRoute.locator(".route-stage-heading h2").innerText(), /Планировочное решение/);
-    await page.locator("#tab-stages").click();
-    await page
-      .locator(`[data-stage-id="${stages[1].id}"]`)
-      .getByRole("button", { name: "Открыть этап", exact: true })
-      .click();
-    if (!before) {
-      const host = page.locator(`[data-stage-id="${stages[1].id}"]`);
-      const a = await host
-          .getByRole("button", { name: "Все этапы", exact: true })
-          .boundingBox(),
-        b = await host
-          .getByRole("button", {
-            name: "Загрузить материал в этап",
-            exact: true,
-          })
-          .boundingBox();
-      assert.ok(
-        b.y >= a.y + a.height + 7 || b.x >= a.x + a.width + 7,
-        "stage action gap",
-      );
-    }
-    await shot("admin-stage");
+    // The redesigned right-hand shortcuts still open the unified file library.
+    await adminRoute.locator(".route-links > .panel").nth(0).getByRole("button").click();
+    assert.equal(await page.locator("#tab-files").getAttribute("aria-selected"), "true");
+    assert.equal(await page.locator('[data-library-category="result"]').getAttribute("aria-pressed"), "true");
+    assert.equal(await page.locator("#library-stage").inputValue(), String(stages[1].id));
+    await page.locator("#tab-overview").click();
+    await page.locator("#project-route .route-links > .panel").nth(1).getByRole("button").click();
+    assert.equal(await page.locator("#tab-files").getAttribute("aria-selected"), "true");
+    assert.equal(await page.locator('[data-library-category="document"]').getAttribute("aria-pressed"), "true");
+    assert.equal(await page.locator("#library-stage").inputValue(), String(stages[1].id));
+    await page.locator("#tab-files").click();
+    assert.equal(await page.locator("#library-stage").inputValue(), "unassigned");
+    assert.equal(await page.locator('[data-library-category="all"]').getAttribute("aria-pressed"), "true");
+    assert.equal(await page.locator("#tab-review").isVisible(), true);
+    // The redundant Stages tab is gone; staff can still edit status and dates.
+    assert.equal(await page.locator("#tab-stages, #panel-stages").count(), 0);
+    await page.locator("#tab-settings").click();
+    await page.locator("#settings-stage-management > summary").click();
+    const settingsStage = page.locator(`#stage-list [data-stage-id="${stages[1].id}"]`);
+    await settingsStage.waitFor({ state: "visible" });
+    assert.equal(await page.locator("#tab-settings").getAttribute("aria-selected"), "true");
+    assert.equal(await settingsStage.getByRole("button", {
+      name: "Загрузить материал в этап", exact: true,
+    }).count(), 1);
+    await shot("admin-stage-settings");
     // Passive navigation must never change actual stages or approval decisions.
     const after = (await api("/api/projects")).projects.find(
       (p) => p.id === project.id,
@@ -410,10 +427,6 @@ try {
       "approved",
     );
     if (!before && width === 1440) {
-      await page
-        .getByRole("button", { name: "Все этапы", exact: true })
-        .first()
-        .click();
       const stageCard = page.locator(`[data-stage-id="${stages[0].id}"]`);
       await stageCard.locator(".stage-edit summary").click();
       await stageCard

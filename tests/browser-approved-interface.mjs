@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { createApp } from "../server.mjs";
-import { openProject, openGlobal } from "./browser-navigation.mjs";
+import { openProject, openGlobal, closeUpload } from "./browser-navigation.mjs";
 const { chromium } = await import(
   process.env.ITD_PLAYWRIGHT_MODULE || "playwright"
 );
@@ -186,13 +186,12 @@ try {
     await admin
       .locator("#admin-project-detail select[name=clientId]")
       .waitFor({ state: "visible" });
-    await admin.locator("#tab-stages").click();
+    await admin.locator("#tab-settings").click();
+    const staffStageDetails = admin.locator("#settings-stage-management");
+    await staffStageDetails.locator(":scope > summary").click();
     const firstStage = admin.locator(
       `#stage-list .stage-card[data-stage-id="${unassigned.stages[0].id}"]`,
     );
-    await firstStage
-      .getByRole("button", { name: "Открыть этап", exact: true })
-      .click();
     await firstStage
       .getByRole("button", { name: "Загрузить материал в этап", exact: true })
       .click();
@@ -206,6 +205,7 @@ try {
         "Без клиента",
       ),
     );
+    await closeUpload(admin);
     await admin
       .locator("#project-actions")
       .getByRole("button", { name: "Создать задачу", exact: true })
@@ -238,7 +238,7 @@ try {
       email,
     );
     await openProject(admin, project.id);
-    await admin.locator("#tab-stages").click();
+    await admin.locator("#tab-settings").click();
     assert.equal(
       await admin.locator("#stage-list .stage-card").count(),
       0,

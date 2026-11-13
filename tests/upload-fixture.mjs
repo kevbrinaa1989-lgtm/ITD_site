@@ -19,6 +19,7 @@ export async function prepareFixtureUpload(
   const scope = Object.hasOwn(body, "materialId")
     ? { materialId: body.materialId, expectedVersionId: body.expectedVersionId }
     : {};
+  scope.stageId = body.stageId ?? null;
   const response = await fetch(
     base + path.replace(/\/files$/, "/upload-intents"),
     {
