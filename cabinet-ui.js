@@ -253,8 +253,28 @@
       copy.append(node("p", chosen.name, "file-meta"));
     copy.querySelector("h3").title = copy.querySelector("h3").textContent;
     copy.querySelector(".file-meta")?.setAttribute("title", chosen?.name || "");
-    body.append(copy);
+    // Keep the image and the two shortcuts in one responsive composition.
+    // Detailed stage actions remain available, but do not crowd empty stages.
+    const links = node("div", undefined, "route-links");
+    for (const [title, description, tab] of [
+      ["Альбом проекта", "Визуализации, ракурсы и детали интерьера", "results"],
+      ["Документы", "Договоры и файлы вашего проекта", "documents"],
+    ]) {
+      const item = node("section", undefined, "panel");
+      item.append(
+        node("h2", title),
+        node("p", description, "muted"),
+        button("Открыть →", () => actions.openTab(tab)),
+      );
+      links.append(item);
+    }
+    body.append(links);
     card.append(body);
+    if (chosen || stage?.description?.trim() || stage?.plannedEndDate) {
+      const details = node("div", undefined, "route-feature-details");
+      details.append(copy);
+      card.append(details);
+    }
     root.append(card);
     for (const s of underway.filter((s) => s.id !== stage?.id)) {
       const parallel = button(
@@ -273,20 +293,7 @@
       );
       root.append(parallel);
     }
-    const links = node("div", undefined, "route-links");
-    for (const [title, description, tab] of [
-      ["Альбом проекта", "Визуализации, ракурсы и детали интерьера", "results"],
-      ["Документы", "Договоры и файлы вашего проекта", "documents"],
-    ]) {
-      const item = node("section", undefined, "panel");
-      item.append(
-        node("h2", title),
-        node("p", description, "muted"),
-        button("Открыть →", () => actions.openTab(tab)),
-      );
-      links.append(item);
-    }
-    root.append(links);
+
     return root;
   }
   let shellUser = null,
