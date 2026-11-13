@@ -220,7 +220,7 @@
     copy.append(
       el(
         "p",
-        `${stage?.title || "Этап"}${admin() ? ` · ${project.title} · ${project.clientName || "Без клиента"}` : ""}`,
+        `${stage?.title || "Файлы проекта"}${admin() ? ` · ${project.title} · ${project.clientName || "Без клиента"}` : ""}`,
         "review-context",
       ),
       el("h3", materialTitle(material)),
@@ -463,7 +463,7 @@
     description.append(
       el(
         "p",
-        `${project.title} / ${stage?.title || "Этап"} / Версия ${v.versionNumber}`,
+        `${project.title} / ${stage?.title || "Файлы проекта"} / Версия ${v.versionNumber}`,
         "review-context",
       ),
       el("h2", materialTitle(material)),

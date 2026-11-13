@@ -172,13 +172,11 @@ try {
         // A prepared queue cannot silently inherit another stage.
         await scope(0);
         await page.locator("#library-upload").click();
-        await page
-          .locator("#upload-file")
-          .setInputFiles({
-            name: "unsent.pdf",
-            mimeType: pdf[1],
-            buffer: pdf[2],
-          });
+        await page.locator("#upload-file").setInputFiles({
+          name: "unsent.pdf",
+          mimeType: pdf[1],
+          buffer: pdf[2],
+        });
         await closeUpload(page);
         await scope(1);
         page.once("dialog", (dialog) => dialog.accept());
@@ -299,6 +297,85 @@ try {
         { id: other.id, projectId: b.id, stageId: null },
         { id: image.id, projectId: a.id, stageId: s1.id },
       ]);
+      if (width === 1440) {
+        const reviewFile = await f.api(
+          `/api/projects/${a.id}/files`,
+          {
+            name: "review-plan.pdf",
+            contentType: pdf[1],
+            data: pdf[2].toString("base64"),
+            category: "result",
+            stageId: s1.id,
+            review: true,
+          },
+          f.admin,
+          "POST",
+          201,
+        );
+        await f.api(
+          `/api/material-versions/${reviewFile.review.versionId}/comments`,
+          { text: "История до переноса" },
+          f.clients[0].cookie,
+          "POST",
+        );
+        await page.reload();
+        await dismissWelcome(page);
+        await openProject(page, a.id);
+        await scope(0, "result");
+        await row(reviewFile.id).locator(".library-more summary").click();
+        await row(reviewFile.id).locator(".library-edit").click();
+        await page
+          .locator('#library-edit-form select[name="stageId"]')
+          .selectOption("");
+        await page.locator('#library-edit-form button[type="submit"]').click();
+        await page.locator("#library-edit-dialog").waitFor({ state: "hidden" });
+        await scope(null, "result");
+        await visible([reviewFile.id]);
+        await row(reviewFile.id).locator(".library-history").click();
+        await page.locator("#review-version-select").waitFor();
+        assert.match(
+          await page
+            .locator("#review-material-detail .review-context")
+            .textContent(),
+          /Файлы проекта/,
+        );
+        assert.match(
+          await page.locator("#review-material-detail").textContent(),
+          /История до переноса/,
+        );
+        const versionForm = page.locator("#review-version-upload");
+        await versionForm.locator("..").locator("summary").click();
+        await versionForm
+          .locator("input[type=file]")
+          .setInputFiles({
+            name: "review-new.jpg",
+            mimeType: jpg[1],
+            buffer: jpg[2],
+          });
+        const uploaded = page.waitForResponse(
+          (r) =>
+            r.url().endsWith(`/api/projects/${a.id}/files`) &&
+            r.request().method() === "POST",
+        );
+        await versionForm.locator("button[type=submit]").click();
+        const response = await uploaded;
+        assert.equal(response.status(), 201);
+        const newVersion = await response.json();
+        assert.equal(newVersion.stageId, null);
+        assert.equal(
+          newVersion.review.materialId,
+          reviewFile.review.materialId,
+        );
+        assert.equal(newVersion.review.versionNumber, 2);
+        assert.ok(
+          f
+            .rows(
+              "SELECT f.stageId FROM files f JOIN review_versions v ON v.fileId=f.id WHERE v.materialId=?",
+              reviewFile.review.materialId,
+            )
+            .every((row) => row.stageId === null),
+        );
+      }
       assert.deepEqual(errors, []);
       console.log(
         `Document ownership ${width}px: admin/client scopes, real upload, rename/moves, images/PDF, DB, authorization, reload/login, confirmed deletion PASS`,
