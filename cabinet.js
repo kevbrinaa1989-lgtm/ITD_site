@@ -191,8 +191,16 @@
     // Compatibility: old stage links now land on the overview timeline.
     if (tab === "stages") tab = "overview";
     if (tab === "results" || tab === "documents") {
-      window.ITDLibrary?.category(tab === "documents" ? "document" : "result");
+      const category = tab === "documents" ? "document" : "result";
+      if (Object.hasOwn(options, "stageId"))
+        window.ITDLibrary?.showScope(category, options.stageId);
+      else
+        window.ITDLibrary?.category(category);
       tab = "files";
+    } else if (tab === "files" && options.projectDocuments) {
+      // Top-level "Файлы проекта" means documents not tied to a stage.
+      // Scoped transitions from the timeline do not enter this branch.
+      window.ITDLibrary?.showScope("document", "unassigned");
     }
     const admin = user?.role === "admin";
     const home = admin ? "workspace" : "client-home";
@@ -1661,7 +1669,11 @@
     }),
   );
   document.querySelectorAll("[data-tab]").forEach((button) => {
-    button.addEventListener("click", () => selectTab(button.dataset.tab));
+    button.addEventListener("click", () =>
+      selectTab(button.dataset.tab, {
+        projectDocuments: button.id === "tab-files",
+      }),
+    );
     button.addEventListener("keydown", (event) => {
       if (
         ![
@@ -1689,7 +1701,9 @@
               tabs.length;
       event.preventDefault();
       tabs[next].focus();
-      selectTab(tabs[next].dataset.tab);
+      selectTab(tabs[next].dataset.tab, {
+        projectDocuments: tabs[next].id === "tab-files",
+      });
     });
   });
   try {
