@@ -403,7 +403,8 @@ try {
     assert.equal(await page.locator("#library-stage").inputValue(), String(stages[1].id));
     await page.locator("#tab-files").click();
     assert.equal(await page.locator("#library-stage").inputValue(), "unassigned");
-    assert.equal(await page.locator('[data-library-category="document"]').getAttribute("aria-pressed"), "true");
+    assert.equal(await page.locator('[data-library-category="all"]').getAttribute("aria-pressed"), "true");
+    assert.equal(await page.locator("#tab-review").isVisible(), true);
     // The redundant Stages tab is gone; staff can still edit status and dates.
     assert.equal(await page.locator("#tab-stages, #panel-stages").count(), 0);
     await page.locator("#tab-settings").click();
