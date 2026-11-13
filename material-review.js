@@ -691,6 +691,7 @@
       window.ITDUploads.register(form, {
         context: () => ({
           ...window.ITDUploads.contextOf(project),
+          stageId: material.stageId,
           materialId: material.id,
           expectedVersionId: material.currentVersion.id,
         }),
@@ -761,7 +762,7 @@
       : document.createDocumentFragment();
   }
   function sendControl(file) {
-    if (file.review || !admin() || file.category !== "result" || !file.stageId)
+    if (file.review || !admin() || file.category !== "result")
       return document.createDocumentFragment();
     return button("На согласование", async () => {
       if (

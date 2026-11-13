@@ -781,3 +781,31 @@ body[data-section="files"] #project-navigation {
 .library-upload-dialog .upload-document-state {
   overflow-wrap: anywhere;
 }
+
+#app-view .library-filter-fields [hidden] {
+  display: none !important;
+}
+#app-view #library-back {
+  margin-bottom: 16px;
+  min-height: 44px;
+}
+.library-edit-form {
+  display: grid;
+  gap: 16px;
+}
+.library-edit-form label {
+  display: grid;
+  gap: 8px;
+}
+.library-edit-form input,
+.library-edit-form select {
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+#library-edit-error {
+  color: #934c3b;
+  overflow-wrap: anywhere;
+}

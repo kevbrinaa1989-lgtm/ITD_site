@@ -39,7 +39,11 @@
         document,
         title: document
           ? file.document?.title || file.name.replace(/\.[^.]+$/, "")
-          : globalThis.ITDProjectState.materialLabel({ file, stage }),
+          : globalThis.ITDProjectState.materialLabel({
+              title: file.review?.title,
+              file,
+              stage,
+            }),
         type: format(file),
         status: file.review?.status || null,
       };

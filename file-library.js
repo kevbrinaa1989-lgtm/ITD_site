@@ -13,13 +13,15 @@
     project,
     album = false,
     detailFileId = null,
-    opener;
+    opener,
+    scopeFiles = null,
+    scopeEpoch = 0;
   const state = () => {
     if (!states.has(project.id))
       states.set(project.id, {
         category: "all",
         query: "",
-        stage: "",
+        stage: "unassigned",
         type: "",
         sort: "newest",
       });
@@ -57,12 +59,19 @@
   function actions(e) {
     const box = node("div", undefined, "library-item-actions");
     box.append(link(e.file));
-    if (h.getUser()?.role === "admin" && !e.file.review) {
+    if (h.getUser()?.role === "admin") {
       const menu = node("details", undefined, "library-more");
       menu.append(node("summary", "Действия"));
       const content = node("div", undefined, "library-more-content");
       if (!e.document) content.append(window.ITDReview.sendControl(e.file));
-      content.append(h.deleteControl(e.file, content));
+      content.append(
+        button(
+          "Переименовать / переместить",
+          () => editFile(e),
+          "library-edit",
+        ),
+        h.deleteControl(e.file, content),
+      );
       menu.append(content);
       box.append(menu);
     }
@@ -71,11 +80,13 @@
   // A photo opens with all current images from its own stage, regardless of
   // library search/category filters. Other projects and older versions are excluded.
   function stageImages(file) {
-    return model.select(model.entries(project), {
-      category: "result",
-      stage: file.stageId == null ? "unassigned" : String(file.stageId),
-      sort: state().sort,
-    }).filter((entry) => window.ITDViewer.image(entry.file))
+    return model
+      .select(model.entries(project), {
+        category: "result",
+        stage: file.stageId == null ? "unassigned" : String(file.stageId),
+        sort: state().sort,
+      })
+      .filter((entry) => window.ITDViewer.image(entry.file))
       .map((entry) => entry.file);
   }
   function material(e) {
@@ -87,7 +98,10 @@
         e.file,
         stageImages(e.file),
         historical
-          ? { onOpen: () => openReview(file), label: `Открыть версию: ${e.title}` }
+          ? {
+              onOpen: () => openReview(file),
+              label: `Открыть версию: ${e.title}`,
+            }
           : { label: `Открыть фото: ${e.title}` },
       );
       card.querySelector(".gallery-caption").remove();
@@ -116,6 +130,7 @@
       ),
       badge(e),
     );
+    if (!e.file.review) copy.append(meta(e.file.name));
     if (e.file.review)
       copy.append(
         button(
@@ -210,14 +225,27 @@
       );
     controls.append(link(e.file));
     if (h.getUser()?.role === "admin")
-      controls.append(h.deleteControl(e.file, controls));
+      controls.append(
+        button(
+          "Переименовать / переместить",
+          () => editFile(e),
+          "library-edit",
+        ),
+        h.deleteControl(e.file, controls),
+      );
     host.append(controls);
     if (!dialog.open) dialog.showModal();
   }
   function render() {
     if (!project) return;
-    const all = model.entries(project),
-      s = state(),
+    const s = state(),
+      all = model.entries({
+        ...project,
+        files: (scopeFiles ?? project.files).filter(
+          (f) =>
+            (f.stageId == null ? "unassigned" : String(f.stageId)) === s.stage,
+        ),
+      }),
       items = model.select(all, s);
     const materials = items.filter((e) => !e.document),
       documents = items.filter((e) => e.document);
@@ -229,17 +257,23 @@
       ? "← К библиотеке"
       : "Смотреть альбом";
     $("library-upload").hidden = h.getUser()?.role !== "admin";
-    const chosenStage = project.stages.find((stage) => String(stage.id) === s.stage);
+    const chosenStage = project.stages.find(
+      (stage) => String(stage.id) === s.stage,
+    );
+    $("library-title").textContent = chosenStage
+      ? "Файлы этапа"
+      : "Файлы проекта";
+    $("library-back").hidden = !chosenStage;
     $("library-count").textContent =
       s.category === "all" && s.stage === "unassigned"
         ? `Файлы без этапа · ${items.length}`
         : s.category === "document" && s.stage === "unassigned"
           ? `Документы без этапа · ${items.length}`
           : s.category === "document" && chosenStage
-          ? `Документы этапа «${chosenStage.title}» · ${items.length}`
-          : s.category === "result" && chosenStage
-            ? `Материалы этапа «${chosenStage.title}» · ${items.length}`
-            : `Материалов: ${all.filter((e) => !e.document).length} · Документов: ${all.filter((e) => e.document).length}`;
+            ? `Документы этапа «${chosenStage.title}» · ${items.length}`
+            : s.category === "result" && chosenStage
+              ? `Материалы этапа «${chosenStage.title}» · ${items.length}`
+              : `Материалов: ${all.filter((e) => !e.document).length} · Документов: ${all.filter((e) => e.document).length}`;
     $("library-results-count").textContent =
       `Найдено: ${items.length}${all.some((e) => e.versions.length > 1) ? " · Предыдущие версии — в истории материалов" : ""}`;
     for (const b of document.querySelectorAll("[data-library-category]")) {
@@ -254,7 +288,7 @@
       ["library-sort", "sort"],
     ])
       $(id).value = s[key];
-    $("library-filters").open ||= !!s.stage || !!s.type;
+    $("library-filters").open ||= !!s.type;
     const list = $("library-content");
     window.ITDViewer.releaseWithin(list);
     list.replaceChildren();
@@ -320,21 +354,35 @@
     const changed = project?.id !== next?.id;
     project = next;
     if (changed) {
+      if (project)
+        Object.assign(state(), {
+          stage: "unassigned",
+          category: "all",
+          query: "",
+          type: "",
+        });
       album = false;
+      $("library-edit-dialog").close();
       closeDocument();
     }
     if (!project) {
+      scopeEpoch++;
+      scopeFiles = null;
       window.ITDViewer.releaseWithin($("library-content"));
       $("library-content").replaceChildren();
       $("project-gallery").replaceChildren();
       return;
     }
     const s = state();
-    $("library-stage").replaceChildren(
-      new Option("Все этапы", ""),
-      new Option("Без этапа", "unassigned"),
-      ...project.stages.map((s) => new Option(s.title, String(s.id))),
+    const selectedStage = project.stages.find(
+      (stage) => String(stage.id) === s.stage,
     );
+    if (s.stage !== "unassigned" && !selectedStage) s.stage = "unassigned";
+    $("library-stage").replaceChildren(
+      new Option(selectedStage?.title || "Файлы проекта без этапа", s.stage),
+    );
+    $("library-stage").disabled = true;
+    $("library-stage").closest("label").hidden = true;
     const kinds = [
       ...new Set(
         project.files
@@ -350,12 +398,12 @@
       ...kinds.map((k) => new Option(k, "kind:" + k)),
     );
     if (![...$("library-stage").options].some((o) => o.value === s.stage))
-      s.stage = "";
+      s.stage = "unassigned";
     if (![...$("library-type").options].some((o) => o.value === s.type))
       s.type = "";
     if (detailFileId && !project.files.some((f) => f.id === detailFileId))
       closeDocument();
-    render();
+    loadScope();
   }
   function closeDocument() {
     if ($("library-document-dialog")?.open)
@@ -375,13 +423,101 @@
     if (!project) return;
     Object.assign(state(), {
       category: categoryValue,
-      stage: stageValue == null ? "unassigned" : String(stageValue),
+      stage:
+        stageValue == null || stageValue === "unassigned"
+          ? "unassigned"
+          : String(stageValue),
       query: "",
       type: "",
     });
     album = false;
     closeDocument();
+    loadScope();
+  }
+  async function loadScope() {
+    if (!project) return;
+    const epoch = ++scopeEpoch,
+      pid = project.id,
+      stage = state().stage;
+    $("library-stage").replaceChildren(
+      new Option(
+        project.stages.find((s) => String(s.id) === stage)?.title ||
+          "Файлы проекта без этапа",
+        stage,
+      ),
+    );
+    scopeFiles = null;
     render();
+    try {
+      const result = await h.api(
+        `/api/projects/${pid}/files?stageId=${stage === "unassigned" ? "none" : encodeURIComponent(stage)}`,
+      );
+      if (
+        epoch !== scopeEpoch ||
+        project?.id !== pid ||
+        state().stage !== stage
+      )
+        return;
+      if (
+        result.projectId !== pid ||
+        (result.stageId == null ? "unassigned" : String(result.stageId)) !==
+          stage
+      )
+        throw new Error("Контекст списка файлов изменился. Обновите страницу.");
+      scopeFiles = result.files;
+      render();
+    } catch (error) {
+      if (epoch !== scopeEpoch || project?.id !== pid) return;
+      scopeFiles = [];
+      render();
+      h.message(error.message, true);
+    }
+  }
+  function editFile(e) {
+    const dialog = $("library-edit-dialog"),
+      form = $("library-edit-form"),
+      pid = project.id;
+    const title = e.file.review?.title || e.file.document?.title || e.file.name;
+    form.elements.title.value = title;
+    form.elements.stageId.replaceChildren(
+      new Option("Файлы проекта · без этапа", ""),
+      ...project.stages.map(
+        (stage) => new Option(stage.title, String(stage.id)),
+      ),
+    );
+    form.elements.stageId.value = String(e.file.stageId ?? "");
+    $("library-edit-note").textContent = e.file.review
+      ? "Перемещается весь материал вместе со всеми версиями. Комментарии, решения и исходные файлы сохранятся."
+      : e.document
+        ? "Меняется название в каталоге. Исходное имя файла и реквизиты сохранятся."
+        : "При переименовании сохраните расширение файла. Оригинал не копируется.";
+    $("library-edit-error").textContent = "";
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const submit = form.querySelector("button[type=submit]");
+      submit.disabled = true;
+      try {
+        const stageId = form.elements.stageId.value
+          ? Number(form.elements.stageId.value)
+          : null;
+        await h.api(`/api/projects/${pid}/files/${e.file.id}`, "PATCH", {
+          stageId,
+          expectedStageId: e.file.stageId ?? null,
+          ...(form.elements.title.value.trim() !== title
+            ? { title: form.elements.title.value.trim(), expectedTitle: title }
+            : {}),
+        });
+        dialog.close();
+        closeDocument();
+        await h.refresh();
+        h.message("Изменения сохранены. Файл доступен в выбранном разделе.");
+      } catch (error) {
+        $("library-edit-error").textContent = error.message;
+      } finally {
+        submit.disabled = false;
+      }
+    };
+    dialog.showModal();
   }
   function init(hooks) {
     h = hooks;
@@ -389,7 +525,7 @@
       b.addEventListener("click", () => category(b.dataset.libraryCategory));
     for (const [id, key, event] of [
       ["library-search", "query", "input"],
-      ["library-stage", "stage", "change"],
+
       ["library-type", "type", "change"],
       ["library-sort", "sort", "change"],
     ])
@@ -411,9 +547,13 @@
       render();
     });
     $("library-reset").addEventListener("click", () => {
-      Object.assign(state(), { query: "", stage: "", type: "" });
+      Object.assign(state(), { query: "", type: "" });
       render();
     });
+    $("library-back").addEventListener("click", () => h.selectTab("overview"));
+    $("library-edit-close").addEventListener("click", () =>
+      $("library-edit-dialog").close(),
+    );
     $("library-document-close").addEventListener("click", closeDocument);
     $("library-document-dialog").addEventListener("close", () => {
       detailFileId = null;
@@ -425,14 +565,7 @@
     setProject,
     category,
     showScope,
-    filterStage: (id) => {
-      state().category = "all";
-      state().stage = String(id);
-      state().query = "";
-      state().type = "";
-      album = false;
-      render();
-    },
+    filterStage: (id) => showScope("all", id),
     onTab: (tab) => {
       if (tab !== "files") closeDocument();
     },
@@ -440,6 +573,9 @@
       closeDocument();
       states.clear();
       project = null;
+      scopeFiles = null;
+      scopeEpoch++;
+      $("library-edit-dialog").close();
       album = false;
     },
   };
