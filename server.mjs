@@ -733,6 +733,9 @@ export function createApp(options = {}) {
         "/cabinet.css": "cabinet.css",
         "/cabinet-route.css": "cabinet-route.css",
         "/project-state.js": "project-state.js",
+        "/project-files.js": "project-files.js",
+        "/file-library.js": "file-library.js",
+        "/file-library.css": "file-library.css",
         "/cabinet-ui.js": "cabinet-ui.js",
         "/assets/brand/itd-logo.svg": "assets/brand/itd-logo.svg",
         ...Object.fromEntries(

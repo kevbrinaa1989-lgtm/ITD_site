@@ -8,8 +8,11 @@
     <link rel="stylesheet" href="/assets/fonts/fonts.css" />
     <link rel="stylesheet" href="/cabinet.css" />
     <link rel="stylesheet" href="/cabinet-route.css" />
+    <link rel="stylesheet" href="/file-library.css" />
     <script src="/project-state.js" defer></script>
     <script src="/cabinet-ui.js" defer></script>
+    <script src="/project-files.js" defer></script>
+    <script src="/file-library.js" defer></script>
     <script src="/file-viewer.js" defer></script>
     <script src="/project-gallery.js" defer></script>
     <script src="/admin-management.js" defer></script>
@@ -346,10 +349,16 @@
             <div class="topbar-actions">
               <button id="refresh-button" type="button" class="text-button">
                 <span aria-hidden="true">↻</span> Обновить</button
-              ><button id="client-guide-trigger" class="text-button" type="button"
-                aria-label="Пройти обзор повторно" title="Пройти обзор повторно" hidden>
-                <span aria-hidden="true">?</span> Обзор кабинета
-              </button><a href="https://itdstudio.ru/">На сайт →</a>
+              ><button
+                id="client-guide-trigger"
+                class="text-button"
+                type="button"
+                aria-label="Пройти обзор повторно"
+                title="Пройти обзор повторно"
+                hidden
+              >
+                <span aria-hidden="true">?</span> Обзор кабинета</button
+              ><a href="https://itdstudio.ru/">На сайт →</a>
               <button
                 id="logout-button"
                 type="button"
@@ -420,14 +429,14 @@
                 >
                   <span aria-hidden="true">≡</span>Этапы</button
                 ><button
-                  id="tab-results"
+                  id="tab-files"
                   type="button"
                   role="tab"
                   aria-selected="false"
-                  aria-controls="panel-results"
-                  data-tab="results"
+                  aria-controls="panel-files"
+                  data-tab="files"
                 >
-                  <span aria-hidden="true">▧</span>Материалы</button
+                  <span aria-hidden="true">▧</span>Файлы проекта</button
                 ><button
                   id="tab-review"
                   type="button"
@@ -437,15 +446,6 @@
                   data-tab="review"
                 >
                   <span aria-hidden="true">✓</span>Согласования</button
-                ><button
-                  id="tab-documents"
-                  type="button"
-                  role="tab"
-                  aria-selected="false"
-                  aria-controls="panel-documents"
-                  data-tab="documents"
-                >
-                  <span aria-hidden="true">▤</span>Документы</button
                 ><button
                   id="tab-settings"
                   type="button"
@@ -611,42 +611,88 @@
                 <div id="stage-list" class="stage-list"></div>
               </section>
               <section
-                id="panel-results"
-                data-tab-panel="results"
+                id="panel-files"
+                data-tab-panel="files"
                 role="tabpanel"
+                aria-labelledby="tab-files"
                 tabindex="0"
-                aria-labelledby="tab-results"
                 hidden
               >
-                <div class="section-title">
+                <div class="library-heading">
                   <div>
-                    <p class="eyebrow">Альбом проекта</p>
-                    <h2>Пространство в деталях</h2>
-                    <p class="muted">
-                      Чертежи, визуализации и другие материалы проекта.
-                    </p>
+                    <p class="eyebrow">Библиотека проекта</p>
+                    <h2>Файлы проекта</h2>
+                    <p id="library-count" class="muted"></p>
                   </div>
+                  <button id="library-upload" type="button" class="primary">
+                    Загрузить файлы
+                  </button>
                 </div>
-                <div id="project-gallery"></div>
-                <div id="result-list" class="file-list"></div>
-              </section>
-              <section
-                id="panel-documents"
-                data-tab-panel="documents"
-                role="tabpanel"
-                tabindex="0"
-                aria-labelledby="tab-documents"
-                hidden
-              >
-                <div class="section-title">
-                  <div>
-                    <h2>Документы</h2>
-                    <p class="muted">
-                      Скачайте нужный документ в удобное время.
-                    </p>
+                <div class="library-toolbar">
+                  <div
+                    class="library-categories"
+                    role="group"
+                    aria-label="Раздел файлов"
+                  >
+                    <button type="button" data-library-category="all">
+                      Все файлы</button
+                    ><button type="button" data-library-category="result">
+                      Материалы</button
+                    ><button type="button" data-library-category="document">
+                      Документы
+                    </button>
                   </div>
+                  <label class="library-search"
+                    ><span class="sr-only">Поиск файлов</span
+                    ><input
+                      id="library-search"
+                      type="search"
+                      placeholder="Название, номер или имя файла"
+                  /></label>
                 </div>
-                <div id="document-list" class="file-list"></div>
+                <div class="library-options">
+                  <details id="library-filters">
+                    <summary>Фильтры</summary>
+                    <div class="library-filter-fields">
+                      <label
+                        >Этап проекта<select id="library-stage"></select></label
+                      ><label
+                        >Тип файла или документа<select
+                          id="library-type"
+                        ></select
+                      ></label>
+                    </div>
+                  </details>
+                  <label class="library-sort"
+                    ><span class="sr-only">Сортировка файлов</span
+                    ><select id="library-sort">
+                      <option value="newest">Сначала новые</option>
+                      <option value="oldest">Сначала ранние</option>
+                      <option value="name">По названию</option>
+                      <option value="document-date">По дате документа</option>
+                    </select></label
+                  ><button
+                    id="library-album-toggle"
+                    type="button"
+                    class="text-button"
+                  >
+                    Смотреть альбом
+                  </button>
+                </div>
+                <p
+                  id="library-results-count"
+                  class="library-results-count"
+                  role="status"
+                ></p>
+                <div id="project-gallery" hidden></div>
+                <div id="library-content"></div>
+                <div id="library-empty" class="library-empty" hidden>
+                  <h3>Здесь пока нет файлов</h3>
+                  <p id="library-empty-text"></p>
+                  <button id="library-reset" type="button" class="text-button">
+                    Сбросить поиск и фильтры
+                  </button>
+                </div>
               </section>
               <section
                 id="project-settings-panel"
@@ -893,54 +939,6 @@
                     maxlength="5000"
                   ></textarea>
                   <button type="submit" class="primary">Добавить этап</button>
-                </form>
-              </details>
-              <details class="panel admin-details">
-                <summary>Загрузить материал в выбранный проект</summary>
-                <form
-                  id="upload-file-form"
-                  class="admin-form"
-                  enctype="multipart/form-data"
-                >
-                  <label for="upload-file">Файлы (можно выбрать несколько)</label
-                  ><input id="upload-file" name="file" type="file" multiple required />
-                  <p class="muted upload-batch-hint">Выберите до 20 файлов за один раз (до 10 МБ каждый). Для документов можно указать реквизиты отдельно.</p>
-                  <label for="upload-category">Раздел</label
-                  ><select id="upload-category" name="category">
-                    <option value="result">Результаты</option>
-                    <option value="document">Документы</option>
-                  </select>
-                  <label for="upload-stage">Этап</label
-                  ><select id="upload-stage" name="stageId">
-                    <option value="">Без привязки к этапу</option>
-                  </select>
-                  <label class="recovery-identity"
-                    ><input
-                      id="upload-for-review"
-                      name="review"
-                      type="checkbox"
-                      value="yes"
-                    /><span
-                      >Отправить на согласование клиенту (результат с выбранным
-                      этапом)</span
-                    ></label
-                  >
-                  <p class="muted review-upload-help">
-                    Обычная загрузка сохраняет файлы без запроса согласования.
-                    При загрузке нескольких материалов на согласование каждый
-                    будет отдельным материалом.
-                  </p>
-                  <div id="upload-file-cards" class="upload-file-cards" hidden></div>
-                  <p id="upload-batch-status" class="upload-batch-status" role="status" aria-live="polite"></p>
-                  <div
-                    id="upload-recipient"
-                    class="upload-recipient"
-                    aria-live="polite"
-                  >
-                    <p id="upload-project-name">Проект: не выбран</p>
-                    <p id="upload-client-name">Клиент: не выбран</p>
-                  </div>
-                  <button type="submit" class="primary">Загрузить выбранные файлы</button>
                 </form>
               </details>
             </section>
@@ -1330,6 +1328,101 @@
         </p></noscript
       >
     </main>
+    <dialog
+      id="library-document-dialog"
+      class="library-dialog"
+      aria-labelledby="library-document-title"
+    >
+      <button
+        id="library-document-close"
+        type="button"
+        class="library-dialog-close"
+        aria-label="Закрыть документ"
+      >
+        Закрыть ×
+      </button>
+      <div id="library-document-detail"></div>
+    </dialog>
+    <dialog
+      id="library-upload-dialog"
+      class="library-dialog library-upload-dialog"
+      aria-labelledby="library-upload-title"
+    >
+      <header class="library-dialog-heading">
+        <div>
+          <p class="eyebrow">Файлы проекта</p>
+          <h2 id="library-upload-title">Загрузка файлов</h2>
+          <p class="muted">Выберите файлы, проверьте проект и этап.</p>
+        </div>
+        <button
+          id="library-upload-close"
+          type="button"
+          aria-label="Закрыть загрузку"
+        >
+          Закрыть ×
+        </button>
+      </header>
+      <details class="library-upload-body" open>
+        <summary class="sr-only">Форма загрузки файлов</summary>
+        <form
+          id="upload-file-form"
+          class="admin-form"
+          enctype="multipart/form-data"
+        >
+          <div
+            id="upload-recipient"
+            class="upload-recipient"
+            aria-live="polite"
+          >
+            <p id="upload-project-name">Проект: не выбран</p>
+            <p id="upload-client-name">Клиент: не выбран</p>
+          </div>
+          <label for="upload-file">Файлы (можно выбрать несколько)</label
+          ><input id="upload-file" name="file" type="file" multiple required />
+          <p class="muted upload-batch-hint">
+            Выберите до 20 файлов за один раз (до 10 МБ каждый). Для документов
+            можно указать реквизиты отдельно.
+          </p>
+          <label for="upload-category">Раздел</label
+          ><select id="upload-category" name="category">
+            <option value="result">Материалы проекта</option>
+            <option value="document">Документы</option>
+          </select>
+          <label for="upload-stage">Этап</label
+          ><select id="upload-stage" name="stageId">
+            <option value="">Без привязки к этапу</option>
+          </select>
+          <label class="recovery-identity"
+            ><input
+              id="upload-for-review"
+              name="review"
+              type="checkbox"
+              value="yes"
+            /><span
+              >Отправить на согласование клиенту (результат с выбранным
+              этапом)</span
+            ></label
+          >
+          <p class="muted review-upload-help">
+            Обычная загрузка сохраняет файлы без запроса согласования. При
+            загрузке нескольких материалов на согласование каждый будет
+            отдельным материалом.
+          </p>
+          <div id="upload-file-cards" class="upload-file-cards" hidden></div>
+          <p id="library-upload-message" role="alert"></p>
+          <p
+            id="upload-batch-status"
+            class="upload-batch-status"
+            role="status"
+            aria-live="polite"
+          ></p>
+
+          <button type="submit" class="primary">
+            Загрузить выбранные файлы
+          </button>
+        </form>
+      </details>
+    </dialog>
     <dialog
       id="upload-switch-dialog"
       class="upload-switch-dialog"

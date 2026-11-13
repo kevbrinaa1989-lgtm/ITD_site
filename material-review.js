@@ -41,6 +41,7 @@
     timer,
     operation = null,
     notifications = [];
+  let returnToLibrary = null;
   const admin = () => h.getUser()?.role === "admin",
     valid = (generation, id) =>
       generation === epoch &&
@@ -65,6 +66,8 @@
     return n;
   }
   function reset() {
+    returnToLibrary = null;
+    document.body.classList.remove("review-from-library");
     closeSheet();
     window.ITDMaterialPreview.clear();
     drafts.clear();
@@ -299,6 +302,7 @@
   }
   function setProject(next) {
     if (project?.id !== next?.id) {
+      returnToLibrary = null;
       closeDetail();
       drafts.clear();
       $("review-search").value = "";
@@ -319,7 +323,9 @@
     project = next || null;
     if (project) loadList();
   }
-  async function open(id, requestedVersion) {
+  async function open(id, requestedVersion, back) {
+    if (back) returnToLibrary = back;
+    document.body.classList.toggle("review-from-library", !!returnToLibrary);
     if (!project) return false;
     const generation = epoch,
       pid = project.id,
@@ -471,10 +477,16 @@
     description.querySelector("h2").title = materialTitle(material);
     summary.append(fileTile(v.file), description);
     const back = button(
-      "← Материалы проекта",
-      closeDetail,
+      returnToLibrary ? "← Файлы проекта" : "← Материалы проекта",
+      () => {
+        const back = returnToLibrary;
+        returnToLibrary = null;
+        closeDetail();
+        back?.();
+      },
       "text-button review-library-back",
     );
+    back.dataset.libraryReturn = String(!!returnToLibrary);
     host.append(back, summary);
     const label = el("label", "Версия материала"),
       picker = el("select");
@@ -874,6 +886,10 @@
     });
   }
   function onTab(tab) {
+    if (tab !== "review") {
+      returnToLibrary = null;
+      document.body.classList.remove("review-from-library");
+    }
     closeSheet();
     document.body.classList.toggle(
       "review-detail-open",
