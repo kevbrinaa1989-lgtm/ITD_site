@@ -198,9 +198,10 @@
         window.ITDLibrary?.category(category);
       tab = "files";
     } else if (tab === "files" && options.projectDocuments) {
-      // Top-level "Файлы проекта" means documents not tied to a stage.
-      // Scoped transitions from the timeline do not enter this branch.
-      window.ITDLibrary?.showScope("document", "unassigned");
+      // Top-level "Файлы проекта" shows ALL files without a stage:
+      // general documents and miscellaneous materials, not stage-specific files.
+      // Scoped timeline links use "results"/"documents" above.
+      window.ITDLibrary?.showScope("all", "unassigned");
     }
     const admin = user?.role === "admin";
     const home = admin ? "workspace" : "client-home";
