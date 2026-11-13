@@ -420,15 +420,6 @@
                   <span aria-hidden="true">◫</span
                   ><span id="project-overview-label">Обзор</span></button
                 ><button
-                  id="tab-stages"
-                  type="button"
-                  role="tab"
-                  aria-selected="false"
-                  aria-controls="panel-stages"
-                  data-tab="stages"
-                >
-                  <span aria-hidden="true">≡</span>Этапы</button
-                ><button
                   id="tab-files"
                   type="button"
                   role="tab"
@@ -499,13 +490,6 @@
                 </div>
                 <div class="section-title">
                   <h2>План работы</h2>
-                  <button
-                    type="button"
-                    class="text-button"
-                    data-open-tab="stages"
-                  >
-                    Все этапы <span aria-hidden="true">→</span>
-                  </button>
                 </div>
                 <div id="overview-stage-preview" class="overview-preview"></div>
                 <p id="overview-next-action" class="muted"></p>
@@ -591,24 +575,6 @@
                     hidden
                   ></section>
                 </div>
-              </section>
-              <section
-                id="panel-stages"
-                data-tab-panel="stages"
-                role="tabpanel"
-                tabindex="0"
-                aria-labelledby="tab-stages"
-                hidden
-              >
-                <div class="section-title">
-                  <div>
-                    <h2>Этапы проекта</h2>
-                    <p class="muted">
-                      План работы и текущий статус каждого этапа.
-                    </p>
-                  </div>
-                </div>
-                <div id="stage-list" class="stage-list"></div>
               </section>
               <section
                 id="panel-files"
@@ -709,6 +675,14 @@
                 >
                   <p class="muted">Выберите проект.</p>
                 </section>
+                <details id="settings-stage-management" class="panel settings-stage-management">
+                  <summary>Управление статусами и сроками</summary>
+                  <p class="muted">
+                    Редактирование рабочего плана доступно только студии.
+                    Для просмотра этапа используйте горизонтальную ленту в обзоре.
+                  </p>
+                  <div id="stage-list" class="settings-stage-list"></div>
+                </details>
               </section>
             </article>
             <section
