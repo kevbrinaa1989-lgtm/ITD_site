@@ -255,7 +255,7 @@ try {
       ),
       false,
     );
-    await client.locator("#tab-stages").click();
+    await client.locator("#tab-overview").click();
     await openFiles(client, "result");
     for (const card of await client
       .locator("#library-content .gallery-card")
@@ -438,7 +438,7 @@ try {
     });
     await open(client);
     await interceptedPromise;
-    await client.locator("#tab-stages").click();
+    await client.locator("#tab-overview").click();
     release();
     await client.unroute(route);
     assert.equal((await state()).material.currentVersion.view.viewed, false);
