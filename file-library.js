@@ -229,8 +229,15 @@
       ? "← К библиотеке"
       : "Смотреть альбом";
     $("library-upload").hidden = h.getUser()?.role !== "admin";
+    const chosenStage = project.stages.find((stage) => String(stage.id) === s.stage);
     $("library-count").textContent =
-      `Материалов: ${all.filter((e) => !e.document).length} · Документов: ${all.filter((e) => e.document).length}`;
+      s.category === "document" && s.stage === "unassigned"
+        ? `Документы без этапа · ${items.length}`
+        : s.category === "document" && chosenStage
+          ? `Документы этапа «${chosenStage.title}» · ${items.length}`
+          : s.category === "result" && chosenStage
+            ? `Материалы этапа «${chosenStage.title}» · ${items.length}`
+            : `Материалов: ${all.filter((e) => !e.document).length} · Документов: ${all.filter((e) => e.document).length}`;
     $("library-results-count").textContent =
       `Найдено: ${items.length}${all.some((e) => e.versions.length > 1) ? " · Предыдущие версии — в истории материалов" : ""}`;
     for (const b of document.querySelectorAll("[data-library-category]")) {
