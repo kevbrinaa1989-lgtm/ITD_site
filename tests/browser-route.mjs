@@ -6,7 +6,7 @@ import { randomBytes } from "node:crypto";
 import { createApp } from "../server.mjs";
 import { fixtures } from "./preview-fixtures.mjs";
 import { prepareFixtureUpload } from "./upload-fixture.mjs";
-import { openGlobal, openProject } from "./browser-navigation.mjs";
+import { openGlobal, openProject, openFiles } from "./browser-navigation.mjs";
 const { chromium } = await import(
   process.env.ITD_PLAYWRIGHT_MODULE || "playwright"
 );
@@ -222,7 +222,8 @@ try {
     }
     await openProject(page, project.id);
     for (const tab of ["overview", "stages", "documents"]) {
-      await page.locator("#tab-" + tab).click();
+      if (tab === "documents") await openFiles(page, "document");
+      else await page.locator("#tab-" + tab).click();
       await capture("admin-" + tab);
     }
     await page.locator("#logout-button").click();
@@ -239,7 +240,7 @@ try {
       await capture(section);
     }
     await openProject(page, project.id, { client: true });
-    await page.locator("#tab-results").click();
+    await openFiles(page, "result", { album: true });
     await page.locator(".album-hero-media img").waitFor();
     await page.waitForFunction(
       () => document.querySelector(".album-hero-media img")?.naturalWidth > 0,

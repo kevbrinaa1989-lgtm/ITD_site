@@ -1,7 +1,13 @@
 name: Cabinet checks
 on:
   pull_request:
-    branches: [main, feature/client-cabinet, feature/itd-superdesign-redesign]
+    branches:
+      [
+        main,
+        feature/client-cabinet,
+        feature/itd-superdesign-redesign,
+        fix/route-stage-progress,
+      ]
   workflow_dispatch:
 permissions:
   contents: read
@@ -35,6 +41,7 @@ jobs:
             upload-context,
             invitations,
             recovery,
+            file-library,
           ]
     steps:
       - uses: actions/checkout@v4

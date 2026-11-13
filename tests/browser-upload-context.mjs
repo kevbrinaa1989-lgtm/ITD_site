@@ -1,4 +1,9 @@
-import { openProject, openUpload } from "./browser-navigation.mjs";
+import {
+  openProject,
+  openUpload,
+  openFiles,
+  closeUpload,
+} from "./browser-navigation.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -166,6 +171,7 @@ try {
       await form.waitFor({ state: "visible" });
     }
     async function choose(file, project = pa, target = form) {
+      if (target === form && !(await form.isVisible())) await openUpload(page);
       const prepared = page.waitForResponse(
         (r) =>
           r.url().endsWith(`/api/projects/${project.id}/upload-intents`) &&
@@ -318,50 +324,92 @@ try {
     await fileBytes(aPdf, b, 403);
     // Multi-file upload: one selection, individual requisites, one secure intent per file.
     await choose([
-      { name: "Договор-подряда.txt", mimeType: "text/plain", buffer: Buffer.from("Agreement file") },
-      { name: "Акт-приёмки.txt", mimeType: "text/plain", buffer: Buffer.from("Acceptance act") },
+      {
+        name: "Договор-подряда.txt",
+        mimeType: "text/plain",
+        buffer: Buffer.from("Agreement file"),
+      },
+      {
+        name: "Акт-приёмки.txt",
+        mimeType: "text/plain",
+        buffer: Buffer.from("Acceptance act"),
+      },
       { name: "План-квартиры.pdf", mimeType: pdfType, buffer: pdf },
     ]);
     await form.locator("select[name=category]").selectOption("document");
     const cards = form.locator("#upload-file-cards .upload-document-card");
     assert.equal(await cards.count(), 3);
-    await cards.nth(0).locator('[data-document-field="title"]').fill("Договор на дизайн-проект");
-    await cards.nth(0).locator('[data-document-field="kind"]').selectOption("Договор");
+    for (const card of await cards.all()) await card.locator("summary").click();
+    await cards
+      .nth(0)
+      .locator('[data-document-field="title"]')
+      .fill("Договор на дизайн-проект");
+    await cards
+      .nth(0)
+      .locator('[data-document-field="kind"]')
+      .selectOption("Договор");
     await cards.nth(0).locator('[data-document-field="number"]').fill("ДП-15");
-    await cards.nth(0).locator('[data-document-field="date"]').fill("2026-11-12");
-    await cards.nth(1).locator('[data-document-field="title"]').fill("Акт сдачи-приёмки");
-    await cards.nth(1).locator('[data-document-field="kind"]').selectOption("Акт");
+    await cards
+      .nth(0)
+      .locator('[data-document-field="date"]')
+      .fill("2026-11-12");
+    await cards
+      .nth(1)
+      .locator('[data-document-field="title"]')
+      .fill("Акт сдачи-приёмки");
+    await cards
+      .nth(1)
+      .locator('[data-document-field="kind"]')
+      .selectOption("Акт");
     await cards.nth(1).locator('[data-document-field="number"]').fill("2");
-    await cards.nth(2).locator('[data-document-field="kind"]').selectOption("План");
+    await cards
+      .nth(2)
+      .locator('[data-document-field="kind"]')
+      .selectOption("План");
     await shot("three-documents");
     const beforeBatch = posts.length;
     await form.locator("button[type=submit]").click();
     await page.waitForFunction(() => {
       const upload = document.getElementById("upload-file-form");
-      return !upload.dataset.busy &&
-        upload.querySelector("input[type=file]").files.length === 0;
+      return (
+        !upload.dataset.busy &&
+        upload.querySelector("input[type=file]").files.length === 0
+      );
     });
-    assert.equal(posts.length - beforeBatch, 3, "Exactly three uploads are sent");
+    assert.equal(
+      posts.length - beforeBatch,
+      3,
+      "Exactly three uploads are sent",
+    );
     assert.equal(
       new Set(posts.slice(beforeBatch).map((p) => p.body.uploadIntent)).size,
-      3, "Every file receives its own secure upload intent",
+      3,
+      "Every file receives its own secure upload intent",
     );
-    const latestProject = (await api("/api/projects", { cookie: a.cookie }))
-      .projects.find((p) => p.id === pa.id);
-    const batchNames = ["Договор-подряда.txt", "Акт-приёмки.txt", "План-квартиры.pdf"];
+    const latestProject = (
+      await api("/api/projects", { cookie: a.cookie })
+    ).projects.find((p) => p.id === pa.id);
+    const batchNames = [
+      "Договор-подряда.txt",
+      "Акт-приёмки.txt",
+      "План-квартиры.pdf",
+    ];
     const uploaded = batchNames.map((name) =>
       latestProject.files.find((f) => f.name === name),
     );
     assert.ok(uploaded.every(Boolean));
     assert.deepEqual(uploaded[0].document, {
-      title: "Договор на дизайн-проект", kind: "Договор",
-      number: "ДП-15", date: "2026-11-12",
+      title: "Договор на дизайн-проект",
+      kind: "Договор",
+      number: "ДП-15",
+      date: "2026-11-12",
     });
     assert.equal(uploaded[1].document.number, "2");
     assert.equal(uploaded[2].document.kind, "План");
     await fileBytes(uploaded[0], b, 403);
-    await page.locator("#tab-documents").click();
-    const savedCard = page.locator("#document-list .document-card")
+    await openFiles(page, "document");
+    const savedCard = page
+      .locator("#library-content .document-card")
       .filter({ hasText: "Договор на дизайн-проект" });
     await savedCard.waitFor();
     assert.match(await savedCard.textContent(), /ДП-15/);
@@ -454,6 +502,7 @@ try {
     );
     await fileBytes(retry, b, 403);
     async function versionForm() {
+      await closeUpload(page);
       await page.locator("#tab-review").click();
       if (await page.locator(".review-library-back").isVisible())
         await page.locator(".review-library-back").click();
@@ -553,6 +602,7 @@ try {
       cookie: adminCookie,
       body: { clientId: b.id, expectedClientId: a.id, confirm: true },
     });
+    await closeUpload(page);
     await page.locator("#refresh-button").click();
     await page.waitForFunction(
       (email) =>
@@ -594,21 +644,28 @@ try {
     await fileBytes(reassigned, a, 403);
     // Bulk results also work; each item retains the selected stage and recipient.
     await select(pa);
-    await choose([
-      { name: "Комплект-01.jpg", mimeType: jpgType, buffer: jpg },
-      { name: "Комплект-02.jpg", mimeType: jpgType, buffer: jpg },
-    ], pa);
+    await choose(
+      [
+        { name: "Комплект-01.jpg", mimeType: jpgType, buffer: jpg },
+        { name: "Комплект-02.jpg", mimeType: jpgType, buffer: jpg },
+      ],
+      pa,
+    );
     await form.locator("select[name=category]").selectOption("result");
     await form.locator("select[name=stageId]").selectOption(String(sa.id));
     const resultBefore = posts.length;
     await form.locator("button[type=submit]").click();
     await page.waitForFunction(() => {
       const form = document.querySelector("#upload-file-form");
-      return !form.dataset.busy && form.querySelector("input[type=file]").files.length === 0;
+      return (
+        !form.dataset.busy &&
+        form.querySelector("input[type=file]").files.length === 0
+      );
     });
     assert.equal(posts.length - resultBefore, 2);
-    const updated = (await api("/api/projects", { cookie: b.cookie })).projects
-      .find((p) => p.id === pa.id);
+    const updated = (
+      await api("/api/projects", { cookie: b.cookie })
+    ).projects.find((p) => p.id === pa.id);
     for (const name of ["Комплект-01.jpg", "Комплект-02.jpg"]) {
       const file = updated.files.find((f) => f.name === name);
       assert.ok(file && file.category === "result" && file.stageId === sa.id);

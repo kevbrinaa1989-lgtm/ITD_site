@@ -1,5 +1,5 @@
 import { replaceLegacyFixtureBytes } from "./legacy-file-fixture.mjs";
-import { openProject, openGlobal } from "./browser-navigation.mjs";
+import { openProject, openGlobal, openFiles } from "./browser-navigation.mjs";
 import { prepareFixtureUpload } from "./upload-fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir, readFile } from "node:fs/promises";
@@ -256,9 +256,9 @@ try {
       false,
     );
     await client.locator("#tab-stages").click();
-    await client.locator("#tab-results").click();
+    await openFiles(client, "result");
     for (const card of await client
-      .locator("#result-list .gallery-card")
+      .locator("#library-content .gallery-card")
       .all()) {
       await card.scrollIntoViewIfNeeded();
     }

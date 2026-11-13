@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { createApp } from "../server.mjs";
-import { openProject, openGlobal } from "./browser-navigation.mjs";
+import { openProject, openGlobal, closeUpload } from "./browser-navigation.mjs";
 const { chromium } = await import(
   process.env.ITD_PLAYWRIGHT_MODULE || "playwright"
 );
@@ -206,6 +206,7 @@ try {
         "Без клиента",
       ),
     );
+    await closeUpload(admin);
     await admin
       .locator("#project-actions")
       .getByRole("button", { name: "Создать задачу", exact: true })
