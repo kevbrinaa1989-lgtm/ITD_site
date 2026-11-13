@@ -291,6 +291,8 @@ try {
       // The full library remains accessible through its manual filters.
       await page.locator("#library-stage").selectOption("");
       await page.locator('[data-library-category="all"]').click();
+      if (await page.locator("#library-filters").evaluate((el) => el.open))
+        await page.locator("#library-filters summary").click();
       assert.equal(await page.locator("[data-library-key]").count(), 8);
       assert.equal(await page.locator("#library-upload").isVisible(), false);
       assert.equal(await page.locator(`[data-file-id="${old.id}"]`).count(), 0);
