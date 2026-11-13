@@ -245,7 +245,7 @@
       copy.append(
         button(
           chosen ? "Смотреть материалы →" : "Смотреть файлы проекта →",
-          () => actions.openTab("results"),
+          () => actions.openTab("results", { stageId: stage?.id ?? null }),
           "primary",
         ),
       );
@@ -264,7 +264,7 @@
       item.append(
         node("h2", title),
         node("p", description, "muted"),
-        button("Открыть →", () => actions.openTab(tab)),
+        button("Открыть →", () => actions.openTab(tab, { stageId: stage?.id ?? null })),
       );
       links.append(item);
     }
