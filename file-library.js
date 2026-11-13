@@ -81,11 +81,14 @@
   // library search/category filters. Other projects and older versions are excluded.
   function stageImages(file) {
     return model
-      .select(model.entries(project), {
-        category: "result",
-        stage: file.stageId == null ? "unassigned" : String(file.stageId),
-        sort: state().sort,
-      })
+      .select(
+        model.entries({ ...project, files: scopeFiles ?? project.files }),
+        {
+          category: "result",
+          stage: file.stageId == null ? "unassigned" : String(file.stageId),
+          sort: state().sort,
+        },
+      )
       .filter((entry) => window.ITDViewer.image(entry.file))
       .map((entry) => entry.file);
   }
@@ -571,6 +574,12 @@
     },
     reset: () => {
       closeDocument();
+      $("library-document-detail").replaceChildren();
+      $("library-edit-form").reset();
+      $("library-edit-form").onsubmit = null;
+      $("library-edit-note").textContent = "";
+      $("library-edit-error").textContent = "";
+      opener = null;
       states.clear();
       project = null;
       scopeFiles = null;

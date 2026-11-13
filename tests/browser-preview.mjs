@@ -393,11 +393,19 @@ try {
       `#library-content [data-file-id="${files.find((f) => f.name === "short.jpg").id}"] .gallery-open`,
     );
     await firstLarge.scrollIntoViewIfNeeded();
-    const galleryScroll = await page.evaluate(() => ({
-      x: scrollX,
-      y: scrollY,
-    }));
+    await firstLarge.evaluate((el) =>
+      el.addEventListener(
+        "click",
+        () => {
+          window.__viewerClickScroll = { x: scrollX, y: scrollY };
+        },
+        { capture: true, once: true },
+      ),
+    );
     await firstLarge.click();
+    // Playwright may scroll again to avoid a fixed bar before delivering the
+    // actual click. Compare against the user's opening position, not that setup.
+    const galleryScroll = await page.evaluate(() => window.__viewerClickScroll);
     await initialFit();
     const increase = page.getByRole("button", {
         name: "Увеличить",
@@ -457,7 +465,7 @@ try {
     assert.ok(
       Math.abs(restoredScroll.y - galleryScroll.y) <= 1 &&
         Math.abs(restoredScroll.x - galleryScroll.x) <= 1,
-      "Closing preserves gallery page scroll",
+      `Closing preserves gallery page scroll: ${JSON.stringify({ galleryScroll, restoredScroll, click: await page.evaluate(() => window.__viewerClickScroll) })}`,
     );
     await firstLarge.click();
     await initialFit();
