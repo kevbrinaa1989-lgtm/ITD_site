@@ -3368,3 +3368,39 @@ progress::-moz-progress-bar {
     width: 100%;
   }
 }
+
+/* Project navigation has no redundant Stages tab; editing is in Settings. */
+#app-view .settings-stage-management {
+  margin-top: 20px;
+  padding: 20px 24px;
+}
+#app-view .settings-stage-management > summary {
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 10px 0;
+}
+#app-view .settings-stage-management > .muted {
+  font-size: 12px;
+  margin: 10px 0 18px;
+}
+#app-view .settings-stage-list {
+  display: grid;
+  grid-template-columns: minmax(0,1fr);
+  gap: 12px;
+}
+#app-view .settings-stage-list .stage-card {
+  padding: 14px 18px;
+  gap: 15px;
+  background: var(--paper);
+}
+#app-view .settings-stage-list .stage-card .stage-number {
+  font-size: 16px;
+}
+#app-view .settings-stage-list .stage-card p {
+  margin-bottom: 6px;
+}
+@media (max-width: 560px) {
+  #app-view .settings-stage-management { padding: 15px; }
+  #app-view .settings-stage-list .stage-card { padding: 12px; }
+}
