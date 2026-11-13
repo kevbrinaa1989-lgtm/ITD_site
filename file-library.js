@@ -68,19 +68,27 @@
     }
     return box;
   }
-  function material(e, items) {
+  // A photo opens with all current images from its own stage, regardless of
+  // library search/category filters. Other projects and older versions are excluded.
+  function stageImages(file) {
+    return model.select(model.entries(project), {
+      category: "result",
+      stage: file.stageId == null ? "unassigned" : String(file.stageId),
+      sort: state().sort,
+    }).filter((entry) => window.ITDViewer.image(entry.file))
+      .map((entry) => entry.file);
+  }
+  function material(e) {
     const file = e.matchFile || e.file;
     let card;
     if (window.ITDViewer.image(e.file)) {
+      const historical = file.id !== e.file.id;
       card = window.ITDViewer.thumbnail(
         e.file,
-        items.map((x) => x.file),
-        e.file.review
-          ? {
-              onOpen: () => openReview(file),
-              label: `Открыть материал: ${e.title}`,
-            }
-          : {},
+        stageImages(e.file),
+        historical
+          ? { onOpen: () => openReview(file), label: `Открыть версию: ${e.title}` }
+          : { label: `Открыть фото: ${e.title}` },
       );
       card.querySelector(".gallery-caption").remove();
     } else {
@@ -108,10 +116,12 @@
       ),
       badge(e),
     );
-    if (e.versions.length > 1)
+    if (e.file.review)
       copy.append(
         button(
-          `${e.versions.length} версии · история`,
+          e.versions.length > 1
+            ? `${e.versions.length} версии · комментарии и согласование`
+            : "Комментарии и согласование",
           () => openReview(file),
           "library-history",
         ),
@@ -279,7 +289,7 @@
           node("span", String(group.length)),
         );
         const grid = node("div", undefined, "library-grid");
-        grid.append(...group.map((e) => material(e, materials)));
+        grid.append(...group.map((e) => material(e)));
         section.append(heading, grid);
       }
       list.append(section);
