@@ -32,7 +32,6 @@
   ];
   const projectTabNames = [
     "overview",
-    "stages",
     "files",
     "results",
     "review",
@@ -41,7 +40,6 @@
     "management",
   ];
   let returnClientId = null,
-    selectedStageId = null,
     routeStageId = null;
   let activeTab = "overview";
   const node = (tag, text, className) => {
@@ -78,7 +76,6 @@
     window.ITDReview?.reset();
     window.ITDClientWorkspace?.reset();
     returnClientId = null;
-    selectedStageId = null;
     routeStageId = null;
     document.body.classList.remove("menu-open");
     window.ITDViewer?.invalidate();
@@ -191,6 +188,8 @@
     list.replaceChildren(node("p", text, "empty-note"));
   }
   function selectTab(tab, options = {}) {
+    // Compatibility: old stage links now land on the overview timeline.
+    if (tab === "stages") tab = "overview";
     if (tab === "results" || tab === "documents") {
       window.ITDLibrary?.category(tab === "documents" ? "document" : "result");
       tab = "files";
@@ -275,7 +274,6 @@
     if (!projects.some((project) => project.id === id))
       throw new Error("Проект недоступен.");
     if (selectedId !== id) {
-      selectedStageId = null;
       routeStageId = null;
     }
     selectedId = id;
@@ -616,19 +614,8 @@
         recent.append(fileRow(file, project));
       if (!project.files.length) empty(recent, "Материалы пока не загружены.");
     }
-    $("stage-list").replaceChildren();
-    if (
-      selectedStageId &&
-      !project.stages.some((stage) => stage.id === selectedStageId)
-    )
-      selectedStageId = null;
-    if (selectedStageId)
-      $("stage-list").append(
-        projectAction("← Все этапы", () => {
-          selectedStageId = null;
-          render();
-        }),
-      );
+    const stageList = $("stage-list");
+    stageList.replaceChildren();
     const stageSelect = $("upload-file-form").elements.namedItem("stageId");
     const previousStage = stageSelect.value;
     stageSelect.replaceChildren(new Option("Без привязки к этапу", ""));
@@ -640,7 +627,6 @@
         `stage-card stage-${stage.status}`,
       );
       item.dataset.stageId = String(stage.id);
-      item.hidden = selectedStageId !== null && selectedStageId !== stage.id;
       const number = node("span", String(index + 1), "stage-number");
       number.setAttribute("aria-hidden", "true");
       const content = node("div", undefined, "stage-body");
@@ -672,24 +658,10 @@
           selectTab("files");
         }),
       );
-      const stageActions = node("div", undefined, "stage-actions");
-      stageActions.append(
-        projectAction(
-          selectedStageId === stage.id ? "Все этапы" : "Открыть этап",
-          () => {
-            selectedStageId = selectedStageId === stage.id ? null : stage.id;
-            selectTab("stages");
-            render();
-          },
-        ),
-      );
       if (admin)
-        stageActions.append(
-          projectAction("Загрузить материал в этап", () =>
-            openUpload(stage.id),
-          ),
+        content.append(
+          projectAction("Загрузить материал в этап", () => openUpload(stage.id)),
         );
-      content.append(stageActions);
       if (stage.status === "approved")
         content.append(
           node(
@@ -700,10 +672,10 @@
         );
       if (admin) content.append(stageEditor(stage));
       item.append(number, content);
-      $("stage-list").append(item);
+      if (admin) stageList.append(item);
     });
-    if (!project.stages.length)
-      empty($("stage-list"), "Этапы пока не добавлены.");
+    if (admin && !project.stages.length)
+      empty(stageList, "Рабочий план пока не заполнен.");
     if (
       [...stageSelect.options].some((option) => option.value === previousStage)
     )
@@ -1127,7 +1099,6 @@
     window.ITDClientWorkspace?.reset();
     user = nextUser;
     selectedId = null;
-    selectedStageId = null;
     routeStageId = null;
     returnClientId = null;
     activeTab = user.role === "admin" ? "workspace" : "client-home";
@@ -1625,8 +1596,8 @@
     selectTab,
     openProject,
     openStage: async (pid, sid) => {
-      await openProject(pid, { tab: "stages" });
-      selectedStageId = sid;
+      await openProject(pid, { tab: "overview" });
+      routeStageId = Number(sid);
       render();
     },
     message,
@@ -1663,15 +1634,10 @@
       await window.ITDReview.open(mid, vid);
     },
     openStage: async (pid, sid) => {
-      await openWorkspaceProject(pid, "stages");
-      selectedStageId = Number(sid);
+      await openWorkspaceProject(pid, "overview");
+      routeStageId = Number(sid);
       render();
-      const target = document.querySelector(`[data-stage-id="${Number(sid)}"]`);
-      if (target) {
-        target.tabIndex = -1;
-        target.focus({ preventScroll: true });
-        target.scrollIntoView({ block: "start" });
-      }
+      document.querySelector("#project-route")?.scrollIntoView({ block: "start" });
     },
   });
   window.ITDInvitations?.init({ api, getUser: () => user });
@@ -1783,7 +1749,6 @@
       ].map((input) => input.value),
     });
     selectedId = result.id;
-    selectedStageId = null;
     routeStageId = null;
     returnClientId = null;
     activeTab = "overview";
