@@ -253,6 +253,44 @@ try {
     await openProject(page, project.id, { client: true });
     await page.locator(before ? "#tab-results" : "#tab-files").click();
     if (!before) {
+      // Top-level "Файлы проекта" is restricted to unassigned documents.
+      assert.equal(await page.locator('[data-library-category="document"]').getAttribute("aria-pressed"), "true");
+      assert.equal(await page.locator("#library-stage").inputValue(), "unassigned");
+      assert.equal(await page.locator("[data-library-key]").count(), 2);
+      assert.equal(await page.locator(`[data-file-id="${contract.id}"]`).count(), 1);
+      assert.equal(await page.locator("#library-content").getByText("Смета отделочных материалов и оборудования").count(), 0);
+      await shot("client-unassigned-documents");
+      // Clicking the stage-02 Documents shortcut must show ONLY stage-02
+      // documents (not the contract, not another stage's photos).
+      await page.locator("#tab-overview").click();
+      await page.locator("#project-route .route-step").nth(1).click();
+      await page.locator("#project-route .route-links > .panel").nth(1).getByRole("button").click();
+      assert.equal(await page.locator('[data-library-category="document"]').getAttribute("aria-pressed"), "true");
+      assert.equal(await page.locator("#library-stage").inputValue(), String(stages[1].id));
+      assert.equal(await page.locator("[data-library-key]").count(), 1);
+      assert.equal(await page.locator("#library-content").getByText("Смета отделочных материалов и оборудования").count(), 1);
+      assert.equal(await page.locator(`[data-file-id="${contract.id}"]`).count(), 0);
+      // Switching stages discards the previous stage-specific document filter.
+      await page.locator("#tab-overview").click();
+      await page.locator("#project-route .route-step").nth(0).click();
+      await page.locator("#project-route .route-links > .panel").nth(1).getByRole("button").click();
+      assert.equal(await page.locator("#library-stage").inputValue(), String(stages[0].id));
+      assert.equal(await page.locator("[data-library-key]").count(), 0);
+      // "Альбом проекта" likewise scopes photographic materials to the stage.
+      await page.locator("#tab-overview").click();
+      await page.locator("#project-route .route-step").nth(3).click();
+      await page.locator("#project-route .route-links > .panel").nth(0).getByRole("button").click();
+      assert.equal(await page.locator("#library-stage").inputValue(), String(stages[3].id));
+      assert.equal(await page.locator('[data-library-category="result"]').getAttribute("aria-pressed"), "true");
+      assert.equal(await page.locator("[data-library-key]").count(), 3);
+      // The global nav must not inherit the stage-04 filter.
+      await page.locator("#tab-files").click();
+      assert.equal(await page.locator("#library-stage").inputValue(), "unassigned");
+      assert.equal(await page.locator('[data-library-category="document"]').getAttribute("aria-pressed"), "true");
+      assert.equal(await page.locator("[data-library-key]").count(), 2);
+      // The full library remains accessible through its manual filters.
+      await page.locator("#library-stage").selectOption("");
+      await page.locator('[data-library-category="all"]').click();
       assert.equal(await page.locator("[data-library-key]").count(), 8);
       assert.equal(await page.locator("#library-upload").isVisible(), false);
       assert.equal(await page.locator(`[data-file-id="${old.id}"]`).count(), 0);
