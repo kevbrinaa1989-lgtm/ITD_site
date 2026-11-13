@@ -372,6 +372,8 @@ try {
     await stageCard
       .getByRole("button", { name: "Открыть этап →", exact: true })
       .click();
+    await admin.locator("#project-route .route-stage-heading h2")
+      .getByText("Планировка со сроком").waitFor();
     assert.equal(await admin.locator("#tab-stages").count(), 0);
     assert.equal(
       await admin.locator("#tab-overview").getAttribute("aria-selected"),
