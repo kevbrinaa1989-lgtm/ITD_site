@@ -360,6 +360,20 @@
       render();
     }
   }
+  // Navigate to a precise library scope, discarding any previous manual
+  // search/filter selections so that another stage cannot leak into the view.
+  function showScope(categoryValue, stageValue) {
+    if (!project) return;
+    Object.assign(state(), {
+      category: categoryValue,
+      stage: stageValue == null ? "unassigned" : String(stageValue),
+      query: "",
+      type: "",
+    });
+    album = false;
+    closeDocument();
+    render();
+  }
   function init(hooks) {
     h = hooks;
     for (const b of document.querySelectorAll("[data-library-category]"))
@@ -401,6 +415,7 @@
     init,
     setProject,
     category,
+    showScope,
     filterStage: (id) => {
       state().category = "all";
       state().stage = String(id);
