@@ -231,9 +231,11 @@
     $("library-upload").hidden = h.getUser()?.role !== "admin";
     const chosenStage = project.stages.find((stage) => String(stage.id) === s.stage);
     $("library-count").textContent =
-      s.category === "document" && s.stage === "unassigned"
-        ? `Документы без этапа · ${items.length}`
-        : s.category === "document" && chosenStage
+      s.category === "all" && s.stage === "unassigned"
+        ? `Файлы без этапа · ${items.length}`
+        : s.category === "document" && s.stage === "unassigned"
+          ? `Документы без этапа · ${items.length}`
+          : s.category === "document" && chosenStage
           ? `Документы этапа «${chosenStage.title}» · ${items.length}`
           : s.category === "result" && chosenStage
             ? `Материалы этапа «${chosenStage.title}» · ${items.length}`
