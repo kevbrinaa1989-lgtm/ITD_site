@@ -395,9 +395,14 @@ try {
     await adminRoute.locator(".route-links > .panel").nth(0).getByRole("button").click();
     assert.equal(await page.locator("#tab-files").getAttribute("aria-selected"), "true");
     assert.equal(await page.locator('[data-library-category="result"]').getAttribute("aria-pressed"), "true");
+    assert.equal(await page.locator("#library-stage").inputValue(), String(stages[1].id));
     await page.locator("#tab-overview").click();
     await page.locator("#project-route .route-links > .panel").nth(1).getByRole("button").click();
     assert.equal(await page.locator("#tab-files").getAttribute("aria-selected"), "true");
+    assert.equal(await page.locator('[data-library-category="document"]').getAttribute("aria-pressed"), "true");
+    assert.equal(await page.locator("#library-stage").inputValue(), String(stages[1].id));
+    await page.locator("#tab-files").click();
+    assert.equal(await page.locator("#library-stage").inputValue(), "unassigned");
     assert.equal(await page.locator('[data-library-category="document"]').getAttribute("aria-pressed"), "true");
     // The redundant Stages tab is gone; staff can still edit status and dates.
     assert.equal(await page.locator("#tab-stages, #panel-stages").count(), 0);
