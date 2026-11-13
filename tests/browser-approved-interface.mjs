@@ -186,13 +186,12 @@ try {
     await admin
       .locator("#admin-project-detail select[name=clientId]")
       .waitFor({ state: "visible" });
-    await admin.locator("#tab-stages").click();
+    await admin.locator("#tab-settings").click();
+    const staffStageDetails = admin.locator("#settings-stage-management");
+    await staffStageDetails.locator("summary").click();
     const firstStage = admin.locator(
       `#stage-list .stage-card[data-stage-id="${unassigned.stages[0].id}"]`,
     );
-    await firstStage
-      .getByRole("button", { name: "Открыть этап", exact: true })
-      .click();
     await firstStage
       .getByRole("button", { name: "Загрузить материал в этап", exact: true })
       .click();
@@ -239,7 +238,7 @@ try {
       email,
     );
     await openProject(admin, project.id);
-    await admin.locator("#tab-stages").click();
+    await admin.locator("#tab-settings").click();
     assert.equal(
       await admin.locator("#stage-list .stage-card").count(),
       0,
