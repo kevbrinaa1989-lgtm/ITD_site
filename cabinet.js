@@ -368,7 +368,14 @@
     }
     item.append(icon, info);
     if (window.ITDViewer?.supported(file))
-      item.append(window.ITDViewer.control(file, project.files));
+      item.append(window.ITDViewer.control(
+        file,
+        project.files.filter((candidate) =>
+          candidate.category === "result" &&
+          candidate.stageId === file.stageId &&
+          (!candidate.review || candidate.review.isCurrent)
+        ),
+      ));
     item.append(download(file));
     if (file.review) item.append(window.ITDReview.reviewControl(file));
     if (admin)
