@@ -188,7 +188,7 @@ try {
       .waitFor({ state: "visible" });
     await admin.locator("#tab-settings").click();
     const staffStageDetails = admin.locator("#settings-stage-management");
-    await staffStageDetails.locator("summary").click();
+    await staffStageDetails.locator(":scope > summary").click();
     const firstStage = admin.locator(
       `#stage-list .stage-card[data-stage-id="${unassigned.stages[0].id}"]`,
     );
