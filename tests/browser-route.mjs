@@ -221,7 +221,7 @@ try {
       await capture("admin-" + section);
     }
     await openProject(page, project.id);
-    for (const tab of ["overview", "stages", "documents"]) {
+    for (const tab of ["overview", "settings", "documents"]) {
       if (tab === "documents") await openFiles(page, "document");
       else await page.locator("#tab-" + tab).click();
       await capture("admin-" + tab);
