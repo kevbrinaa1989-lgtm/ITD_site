@@ -399,28 +399,17 @@ try {
     await page.locator("#project-route .route-links > .panel").nth(1).getByRole("button").click();
     assert.equal(await page.locator("#tab-files").getAttribute("aria-selected"), "true");
     assert.equal(await page.locator('[data-library-category="document"]').getAttribute("aria-pressed"), "true");
-    await page.locator("#tab-stages").click();
-    await page
-      .locator(`[data-stage-id="${stages[1].id}"]`)
-      .getByRole("button", { name: "Открыть этап", exact: true })
-      .click();
-    if (!before) {
-      const host = page.locator(`[data-stage-id="${stages[1].id}"]`);
-      const a = await host
-          .getByRole("button", { name: "Все этапы", exact: true })
-          .boundingBox(),
-        b = await host
-          .getByRole("button", {
-            name: "Загрузить материал в этап",
-            exact: true,
-          })
-          .boundingBox();
-      assert.ok(
-        b.y >= a.y + a.height + 7 || b.x >= a.x + a.width + 7,
-        "stage action gap",
-      );
-    }
-    await shot("admin-stage");
+    // The redundant Stages tab is gone; staff can still edit status and dates.
+    assert.equal(await page.locator("#tab-stages, #panel-stages").count(), 0);
+    await page.locator("#tab-settings").click();
+    await page.locator("#settings-stage-management > summary").click();
+    const settingsStage = page.locator(`#stage-list [data-stage-id="${stages[1].id}"]`);
+    await settingsStage.waitFor({ state: "visible" });
+    assert.equal(await page.locator("#tab-settings").getAttribute("aria-selected"), "true");
+    assert.equal(await settingsStage.getByRole("button", {
+      name: "Загрузить материал в этап", exact: true,
+    }).count(), 1);
+    await shot("admin-stage-settings");
     // Passive navigation must never change actual stages or approval decisions.
     const after = (await api("/api/projects")).projects.find(
       (p) => p.id === project.id,
@@ -432,10 +421,6 @@ try {
       "approved",
     );
     if (!before && width === 1440) {
-      await page
-        .getByRole("button", { name: "Все этапы", exact: true })
-        .first()
-        .click();
       const stageCard = page.locator(`[data-stage-id="${stages[0].id}"]`);
       await stageCard.locator(".stage-edit summary").click();
       await stageCard
