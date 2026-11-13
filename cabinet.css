@@ -3698,3 +3698,60 @@ body > footer {
   #app-view .review-detail .review-decision-actions { grid-template-columns: 1fr; }
   #app-view .review-comments-pane .review-form { padding: 4px 13px 15px; }
 }
+
+/* Fullscreen stage-photo gallery: mouse arrows, keyboard, and touch swipes. */
+.file-viewer .viewer-stage {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+.file-viewer .viewer-stage .viewer-viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+.file-viewer .viewer-side-arrow {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 64px;
+  min-height: 44px;
+  padding: 0;
+  background: rgba(21, 24, 21, .72);
+  border: 1px solid rgba(255,255,255,.48);
+  border-radius: 2px;
+  color: #fff;
+  font: 400 36px/1 Georgia, serif;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.file-viewer .viewer-side-arrow[hidden] { display: none; }
+.file-viewer .viewer-side-arrow:disabled {
+  opacity: .23;
+  cursor: default;
+}
+.file-viewer .viewer-side-arrow:not(:disabled):hover {
+  background: rgba(21, 24, 21, .92);
+}
+.file-viewer .viewer-side-arrow:focus-visible {
+  outline: 3px solid #e0bf80;
+  outline-offset: 2px;
+}
+.file-viewer .viewer-side-prev { left: 9px; }
+.file-viewer .viewer-side-next { right: 9px; }
+@media (max-width: 760px) {
+  .file-viewer .viewer-side-arrow {
+    width: 40px;
+    height: 52px;
+    font-size: 30px;
+  }
+  .file-viewer .viewer-side-prev { left: 4px; }
+  .file-viewer .viewer-side-next { right: 4px; }
+}
