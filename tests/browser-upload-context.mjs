@@ -162,8 +162,9 @@ try {
     await page.locator("#login-form button[type=submit]").click();
     await page.locator("#app-view").waitFor({ state: "visible" });
     const form = page.locator("#upload-file-form");
-    async function select(project) {
+    async function select(project, stageIndex = null) {
       await openProject(page, project.id);
+      if (stageIndex !== null) await openFiles(page, "result", { stageIndex });
       await openUpload(page);
       const details = form.locator("..");
       if (await details.evaluate((el) => el.tagName === "DETAILS" && !el.open))
@@ -171,7 +172,10 @@ try {
       await form.waitFor({ state: "visible" });
     }
     async function choose(file, project = pa, target = form) {
-      if (target === form && !(await form.isVisible())) await openUpload(page);
+      if (target === form && !(await form.isVisible())) {
+        await openFiles(page);
+        await openUpload(page);
+      }
       const prepared = page.waitForResponse(
         (r) =>
           r.url().endsWith(`/api/projects/${project.id}/upload-intents`) &&
@@ -301,14 +305,17 @@ try {
     assert.deepEqual(await fileBytes(bDocument, b), bBytes);
     await fileBytes(bDocument, a, 403);
     assert.ok(posts[0].url.endsWith(`/projects/${pb.id}/files`));
-    await select(pa);
+    await select(pa, 0);
     await choose({
       name: "Изображение-Анны.jpg",
       mimeType: jpgType,
       buffer: jpg,
     });
     await form.locator("select[name=category]").selectOption("result");
-    await form.locator("select[name=stageId]").selectOption(String(sa.id));
+    assert.equal(
+      await form.locator("select[name=stageId]").inputValue(),
+      String(sa.id),
+    );
     await form.locator("#upload-for-review").check();
     await shot("receiver-image");
     const aImage = await send();
@@ -484,7 +491,7 @@ try {
     await page.locator("#upload-stay").click();
     assert.equal(await page.locator("#project-title").textContent(), pa.title);
     await openProject(page, pa.id);
-    await openUpload(page);
+    await openUpload(page, { document: true });
     const retry = await send();
     await waitCleared();
     assert.equal(retry.id, savedReceipt.id);
@@ -643,7 +650,7 @@ try {
     assert.deepEqual(await fileBytes(reassigned, b), pdf);
     await fileBytes(reassigned, a, 403);
     // Bulk results also work; each item retains the selected stage and recipient.
-    await select(pa);
+    await select(pa, 0);
     await choose(
       [
         { name: "Комплект-01.jpg", mimeType: jpgType, buffer: jpg },
@@ -652,7 +659,10 @@ try {
       pa,
     );
     await form.locator("select[name=category]").selectOption("result");
-    await form.locator("select[name=stageId]").selectOption(String(sa.id));
+    assert.equal(
+      await form.locator("select[name=stageId]").inputValue(),
+      String(sa.id),
+    );
     const resultBefore = posts.length;
     await form.locator("button[type=submit]").click();
     await page.waitForFunction(() => {

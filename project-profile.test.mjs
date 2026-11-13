@@ -144,7 +144,7 @@ test("unassigned projects create exactly selected ordered stages and remain priv
     );
   }
   const intent = (
-    await f.req(`/api/projects/${p.id}/upload-intents`, {}, f.admin, 201)
+    await f.req(`/api/projects/${p.id}/upload-intents`, {stageId:detail.stages[0].id}, f.admin, 201)
   ).value;
   const bytes = fixtures.find((row) => row[1] === "application/pdf")[2];
   const upload = {
@@ -377,7 +377,7 @@ test("full legacy migration retains every child table and original bytes through
     await f.req(`/api/admin/projects/${p.id}`, undefined, f.admin, 200, "GET")
   ).value.project.stages[0];
   const ticket = (
-    await f.req(`/api/projects/${p.id}/upload-intents`, {}, f.admin, 201)
+    await f.req(`/api/projects/${p.id}/upload-intents`, {stageId:stage.id}, f.admin, 201)
   ).value;
   const file = (
     await f.req(

@@ -7,6 +7,7 @@ on:
         feature/client-cabinet,
         feature/itd-superdesign-redesign,
         fix/route-stage-progress,
+        feature/project-file-library,
       ]
   workflow_dispatch:
 permissions:
@@ -42,6 +43,7 @@ jobs:
             invitations,
             recovery,
             file-library,
+            document-ownership,
           ]
     steps:
       - uses: actions/checkout@v4

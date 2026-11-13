@@ -663,7 +663,7 @@ test("20. legacy client/project migration adds null historical dates without cha
     const db = new DatabaseSync(join(f.dataDir, "itd.sqlite"));
     try {
       db.exec(
-        "DROP TABLE admin_tasks; ALTER TABLE stages DROP COLUMN startDate; ALTER TABLE stages DROP COLUMN plannedEndDate; DROP TABLE review_views; DROP TABLE review_notifications; DROP TABLE review_events; DROP TABLE review_versions; DROP TABLE review_materials; DROP TABLE admin_management_events; ALTER TABLE users DROP COLUMN createdAt; ALTER TABLE users DROP COLUMN isActive; ALTER TABLE projects DROP COLUMN createdAt; ALTER TABLE projects DROP COLUMN archivedFrom;",
+        "DROP TRIGGER IF EXISTS file_scope_insert; DROP TRIGGER IF EXISTS file_scope_update; DROP TRIGGER IF EXISTS stage_project_immutable; DROP TRIGGER IF EXISTS material_scope_insert; DROP TRIGGER IF EXISTS material_scope_update; DROP TRIGGER IF EXISTS material_scope_cascade; DROP TRIGGER IF EXISTS version_scope_insert; DROP TRIGGER IF EXISTS version_scope_update; DROP TABLE admin_tasks; ALTER TABLE stages DROP COLUMN startDate; ALTER TABLE stages DROP COLUMN plannedEndDate; DROP TABLE review_views; DROP TABLE review_notifications; DROP TABLE review_events; DROP TABLE review_versions; DROP TABLE review_materials; DROP TABLE admin_management_events; ALTER TABLE users DROP COLUMN createdAt; ALTER TABLE users DROP COLUMN isActive; ALTER TABLE projects DROP COLUMN createdAt; ALTER TABLE projects DROP COLUMN archivedFrom;",
       );
       before = Object.fromEntries(
         Object.entries(oldColumns).map(([table, columns]) => [

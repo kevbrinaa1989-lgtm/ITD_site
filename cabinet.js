@@ -194,8 +194,7 @@
       const category = tab === "documents" ? "document" : "result";
       if (Object.hasOwn(options, "stageId"))
         window.ITDLibrary?.showScope(category, options.stageId);
-      else
-        window.ITDLibrary?.category(category);
+      else window.ITDLibrary?.category(category);
       tab = "files";
     } else if (tab === "files" && options.projectDocuments) {
       // Top-level "Файлы проекта" shows ALL files without a stage:
@@ -304,22 +303,26 @@
     const form = $("upload-file-form"),
       dialog = $("library-upload-dialog");
     const prepared = form.querySelector('input[type="file"]').files.length;
-    $("library-upload-message").textContent = "";
-    if (!dialog.open) dialog.showModal();
     if (
       prepared &&
       (form.elements.stageId.value !== String(stageId ?? "") ||
         form.elements.category.value !== category)
     ) {
-      message(
-        "В очереди уже есть файлы. Сохранены их проект, этап и раздел; завершите загрузку или выберите файлы заново.",
-        true,
-      );
-    } else {
-      form.elements.stageId.value = String(stageId ?? "");
-      form.elements.category.value = category;
-      form.elements.category.dispatchEvent(new Event("change"));
+      if (
+        !window.confirm(
+          "Выбраны файлы для другого раздела. Отменить подготовленную очередь и открыть новую загрузку?",
+        )
+      )
+        return;
+      window.ITDUploads.discard(form);
     }
+    $("library-upload-message").textContent = "";
+    form.elements.stageId.value = String(stageId ?? "");
+    form.elements.stageId.disabled = true;
+    form.dataset.scopeStage = String(stageId ?? "");
+    form.elements.category.value = category;
+    form.elements.category.dispatchEvent(new Event("change"));
+    if (!dialog.open) dialog.showModal();
     form.querySelector('input[type="file"]').focus({ preventScroll: true });
   }
   function download(file, label = "Скачать") {
@@ -375,14 +378,17 @@
     }
     item.append(icon, info);
     if (window.ITDViewer?.supported(file))
-      item.append(window.ITDViewer.control(
-        file,
-        project.files.filter((candidate) =>
-          candidate.category === "result" &&
-          candidate.stageId === file.stageId &&
-          (!candidate.review || candidate.review.isCurrent)
+      item.append(
+        window.ITDViewer.control(
+          file,
+          project.files.filter(
+            (candidate) =>
+              candidate.category === "result" &&
+              candidate.stageId === file.stageId &&
+              (!candidate.review || candidate.review.isCurrent),
+          ),
         ),
-      ));
+      );
     item.append(download(file));
     if (file.review) item.append(window.ITDReview.reviewControl(file));
     if (admin)
@@ -400,7 +406,11 @@
     button.addEventListener("click", () => {
       if (window.confirm(`Удалить файл «${file.name}»?`))
         busy(container, async () => {
-          await api(`/api/files/${file.id}`, "DELETE", {});
+          await api(
+            `/api/projects/${file.projectId ?? selectedId}/files/${file.id}`,
+            "DELETE",
+            { expectedStageId: file.stageId ?? null },
+          );
           await refresh();
           message("Файл удалён");
         });
@@ -669,7 +679,9 @@
       );
       if (admin)
         content.append(
-          projectAction("Загрузить материал в этап", () => openUpload(stage.id)),
+          projectAction("Загрузить материал в этап", () =>
+            openUpload(stage.id),
+          ),
         );
       if (stage.status === "approved")
         content.append(
@@ -1537,12 +1549,18 @@
     message,
   });
   window.ITDUploads.register($("upload-file-form"), {
-    context: () =>
-      window.ITDUploads.contextOf(projects.find((p) => p.id === selectedId)),
+    context: () => ({
+      ...window.ITDUploads.contextOf(projects.find((p) => p.id === selectedId)),
+      stageId: $("upload-file-form").dataset.scopeStage
+        ? Number($("upload-file-form").dataset.scopeStage)
+        : null,
+    }),
     receiver: $("upload-recipient"),
   });
   window.ITDLibrary.init({
     getUser: () => user,
+    api,
+    refresh,
     selectTab,
     openUpload,
     deleteControl: deleteFileButton,
@@ -1646,7 +1664,9 @@
       await openWorkspaceProject(pid, "overview");
       routeStageId = Number(sid);
       render();
-      document.querySelector("#project-route")?.scrollIntoView({ block: "start" });
+      document
+        .querySelector("#project-route")
+        ?.scrollIntoView({ block: "start" });
     },
   });
   window.ITDInvitations?.init({ api, getUser: () => user });
@@ -1814,17 +1834,22 @@
   bindForm("upload-file-form", async (values, form) => {
     if (!selectedId) throw new Error("Выберите проект");
     const uploadUser = user;
-    if (values.review && (values.category !== "result" || !values.stageId))
-      throw new Error("Для согласования выберите раздел «Результаты» и этап.");
+    const uploadStage = form.dataset.scopeStage
+      ? Number(form.dataset.scopeStage)
+      : null;
+    if (values.review && values.category !== "result")
+      throw new Error("Для согласования выберите раздел «Материалы».");
     const result = await window.ITDUploads.send(form, {
       category: values.category,
       ...(values.review ? { review: true } : {}),
-      ...(values.stageId ? { stageId: Number(values.stageId) } : {}),
+      stageId: uploadStage,
     });
     if (!result || user !== uploadUser) return;
     await refresh();
     $("library-upload-dialog").close();
-    selectTab(values.category === "document" ? "documents" : "results");
+    selectTab(values.category === "document" ? "documents" : "results", {
+      stageId: uploadStage,
+    });
     const count = result.count || 1;
     message(count === 1 ? "Файл загружен" : `Загружено файлов: ${count}`);
   });

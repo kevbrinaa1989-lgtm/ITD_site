@@ -29,6 +29,7 @@ export function createUploadIntents({
     adminId,
     projectId,
     clientId,
+    stageId = null,
     materialId = null,
     expectedVersionId = null,
     revision = null,
@@ -43,6 +44,7 @@ export function createUploadIntents({
       adminId,
       projectId,
       clientId,
+      stageId,
       materialId,
       expectedVersionId,
       revision,
@@ -52,6 +54,7 @@ export function createUploadIntents({
       uploadIntent: ticket,
       projectId,
       clientId,
+      stageId,
       expiresAt: new Date(expiresAt).toISOString(),
     };
   }
@@ -81,6 +84,7 @@ export function createUploadIntents({
     if (
       entry.projectId !== projectId ||
       entry.clientId !== clientId ||
+      entry.stageId !== (payload.stageId ?? null) ||
       entry.materialId !== (payload.materialId ?? null) ||
       entry.expectedVersionId !== (payload.expectedVersionId ?? null)
     )

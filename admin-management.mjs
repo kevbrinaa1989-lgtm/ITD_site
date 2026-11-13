@@ -1,5 +1,5 @@
 import { validateProfile } from "./profile.mjs";
-import { decorateReviewFiles } from "./material-review.mjs";
+import { projectFiles } from "./file-records.mjs";
 export const STAGE_TEMPLATES = [
   { key: "measurements", title: "Обмеры" },
   { key: "planning", title: "Планировочное решение" },
@@ -92,22 +92,7 @@ export function initAdminManagement({ db, now = Date.now }) {
         "SELECT id,title,status,description,startDate,plannedEndDate FROM stages WHERE projectId=? ORDER BY id",
         row.id,
       ),
-      files: decorateReviewFiles(db, all(
-        `SELECT f.id,f.name,f.contentType,f.category,f.stageId,f.size,
-          d.title AS docTitle,d.kind AS docKind,d.docNumber,d.docDate
-         FROM files f LEFT JOIN document_cards d ON d.fileId=f.id
-         WHERE f.projectId=? ORDER BY f.id`,
-        row.id,
-      ).map(({ docTitle, docKind, docNumber, docDate, ...file }) => ({
-        ...file,
-        ...(file.category === "document"
-          ? { document: {
-            title: docTitle || file.name.replace(/\.[^.]+$/, ""),
-            kind: docKind || "Документ",
-            number: docNumber || "",
-            date: docDate || "",
-          } } : {}),
-      }))),
+      files: projectFiles(db, row.id),
     };
   function history(where, args, clientId) {
     const events = all(

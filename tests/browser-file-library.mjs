@@ -6,7 +6,11 @@ import { randomBytes } from "node:crypto";
 import { createApp } from "../server.mjs";
 import { fixtures } from "./preview-fixtures.mjs";
 import { prepareFixtureUpload } from "./upload-fixture.mjs";
-import { openProject, dismissWelcome } from "./browser-navigation.mjs";
+import {
+  openProject,
+  dismissWelcome,
+  openFiles,
+} from "./browser-navigation.mjs";
 const { chromium } = await import(
   process.env.ITD_PLAYWRIGHT_MODULE || "playwright"
 );
@@ -167,7 +171,12 @@ try {
     },
   );
   // A general material without stage must be visible from the top project tab.
-  const unassignedPhoto = await upload("unassigned-reference.jpg", jpg[1], jpg[2], {});
+  const unassignedPhoto = await upload(
+    "unassigned-reference.jpg",
+    jpg[1],
+    jpg[2],
+    {},
+  );
   await upload("estimate.pdf", pdf[1], pdf[2], {
     category: "document",
     stageId: stages[1].id,
@@ -259,127 +268,238 @@ try {
       // including both documents and non-document materials.
       for (const tab of ["tab-overview", "tab-files", "tab-review"])
         assert.equal(await page.locator("#" + tab).isVisible(), true);
-      assert.equal(await page.locator('[data-library-category="all"]').getAttribute("aria-pressed"), "true");
-      assert.equal(await page.locator("#library-stage").inputValue(), "unassigned");
+      assert.equal(
+        await page
+          .locator('[data-library-category="all"]')
+          .getAttribute("aria-pressed"),
+        "true",
+      );
+      assert.equal(
+        await page.locator("#library-stage").inputValue(),
+        "unassigned",
+      );
       assert.equal(await page.locator("[data-library-key]").count(), 3);
-      assert.equal(await page.locator(`[data-file-id="${contract.id}"]`).count(), 1);
-      assert.equal(await page.locator(`[data-file-id="${unassignedPhoto.id}"]`).count(), 1);
-      assert.equal(await page.locator("#library-content").getByText("Смета отделочных материалов и оборудования").count(), 0);
-      assert.match(await page.locator("#library-count").textContent(), /Файлы без этапа · 3/);
+      assert.equal(
+        await page.locator(`[data-file-id="${contract.id}"]`).count(),
+        1,
+      );
+      assert.equal(
+        await page.locator(`[data-file-id="${unassignedPhoto.id}"]`).count(),
+        1,
+      );
+      assert.equal(
+        await page
+          .locator("#library-content")
+          .getByText("Смета отделочных материалов и оборудования")
+          .count(),
+        0,
+      );
+      assert.match(
+        await page.locator("#library-count").textContent(),
+        /Файлы без этапа · 3/,
+      );
       await shot("client-unassigned-files");
       // Clicking the stage-02 Documents shortcut must show ONLY stage-02
       // documents (not the contract, not another stage's photos).
       await page.locator("#tab-overview").click();
       await page.locator("#project-route .route-step").nth(1).click();
-      await page.locator("#project-route .route-links > .panel").nth(1).getByRole("button").click();
-      assert.equal(await page.locator('[data-library-category="document"]').getAttribute("aria-pressed"), "true");
-      assert.equal(await page.locator("#library-stage").inputValue(), String(stages[1].id));
+      await page
+        .locator("#project-route .route-links > .panel")
+        .nth(1)
+        .getByRole("button")
+        .click();
+      assert.equal(
+        await page
+          .locator('[data-library-category="document"]')
+          .getAttribute("aria-pressed"),
+        "true",
+      );
+      assert.equal(
+        await page.locator("#library-stage").inputValue(),
+        String(stages[1].id),
+      );
       assert.equal(await page.locator("[data-library-key]").count(), 1);
-      assert.equal(await page.locator("#library-content").getByText("Смета отделочных материалов и оборудования").count(), 1);
-      assert.equal(await page.locator(`[data-file-id="${contract.id}"]`).count(), 0);
+      assert.equal(
+        await page
+          .locator("#library-content")
+          .getByText("Смета отделочных материалов и оборудования")
+          .count(),
+        1,
+      );
+      assert.equal(
+        await page.locator(`[data-file-id="${contract.id}"]`).count(),
+        0,
+      );
       // Switching stages discards the previous stage-specific document filter.
       await page.locator("#tab-overview").click();
       await page.locator("#project-route .route-step").nth(0).click();
-      await page.locator("#project-route .route-links > .panel").nth(1).getByRole("button").click();
-      assert.equal(await page.locator("#library-stage").inputValue(), String(stages[0].id));
+      await page
+        .locator("#project-route .route-links > .panel")
+        .nth(1)
+        .getByRole("button")
+        .click();
+      assert.equal(
+        await page.locator("#library-stage").inputValue(),
+        String(stages[0].id),
+      );
       assert.equal(await page.locator("[data-library-key]").count(), 0);
       // "Альбом проекта" likewise scopes photographic materials to the stage.
       await page.locator("#tab-overview").click();
       await page.locator("#project-route .route-step").nth(3).click();
-      await page.locator("#project-route .route-links > .panel").nth(0).getByRole("button").click();
-      assert.equal(await page.locator("#library-stage").inputValue(), String(stages[3].id));
-      assert.equal(await page.locator('[data-library-category="result"]').getAttribute("aria-pressed"), "true");
+      await page
+        .locator("#project-route .route-links > .panel")
+        .nth(0)
+        .getByRole("button")
+        .click();
+      assert.equal(
+        await page.locator("#library-stage").inputValue(),
+        String(stages[3].id),
+      );
+      assert.equal(
+        await page
+          .locator('[data-library-category="result"]')
+          .getAttribute("aria-pressed"),
+        "true",
+      );
       assert.equal(await page.locator("[data-library-key]").count(), 3);
       // The global nav must not inherit the stage-04 filter.
       await page.locator("#tab-files").click();
-      assert.equal(await page.locator("#library-stage").inputValue(), "unassigned");
-      assert.equal(await page.locator('[data-library-category="all"]').getAttribute("aria-pressed"), "true");
-      assert.equal(await page.locator("[data-library-key]").count(), 3);
-      assert.equal(await page.locator(`[data-file-id="${unassignedPhoto.id}"]`).count(), 1);
-      // The full library remains accessible through its manual filters.
-      await page.locator("#library-stage").selectOption("");
-      await page.locator('[data-library-category="all"]').click();
-      if (await page.locator("#library-filters").evaluate((el) => el.open))
-        await page.locator("#library-filters summary").click();
-      assert.equal(await page.locator("[data-library-key]").count(), 9);
-      assert.equal(await page.locator("#library-upload").isVisible(), false);
-      assert.equal(await page.locator(`[data-file-id="${old.id}"]`).count(), 0);
       assert.equal(
-        await page.locator(`[data-file-id="${current.id}"]`).count(),
+        await page.locator("#library-stage").inputValue(),
+        "unassigned",
+      );
+      assert.equal(
+        await page
+          .locator('[data-library-category="all"]')
+          .getAttribute("aria-pressed"),
+        "true",
+      );
+      assert.equal(await page.locator("[data-library-key]").count(), 3);
+      assert.equal(
+        await page.locator(`[data-file-id="${unassignedPhoto.id}"]`).count(),
         1,
       );
+      // A scope is ownership, not a user-resettable stage filter.
+      assert.equal(await page.locator("#library-stage").isDisabled(), true);
+      assert.equal(await page.locator("#library-upload").isVisible(), false);
     }
     await shot("client-library");
     if (!before) {
-      await page.locator('[data-library-category="result"]').click();
-      await page.locator("#library-filters summary").click();
-      await page.locator("#library-stage").selectOption(String(stages[3].id));
+      await openFiles(page, "result", { stageIndex: 3 });
       assert.equal(await page.locator("[data-library-key]").count(), 3);
-      await page.locator("#library-filters summary").click();
       await shot("client-materials");
       // Three photographs of one stage open as a proper lightbox sequence.
       // They must never include the approved photo from the "Обмеры" stage.
-      await page.locator("#library-content .library-material .gallery-open").first().click();
+      await page
+        .locator("#library-content .library-material .gallery-open")
+        .first()
+        .click();
       const viewer = page.locator("dialog.file-viewer");
       await viewer.waitFor({ state: "visible" });
       async function readyPhoto(number, total) {
-        await page.waitForFunction(({ number, total }) =>
-          document.querySelector("dialog.file-viewer .viewer-status")?.textContent ===
-          `Изображение ${number} из ${total}`, { number, total });
+        await page.waitForFunction(
+          ({ number, total }) =>
+            document.querySelector("dialog.file-viewer .viewer-status")
+              ?.textContent === `Изображение ${number} из ${total}`,
+          { number, total },
+        );
       }
       await readyPhoto(1, 3);
       const firstPhoto = await viewer.locator(".viewer-toolbar h2").innerText();
       assert.match(firstPhoto, /render_\d/);
-      assert.equal(await viewer.locator(".viewer-side-arrow:not([hidden])").count(), 2);
-      assert.equal(await viewer.locator(".viewer-side-prev").isDisabled(), true);
+      assert.equal(
+        await viewer.locator(".viewer-side-arrow:not([hidden])").count(),
+        2,
+      );
+      assert.equal(
+        await viewer.locator(".viewer-side-prev").isDisabled(),
+        true,
+      );
       await viewer.getByRole("button", { name: "Следующее фото" }).click();
       await readyPhoto(2, 3);
-      assert.notEqual(await viewer.locator(".viewer-toolbar h2").innerText(), firstPhoto);
+      assert.notEqual(
+        await viewer.locator(".viewer-toolbar h2").innerText(),
+        firstPhoto,
+      );
       await page.keyboard.press("ArrowRight");
       await readyPhoto(3, 3);
-      assert.equal(await viewer.locator(".viewer-side-next").isDisabled(), true);
+      assert.equal(
+        await viewer.locator(".viewer-side-next").isDisabled(),
+        true,
+      );
       await page.keyboard.press("ArrowLeft");
       await readyPhoto(2, 3);
       if (width === 390) {
         await viewer.locator(".viewer-viewport").evaluate((host) => {
-          const start = new Touch({ identifier: 1, target: host, clientX: 280, clientY: 320 }),
-            end = new Touch({ identifier: 1, target: host, clientX: 130, clientY: 322 });
-          host.dispatchEvent(new TouchEvent("touchstart", {
-            bubbles: true, touches: [start], targetTouches: [start], changedTouches: [start],
-          }));
-          host.dispatchEvent(new TouchEvent("touchend", {
-            bubbles: true, touches: [], targetTouches: [], changedTouches: [end],
-          }));
+          const start = new Touch({
+              identifier: 1,
+              target: host,
+              clientX: 280,
+              clientY: 320,
+            }),
+            end = new Touch({
+              identifier: 1,
+              target: host,
+              clientX: 130,
+              clientY: 322,
+            });
+          host.dispatchEvent(
+            new TouchEvent("touchstart", {
+              bubbles: true,
+              touches: [start],
+              targetTouches: [start],
+              changedTouches: [start],
+            }),
+          );
+          host.dispatchEvent(
+            new TouchEvent("touchend", {
+              bubbles: true,
+              touches: [],
+              targetTouches: [],
+              changedTouches: [end],
+            }),
+          );
         });
         await readyPhoto(3, 3);
       }
       await shot("stage-photo-gallery");
-      await viewer.getByRole("button", { name: "Закрыть", exact: true }).click();
+      await viewer
+        .getByRole("button", { name: "Закрыть", exact: true })
+        .click();
       assert.equal(await viewer.isVisible(), false);
       // A reviewed image still opens fullscreen, while its separate review
       // action remains visible. A single-photo stage cannot leave its stage.
-      await page.locator("#library-filters summary").click();
-      await page.locator("#library-stage").selectOption(String(stages[0].id));
-      await page.locator("#library-filters summary").click();
-      await page.locator("#library-content .library-material .gallery-open").click();
+      await openFiles(page, "result", { stageIndex: 0 });
+      await page
+        .locator("#library-content .library-material .gallery-open")
+        .click();
       await readyPhoto(1, 1);
-      assert.equal(await viewer.locator(".viewer-side-arrow:not([hidden])").count(), 0);
-      assert.equal(await viewer.getByRole("button", { name: "Следующий →" }).isDisabled(), true);
-      await viewer.getByRole("button", { name: "Закрыть", exact: true }).click();
       assert.equal(
-        await page.locator("#library-content .library-history").filter({ hasText: "Комментарии и согласование" }).count(),
+        await viewer.locator(".viewer-side-arrow:not([hidden])").count(),
+        0,
+      );
+      assert.equal(
+        await viewer.getByRole("button", { name: "Следующий →" }).isDisabled(),
+        true,
+      );
+      await viewer
+        .getByRole("button", { name: "Закрыть", exact: true })
+        .click();
+      assert.equal(
+        await page
+          .locator("#library-content .library-history")
+          .filter({ hasText: "Комментарии и согласование" })
+          .count(),
         1,
       );
-      await page.locator("#library-filters summary").click();
-      await page.locator("#library-stage").selectOption("");
-      await page.locator("#library-filters summary").click();
+      await openFiles(page, "document");
     }
     await page
       .locator(before ? "#tab-documents" : '[data-library-category="document"]')
       .click();
     await shot("client-documents");
     if (!before) {
-      assert.equal(await page.locator("[data-library-key]").count(), 3);
+      assert.equal(await page.locator("[data-library-key]").count(), 2);
       await page.locator("#library-search").fill("Д-024");
       assert.equal(await page.locator("[data-library-key]").count(), 1);
       await page.locator(".library-document-open").click();
@@ -397,7 +517,7 @@ try {
       await page.locator(".file-viewer .viewer-toolbar button").click();
       await page.locator("#library-document-close").click();
       await page.locator("#library-search").fill("");
-      await page.locator('[data-library-category="all"]').click();
+      await openFiles(page, "all", { stageIndex: 1 });
       await page.locator("#library-search").fill("ARCHIVE_PLAN_V1");
       assert.equal(await page.locator("[data-library-key]").count(), 1);
       await page.locator(".library-material .gallery-open").click();
@@ -415,12 +535,12 @@ try {
       );
       await page.locator("#library-search").fill("");
       await page.locator("#library-filters summary").click();
-      await page.locator("#library-stage").selectOption(String(stages[1].id));
+
       assert.equal(await page.locator("[data-library-key]").count(), 2);
       await page.locator("#library-type").selectOption("kind:Смета");
       assert.equal(await page.locator("[data-library-key]").count(), 1);
       await page.locator("#library-type").selectOption("");
-      await page.locator("#library-stage").selectOption("");
+
       await page.locator('[data-library-category="document"]').click();
       await page.locator("#library-sort").selectOption("document-date");
       assert.equal(

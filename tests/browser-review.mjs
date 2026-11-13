@@ -256,7 +256,7 @@ try {
       false,
     );
     await client.locator("#tab-overview").click();
-    await openFiles(client, "result");
+    await openFiles(client, "result", { stageIndex: 0 });
     for (const card of await client
       .locator("#library-content .gallery-card")
       .all()) {

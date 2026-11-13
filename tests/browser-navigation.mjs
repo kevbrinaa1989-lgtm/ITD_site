@@ -63,13 +63,19 @@ export async function closeUpload(page) {
 export async function openFiles(
   page,
   category = "all",
-  { album = false } = {},
+  { album = false, stageIndex = null } = {},
 ) {
   await closeUpload(page);
-  await page.locator("#tab-files").click();
-  // This test helper deliberately opens the entire library: unlike the
-  // user-facing top tab (unassigned documents), tests using it check every stage.
-  await page.locator("#library-stage").selectOption("");
+  if (stageIndex === null) await page.locator("#tab-files").click();
+  else {
+    await page.locator("#tab-overview").click();
+    await page.locator("#project-route .route-step").nth(stageIndex).click();
+    await page
+      .locator("#project-route .route-links > .panel")
+      .nth(category === "document" ? 1 : 0)
+      .getByRole("button")
+      .click();
+  }
   await page.locator(`[data-library-category="${category}"]`).click();
   if (album) await page.locator("#library-album-toggle").click();
 }

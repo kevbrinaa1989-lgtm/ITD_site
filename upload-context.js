@@ -137,6 +137,7 @@
         `/api/projects/${context.projectId}/upload-intents`,
         "POST",
         {
+          stageId: context.stageId ?? null,
           ...(context.materialId
             ? {
                 materialId: context.materialId,
@@ -148,7 +149,8 @@
       if (record.draft !== draft || h.getUser() !== draft.user) return;
       if (
         result.projectId !== context.projectId ||
-        result.clientId !== context.clientId
+        result.clientId !== context.clientId ||
+        result.stageId !== (context.stageId ?? null)
       )
         throw new Error(
           "Получатель проекта изменился. Выберите файлы заново после проверки клиента.",
@@ -228,6 +230,7 @@
       draft.user !== h.getUser() ||
       !same(draft.context, contextOf(h.getProject())) ||
       !same(draft.context, record.context()) ||
+      (draft.context.stageId ?? null) !== (record.context()?.stageId ?? null) ||
       record.input.files.length !== draft.items.length ||
       draft.items.some((item, index) => record.input.files[index] !== item.file)
     )
@@ -241,6 +244,10 @@
     if (!draft) throw new Error("Выберите файлы для текущего проекта.");
     if (record.busy) return null;
     check(record, draft);
+    if ((extra.stageId ?? null) !== (draft.context.stageId ?? null))
+      throw new Error(
+        "Этап загрузки изменился. Выберите файлы заново в нужном разделе.",
+      );
     record.busy = true;
     const controls = [
       ...form.querySelectorAll("button,input,select,textarea"),
@@ -403,6 +410,10 @@
     allowSwitch,
     reconcile,
     reset,
+    discard: (form) => {
+      const record = records.get(form);
+      if (record && !record.busy) clear(record);
+    },
     contextOf,
   };
 })();

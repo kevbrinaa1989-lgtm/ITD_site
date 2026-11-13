@@ -584,10 +584,18 @@
                 tabindex="0"
                 hidden
               >
+                <button
+                  id="library-back"
+                  type="button"
+                  class="text-button"
+                  hidden
+                >
+                  ← К выбранному этапу
+                </button>
                 <div class="library-heading">
                   <div>
                     <p class="eyebrow">Библиотека проекта</p>
-                    <h2>Файлы проекта</h2>
+                    <h2 id="library-title">Файлы проекта</h2>
                     <p id="library-count" class="muted"></p>
                   </div>
                   <button id="library-upload" type="button" class="primary">
@@ -675,11 +683,14 @@
                 >
                   <p class="muted">Выберите проект.</p>
                 </section>
-                <details id="settings-stage-management" class="panel settings-stage-management">
+                <details
+                  id="settings-stage-management"
+                  class="panel settings-stage-management"
+                >
                   <summary>Управление статусами и сроками</summary>
                   <p class="muted">
-                    Редактирование рабочего плана доступно только студии.
-                    Для просмотра этапа используйте горизонтальную ленту в обзоре.
+                    Редактирование рабочего плана доступно только студии. Для
+                    просмотра этапа используйте горизонтальную ленту в обзоре.
                   </p>
                   <div id="stage-list" class="settings-stage-list"></div>
                 </details>
@@ -1302,6 +1313,27 @@
         </p></noscript
       >
     </main>
+    <dialog
+      id="library-edit-dialog"
+      class="library-dialog"
+      aria-labelledby="library-edit-title"
+    >
+      <button
+        id="library-edit-close"
+        class="library-dialog-close"
+        type="button"
+      >
+        Закрыть ×
+      </button>
+      <h2 id="library-edit-title">Название и расположение</h2>
+      <p id="library-edit-note" class="muted"></p>
+      <form id="library-edit-form" class="library-edit-form">
+        <label>Название<input name="title" maxlength="160" required /></label>
+        <label>Расположение<select name="stageId"></select></label>
+        <p id="library-edit-error" role="alert"></p>
+        <button type="submit" class="primary">Сохранить</button>
+      </form>
+    </dialog>
     <dialog
       id="library-document-dialog"
       class="library-dialog"

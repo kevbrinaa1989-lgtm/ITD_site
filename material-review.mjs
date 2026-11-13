@@ -1,9 +1,9 @@
 const iso = (value) => (value == null ? null : new Date(value).toISOString());
 export function decorateReviewFiles(db, files) {
   const query =
-    db.prepare(`SELECT v.materialId,v.id AS versionId,v.versionNumber,v.status,v.revision,
+    db.prepare(`SELECT v.materialId,m.title,v.id AS versionId,v.versionNumber,v.status,v.revision,
     NOT EXISTS(SELECT 1 FROM review_versions n WHERE n.materialId=v.materialId AND n.versionNumber>v.versionNumber) AS isCurrent
-    FROM review_versions v WHERE v.fileId=?`);
+    FROM review_versions v JOIN review_materials m ON m.id=v.materialId WHERE v.fileId=?`);
   return files.map((file) => {
     const review = query.get(file.id);
     return review
@@ -196,6 +196,7 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
     return id;
   }
   function deriveStage(stageId) {
+    if (stageId == null) return;
     const statuses = all(
       `SELECT v.status FROM review_versions v JOIN review_materials m ON m.id=v.materialId WHERE m.stageId=? AND NOT EXISTS(SELECT 1 FROM review_versions n WHERE n.materialId=v.materialId AND n.versionNumber>v.versionNumber)`,
       stageId,
@@ -243,12 +244,12 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
     access(projectId, user, fail);
     if (
       b.category !== "result" ||
-      !Number.isSafeInteger(b.stageId) ||
+      (b.stageId != null && (!Number.isSafeInteger(b.stageId) ||
       !get(
         "SELECT id FROM stages WHERE id=? AND projectId=?",
         b.stageId,
         projectId,
-      )
+      )))
     )
       fail(400, "Для согласования выберите результат и этап проекта");
     if ("materialId" in b || "expectedVersionId" in b) {
@@ -258,7 +259,7 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
       )
         fail(400, "Укажите материал и текущую версию");
       const m = materialRow(b.materialId, fail);
-      if (m.projectId !== projectId || m.stageId !== b.stageId)
+      if (m.projectId !== projectId || m.stageId !== (b.stageId ?? null))
         fail(400, "Материал относится к другому проекту или этапу");
       const current = latest(m.id);
       if (current.id !== b.expectedVersionId)
@@ -274,7 +275,7 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
     if (
       !file ||
       file.projectId !== projectId ||
-      file.stageId !== b.stageId ||
+      file.stageId !== (b.stageId ?? null) ||
       file.category !== "result"
     )
       fail(400, "Файл не соответствует материалу");
@@ -287,7 +288,7 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
         run(
           "INSERT INTO review_materials(projectId,stageId,title,createdAt) VALUES(?,?,?,?)",
           projectId,
-          b.stageId,
+          b.stageId ?? null,
           file.name,
           now(),
         ).lastInsertRowid,
