@@ -201,6 +201,7 @@ try {
   for (const width of [360, 390, 768, 1024, 1440]) {
     const context = await browser.newContext({
         viewport: { width, height: width < 768 ? 844 : 1000 },
+        hasTouch: width < 768,
       }),
       page = await context.newPage(),
       errors = [],
@@ -268,6 +269,59 @@ try {
       assert.equal(await page.locator("[data-library-key]").count(), 3);
       await page.locator("#library-filters summary").click();
       await shot("client-materials");
+      // Three photographs of one stage open as a proper lightbox sequence.
+      // They must never include the approved photo from the "Обмеры" stage.
+      await page.locator("#library-content .library-material .gallery-open").first().click();
+      const viewer = page.locator("dialog.file-viewer");
+      await viewer.waitFor({ state: "visible" });
+      async function readyPhoto(number, total) {
+        await page.waitForFunction(({ number, total }) =>
+          document.querySelector("dialog.file-viewer .viewer-status")?.textContent ===
+          `Изображение ${number} из ${total}`, { number, total });
+      }
+      await readyPhoto(1, 3);
+      const firstPhoto = await viewer.locator(".viewer-toolbar h2").innerText();
+      assert.match(firstPhoto, /render_\d/);
+      assert.equal(await viewer.locator(".viewer-side-arrow:not([hidden])").count(), 2);
+      assert.equal(await viewer.locator(".viewer-side-prev").isDisabled(), true);
+      await viewer.getByRole("button", { name: "Следующее фото" }).click();
+      await readyPhoto(2, 3);
+      assert.notEqual(await viewer.locator(".viewer-toolbar h2").innerText(), firstPhoto);
+      await page.keyboard.press("ArrowRight");
+      await readyPhoto(3, 3);
+      assert.equal(await viewer.locator(".viewer-side-next").isDisabled(), true);
+      await page.keyboard.press("ArrowLeft");
+      await readyPhoto(2, 3);
+      if (width === 390) {
+        await viewer.locator(".viewer-viewport").evaluate((host) => {
+          const start = new Touch({ identifier: 1, target: host, clientX: 280, clientY: 320 }),
+            end = new Touch({ identifier: 1, target: host, clientX: 130, clientY: 322 });
+          host.dispatchEvent(new TouchEvent("touchstart", {
+            bubbles: true, touches: [start], targetTouches: [start], changedTouches: [start],
+          }));
+          host.dispatchEvent(new TouchEvent("touchend", {
+            bubbles: true, touches: [], targetTouches: [], changedTouches: [end],
+          }));
+        });
+        await readyPhoto(3, 3);
+      }
+      await shot("stage-photo-gallery");
+      await viewer.getByRole("button", { name: "Закрыть", exact: true }).click();
+      assert.equal(await viewer.isVisible(), false);
+      // A reviewed image still opens fullscreen, while its separate review
+      // action remains visible. A single-photo stage cannot leave its stage.
+      await page.locator("#library-filters summary").click();
+      await page.locator("#library-stage").selectOption(String(stages[0].id));
+      await page.locator("#library-filters summary").click();
+      await page.locator("#library-content .library-material .gallery-open").click();
+      await readyPhoto(1, 1);
+      assert.equal(await viewer.locator(".viewer-side-arrow:not([hidden])").count(), 0);
+      assert.equal(await viewer.getByRole("button", { name: "Следующий →" }).isDisabled(), true);
+      await viewer.getByRole("button", { name: "Закрыть", exact: true }).click();
+      assert.equal(
+        await page.locator("#library-content .library-history").filter({ hasText: "Комментарии и согласование" }).count(),
+        1,
+      );
       await page.locator("#library-filters summary").click();
       await page.locator("#library-stage").selectOption("");
       await page.locator("#library-filters summary").click();
