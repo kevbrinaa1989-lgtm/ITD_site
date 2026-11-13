@@ -262,7 +262,13 @@
     $("project-gallery").hidden = true;
     if (materials.length) {
       const section = node("section", undefined, "library-materials");
-      section.append(node("h3", "Материалы проекта", "library-section-title"));
+      section.append(
+        node(
+          "h3",
+          "Материалы проекта",
+          `library-section-title${s.category === "result" ? " sr-only" : ""}`,
+        ),
+      );
       const stages = [...project.stages.map((s) => s.id), null];
       for (const id of stages) {
         const group = materials.filter((e) => (e.stage?.id ?? null) === id);
@@ -281,7 +287,11 @@
     if (documents.length) {
       const section = node("section", undefined, "library-documents");
       section.append(
-        node("h3", "Документы", "library-section-title"),
+        node(
+          "h3",
+          "Документы",
+          `library-section-title${s.category === "document" ? " sr-only" : ""}`,
+        ),
         ...documents.map(documentRow),
       );
       list.append(section);

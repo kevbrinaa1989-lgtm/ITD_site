@@ -557,8 +557,11 @@ body[data-section="files"] #project-heading .project-actions {
   #app-view .library-heading {
     align-items: flex-start;
     gap: 16px;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
     flex-wrap: wrap;
+  }
+  #app-view .library-heading .eyebrow {
+    display: none;
   }
   #app-view .library-heading h2 {
     font-size: 27px;
@@ -735,10 +738,13 @@ body[data-section="files"] #project-navigation {
 }
 @media (max-width: 767px) {
   body[data-section="files"] #project-navigation {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
   #app-view .library-results-count {
-    margin-bottom: 20px;
+    margin-bottom: 8px;
+  }
+  #app-view .library-stage-heading {
+    margin-top: 12px;
   }
 }
 
