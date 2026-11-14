@@ -255,9 +255,16 @@
     host.append(node("h2", "Последние события", "route-events-title"));
     const events = node("div", undefined, "client-events");
     const labels = {
+      package_published: "Студия направила пакет материалов",
       submitted: "Новый материал на согласование",
       version_uploaded: "Новая версия материала",
       admin_reply: "Ответ студии",
+      corrections_ready: "Исправления готовы к проверке",
+      annotation_reply: "Ответ на замечание",
+      annotation_fixed: "Дизайнер отметил исправление",
+      annotation_confirmed: "Исправление подтверждено",
+      annotation_reopened: "Повторная доработка",
+      stage_approved: "Этап согласован",
       approval_cancelled: "Согласование отменено",
     };
     for (const event of notifications.slice(0, 5)) {

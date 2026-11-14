@@ -257,72 +257,97 @@ try {
     await page.locator(".album-prev").click();
     await capture("gallery");
     await page.locator("#tab-review").click();
+    if (width < 768)
+      await page
+        .locator(".ac-mobile-tools")
+        .getByRole("button", { name: "Материалы", exact: true })
+        .click();
     await page
       .locator(
-        `#review-material-list [data-material-id="${old.review.materialId}"] .review-open-button`,
+        `.ac-material[data-material-id="${old.review.materialId}"] .ac-material-open`,
       )
       .click();
-    await page.waitForFunction(
-      () =>
-        document.querySelector(".material-preview")?.dataset.loaded === "true",
-    );
-    assert.equal(
-      await page.locator(".review-actual-file").textContent(),
-      photo[0],
+    await page.getByText("Изображение загружено", { exact: true }).waitFor();
+    assert.ok(
+      (await page.locator(".ac-view-heading p").textContent()).includes(
+        photo[0],
+      ),
     );
     await capture("approval");
-    if (width < 768) {
-      const box = await page.locator(".review-decision-actions").boundingBox();
-      assert.ok(
-        box.y + box.height <= 844 + 1 && box.y > 600,
-        "fixed decisions in viewport",
-      );
-      assert.equal(await page.locator("#mobile-bottom-nav").isVisible(), false);
-      await page
-        .getByRole("button", { name: "Комментарии к версии", exact: true })
-        .click();
-    }
-    // An unsent draft belongs to its version and survives switching and network conflicts.
+    const notes = async () => {
+      if (width < 768)
+        await page
+          .locator(".ac-mobile-tools")
+          .getByRole("button", { name: "Замечания и решение", exact: true })
+          .click();
+    };
+    const view = async () => {
+      if (width < 768)
+        await page
+          .locator(".ac-mobile-tools")
+          .getByRole("button", { name: "Просмотр", exact: true })
+          .click();
+    };
+    await notes();
+    const draftText = "Черновик: уточнить оттенок " + width;
+    const failDraft = "**/api/approval-center/projects/*/stages/*/draft";
+    await page.route(failDraft, (r) =>
+      r.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Временно недоступно" }),
+      }),
+    );
     await page
-      .locator("#review-comment-form textarea")
-      .fill("Черновик: уточнить оттенок " + width);
-    await capture("discussion", false);
-    if (width < 768)
-      await page
-        .locator(".review-sheet")
-        .getByRole("button", { name: "Закрыть", exact: true })
-        .click();
+      .getByLabel("Пояснение дизайнеру", { exact: true })
+      .fill(draftText);
     await page
-      .locator("#review-version-select")
+      .getByRole("button", { name: "Сохранить сейчас", exact: true })
+      .click();
+    await page
+      .getByText("Не сохранено — повторите сохранение", { exact: true })
+      .waitFor();
+    assert.equal(
+      await page
+        .getByLabel("Пояснение дизайнеру", { exact: true })
+        .inputValue(),
+      draftText,
+    );
+    await page.unroute(failDraft);
+    await page
+      .getByRole("button", { name: "Сохранить сейчас", exact: true })
+      .click();
+    await page
+      .getByText("Черновик сохранён на сервере", { exact: true })
+      .waitFor();
+    await view();
+    await page
+      .getByLabel("Версия", { exact: true })
       .selectOption(String(old.review.versionId));
-    await page.locator(".review-warning").waitFor();
-    assert.equal(
-      await page
-        .getByRole("button", { name: "Согласовать", exact: true })
-        .count(),
-      0,
-    );
-    await page.waitForFunction(
-      () => document.querySelector(".material-preview canvas")?.width > 0,
-    );
-    assert.equal(
-      await page.locator(".review-actual-file").textContent(),
-      "Гостиная-v1.pdf",
-    );
+    await page.locator(".ac-sheet canvas").waitFor();
+    await notes();
+    await page
+      .getByText(
+        "Историческая версия — только просмотр. Решение по ней сохранено.",
+        { exact: true },
+      )
+      .waitFor();
+    assert.equal(await page.locator(".ac-decisions").count(), 0);
     await capture("history-pdf");
     await page
-      .getByRole("button", { name: "Открыть текущую версию", exact: true })
+      .getByRole("button", { name: "К текущей версии", exact: true })
       .click();
-    await page.locator(".review-decision-actions").waitFor();
-    if (width < 768)
-      await page
-        .getByRole("button", { name: "Комментарии к версии", exact: true })
-        .click();
+    await notes();
     assert.equal(
-      await page.locator("#review-comment-form textarea").inputValue(),
-      "Черновик: уточнить оттенок " + width,
+      await page
+        .getByLabel("Пояснение дизайнеру", { exact: true })
+        .inputValue(),
+      draftText,
     );
     const failRoute = `**/api/material-versions/${current.review.versionId}/comments`;
+    await page
+      .getByLabel("Комментарий к версии", { exact: true })
+      .fill(draftText);
     await page.route(failRoute, (r) =>
       r.fulfill({
         status: 503,
@@ -330,131 +355,61 @@ try {
         body: JSON.stringify({ error: "Временно недоступно" }),
       }),
     );
-    await page.locator("#review-comment-form button[type=submit]").click();
-    await page.waitForFunction(
-      () => !document.querySelector("#review-comment-form button").disabled,
-    );
+    await page
+      .getByRole("button", {
+        name: "Отправить комментарий сейчас",
+        exact: true,
+      })
+      .click();
+    await page
+      .locator(".ac-notice")
+      .filter({ hasText: "Временно недоступно" })
+      .waitFor();
     assert.equal(
-      await page.locator("#review-comment-form textarea").inputValue(),
-      "Черновик: уточнить оттенок " + width,
+      await page
+        .getByLabel("Комментарий к версии", { exact: true })
+        .inputValue(),
+      draftText,
     );
     await page.unroute(failRoute);
-    const saved = page.waitForResponse(
-      (r) =>
-        r
-          .url()
-          .endsWith(
-            `/api/material-versions/${current.review.versionId}/comments`,
-          ) && r.status() === 200,
-    );
-    await page.locator("#review-comment-form button[type=submit]").click();
-    await saved;
-    await page.waitForFunction(
-      () =>
-        document.querySelector("#review-message").textContent ===
-        "Изменения сохранены.",
-    );
+    await page
+      .getByRole("button", {
+        name: "Отправить комментарий сейчас",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByText("Комментарий отправлен и сохранён в истории", { exact: true })
+      .waitFor();
     assert.ok(
       (await api(`/api/materials/${old.review.materialId}`)).events.some(
-        (e) => e.body === "Черновик: уточнить оттенок " + width,
+        (e) => e.body === draftText,
       ),
     );
-    if (width < 768)
-      await page
-        .getByRole("button", { name: "Комментарии к версии", exact: true })
-        .click();
     assert.equal(
-      await page.locator("#review-comment-form textarea").inputValue(),
+      await page
+        .getByLabel("Комментарий к версии", { exact: true })
+        .inputValue(),
       "",
     );
-    if (width < 768)
-      await page
-        .locator(".review-sheet")
-        .getByRole("button", { name: "Закрыть", exact: true })
-        .click();
-    await page.locator(".material-preview-expand").click();
-    await page.waitForFunction(
-      () => document.querySelector(".viewer-content img")?.naturalWidth > 0,
-    );
-    await page.getByRole("button", { name: "Увеличить", exact: true }).click();
-    assert.match(
-      await page
-        .getByRole("button", { name: /Сбросить масштаб/ })
-        .textContent(),
-      /125%/,
-    );
-    await page.getByRole("button", { name: /Сбросить масштаб/ }).click();
-    await page.locator(".viewer-viewport").evaluate((viewport) => {
-      const rect = viewport.getBoundingClientRect();
-      const touch = (id, x) =>
-        new Touch({
-          identifier: id,
-          target: viewport,
-          clientX: rect.x + x,
-          clientY: rect.y + 100,
-        });
-      const start = [touch(1, 80), touch(2, 160)],
-        move = [touch(1, 40), touch(2, 200)];
-      viewport.dispatchEvent(
-        new TouchEvent("touchstart", {
-          touches: start,
-          changedTouches: start,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
-      viewport.dispatchEvent(
-        new TouchEvent("touchmove", {
-          touches: move,
-          changedTouches: move,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
-      viewport.dispatchEvent(
-        new TouchEvent("touchend", {
-          touches: [],
-          changedTouches: move,
-          bubbles: true,
-        }),
-      );
-    });
-    assert.match(
-      await page
-        .getByRole("button", { name: /Сбросить масштаб/ })
-        .textContent(),
-      /200%/,
-    );
-    await page.getByRole("button", { name: /Сбросить масштаб/ }).click();
-    await capture("viewer", false);
-    await page
-      .getByRole("button", { name: "Комментарий к версии", exact: true })
-      .click();
-    await page
-      .locator("#review-comment-form textarea")
-      .waitFor({ state: "visible" });
-    if (width < 768)
-      await page
-        .locator(".review-sheet")
-        .getByRole("button", { name: "Закрыть", exact: true })
-        .click();
-    // Reload proves the thread is persisted, not just optimistic DOM state.
+    page.on("dialog", (d) => d.accept());
     await page.reload();
-    await page.locator("#app-view").waitFor({ state: "visible" });
     await openProject(page, project.id, { client: true });
     await page.locator("#tab-review").click();
-    await page
-      .locator(
-        `#review-material-list [data-material-id="${old.review.materialId}"] .review-open-button`,
-      )
-      .click();
-    if (width < 768)
+    await page.locator(".ac-view-heading").waitFor();
+    await notes();
+    assert.equal(
       await page
-        .getByRole("button", { name: "Комментарии к версии", exact: true })
-        .click();
+        .getByLabel("Пояснение дизайнеру", { exact: true })
+        .inputValue(),
+      draftText,
+    );
     await page
-      .locator(".review-comment-body")
-      .getByText("Черновик: уточнить оттенок " + width, { exact: true })
+      .getByText("Комментарии и история решений", { exact: true })
+      .click();
+    await page
+      .locator(".ac-rail")
+      .getByText(draftText, { exact: false })
       .waitFor();
     assert.deepEqual(errors, []);
     assert.deepEqual(external, []);

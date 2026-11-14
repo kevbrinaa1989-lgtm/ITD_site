@@ -120,8 +120,12 @@ export async function ownershipFixture() {
         await app.close();
         await start();
       },
+      async stop() {
+        await app?.close();
+        app = null;
+      },
       async close() {
-        await app.close();
+        await app?.close();
         await rm(root, { recursive: true, force: true });
       },
     };

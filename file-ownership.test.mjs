@@ -1,3 +1,4 @@
+import { confirmFixtureReview } from "./tests/approval-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -214,6 +215,10 @@ test("a review material moves as one group with unchanged decisions/comments/his
     materialId: first.review.materialId,
     expectedVersionId: first.review.versionId,
   });
+  await confirmFixtureReview(
+    (path, body) => f.api(path, body, f.clients[0].cookie, "POST"),
+    current.review.versionId,
+  );
   await f.api(
     `/api/material-versions/${current.review.versionId}/decision`,
     { decision: "approved", confirm: true, expectedRevision: 0 },
