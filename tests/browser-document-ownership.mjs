@@ -332,32 +332,43 @@ try {
         await scope(null, "result");
         await visible([reviewFile.id]);
         await row(reviewFile.id).locator(".library-history").click();
-        await page.locator("#review-version-select").waitFor();
-        assert.match(
+        await page
+          .locator('.ac-view-heading select[aria-label="Версия"]')
+          .waitFor();
+        assert.equal(
           await page
-            .locator("#review-material-detail .review-context")
-            .textContent(),
-          /Файлы проекта/,
+            .locator('.ac-head-tools select[aria-label="Этап"]')
+            .inputValue(),
+          "0",
         );
-        assert.match(
-          await page.locator("#review-material-detail").textContent(),
-          /История до переноса/,
+        await page.waitForFunction(() =>
+          document
+            .querySelector(".ac-rail")
+            ?.textContent.includes("История до переноса"),
         );
-        const versionForm = page.locator("#review-version-upload");
-        await versionForm.locator("..").locator("summary").click();
+        await page
+          .getByRole("button", {
+            name: "Загрузить исправленную версию",
+            exact: true,
+          })
+          .click();
+        const versionForm = page.getByRole("dialog").locator("form");
         await versionForm
-          .locator("input[type=file]")
-          .setInputFiles({
-            name: "review-new.jpg",
-            mimeType: jpg[1],
-            buffer: jpg[2],
-          });
+          .getByLabel("Что изменено", { exact: true })
+          .fill("Новая версия после переноса в файлы проекта");
+        await versionForm.locator("input[type=file]").setInputFiles({
+          name: "review-new.jpg",
+          mimeType: jpg[1],
+          buffer: jpg[2],
+        });
         const uploaded = page.waitForResponse(
           (r) =>
             r.url().endsWith(`/api/projects/${a.id}/files`) &&
             r.request().method() === "POST",
         );
-        await versionForm.locator("button[type=submit]").click();
+        await versionForm
+          .getByRole("button", { name: "Отправить новую версию", exact: true })
+          .click();
         const response = await uploaded;
         assert.equal(response.status(), 201);
         const newVersion = await response.json();

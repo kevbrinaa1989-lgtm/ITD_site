@@ -25,6 +25,17 @@
     admin_reply: "Ответ студии",
     approval_cancelled: "Согласование отменено",
     first_viewed: "Материал впервые просмотрен клиентом",
+    package_published: "Студия направила пакет материалов",
+    package_submitted: "Клиент отправил пакет решений",
+    corrections_ready: "Исправления готовы к проверке",
+    annotation: "Замечание к материалу",
+    annotation_reply: "Ответ на замечание",
+    annotation_fixed: "Дизайнер отметил исправление",
+    annotation_confirmed: "Клиент подтвердил исправление",
+    annotation_reopened: "Клиент запросил повторную доработку",
+    annotation_open: "Замечание оставлено открытым",
+    metadata_changed: "Свойства материала изменены",
+    stage_approved: "Клиент отдельно согласовал этап",
   };
   const date = (value) =>
     value ? new Date(value).toLocaleString("ru-RU") : "Не указана";
@@ -66,6 +77,7 @@
     return n;
   }
   function reset() {
+    window.ITDApprovalCenter?.reset();
     returnToLibrary = null;
     document.body.classList.remove("review-from-library");
     closeSheet();
@@ -163,6 +175,8 @@
     dialog.showModal();
   }
   function openDiscussion() {
+    if (window.ITDApprovalCenter)
+      return window.ITDApprovalCenter.openDiscussion();
     showSheet(
       $("review-comment-form")?.closest(".review-comments-pane"),
       "Обсуждение версии",
@@ -301,6 +315,7 @@
     }
   }
   function setProject(next) {
+    window.ITDApprovalCenter?.setProject(next);
     if (project?.id !== next?.id) {
       returnToLibrary = null;
       closeDetail();
@@ -324,6 +339,8 @@
     if (project) loadList();
   }
   async function open(id, requestedVersion, back) {
+    if (window.ITDApprovalCenter)
+      return window.ITDApprovalCenter.open(id, requestedVersion, back);
     if (back) returnToLibrary = back;
     document.body.classList.toggle("review-from-library", !!returnToLibrary);
     if (!project) return false;
@@ -820,10 +837,13 @@
             !opened ||
             h.getUser() !== requestUser ||
             project?.id !== n.projectId ||
-            selection !== n.materialId ||
-            versionId !== n.versionId
+            (!window.ITDApprovalCenter &&
+              (selection !== n.materialId || versionId !== n.versionId))
           )
             return;
+          const packageMatch = n.body?.match(/^Ведомость №(\d+)/);
+          if (packageMatch && window.ITDApprovalCenter)
+            await window.ITDApprovalCenter.showPackage(Number(packageMatch[1]));
           await h.api(`/api/notifications/${n.id}/read`, "POST", {});
           if (h.getUser() === requestUser) await loadNotifications();
         }),
@@ -878,6 +898,7 @@
   }
   function init(hooks) {
     h = hooks;
+    window.ITDApprovalCenter?.init(hooks);
     $("review-search").addEventListener("input", renderList);
     $("review-filter").addEventListener("change", renderList);
     $("notifications-refresh").addEventListener("click", loadNotifications);
@@ -887,6 +908,7 @@
     });
   }
   function onTab(tab) {
+    window.ITDApprovalCenter?.onTab(tab).catch((e) => notice(e.message));
     if (tab !== "review") {
       returnToLibrary = null;
       document.body.classList.remove("review-from-library");

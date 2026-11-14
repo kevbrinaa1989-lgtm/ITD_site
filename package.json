@@ -14,5 +14,9 @@
   },
   "engines": {
     "node": ">=24.13.0 <25"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "pdfkit": "^0.17.2"
   }
 }

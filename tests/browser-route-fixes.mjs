@@ -1,3 +1,4 @@
+import { confirmFixtureReview } from "./approval-fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -96,12 +97,28 @@ try {
     review: true,
   });
   const detail = await api(`/api/materials/${file.review.materialId}`);
+  await confirmFixtureReview(
+    (path, body) => api(path, body, "POST", clientCookie),
+    file.review.versionId,
+  );
   await api(
     `/api/material-versions/${file.review.versionId}/decision`,
     {
       decision: "approved",
       confirm: true,
       expectedRevision: detail.material.currentVersion.revision,
+    },
+    "POST",
+    clientCookie,
+  );
+  const approvalRoute = `/api/approval-center/projects/${project.id}/stages/${stages[0].id}`;
+  const stageState = await api(approvalRoute, null, "GET", clientCookie);
+  await api(
+    approvalRoute + "/approve-stage",
+    {
+      operationId: "route-fixture-stage",
+      token: stageState.stage.token,
+      confirm: true,
     },
     "POST",
     clientCookie,
@@ -200,13 +217,19 @@ try {
       await page.goto(base + "/cabinet");
       await page.evaluate((id) => {
         localStorage.setItem("itd-client-tour-v2:" + id, "done");
-        localStorage.setItem("itd-client-tour-v3:" + id + ":old-account-created-at", "done");
+        localStorage.setItem(
+          "itd-client-tour-v3:" + id + ":old-account-created-at",
+          "done",
+        );
       }, user.id);
     }
     await signIn("client@example.test");
     if (!before) {
       await page.locator("#itd-tour-layer").waitFor({ state: "visible" });
-      assert.match(await page.locator("#itd-tour-layer h2").textContent(), /Добро пожаловать, Заказчик/);
+      assert.match(
+        await page.locator("#itd-tour-layer h2").textContent(),
+        /Добро пожаловать, Заказчик/,
+      );
       await page.getByRole("button", { name: /Начать обзор/ }).click();
       for (const [i, [title, tabId]] of [
         ["Главная", "tab-client-home"],
@@ -216,32 +239,60 @@ try {
         ["Мой профиль", "tab-profile"],
       ].entries()) {
         await page.waitForFunction(
-          (title) => document.querySelector("#itd-tour-layer h2")?.textContent === title,
+          (title) =>
+            document.querySelector("#itd-tour-layer h2")?.textContent === title,
           title,
         );
         const tab = page.locator("#" + tabId);
-        assert.equal(await tab.isVisible(), true, "Global menu item must be visible");
+        assert.equal(
+          await tab.isVisible(),
+          true,
+          "Global menu item must be visible",
+        );
         assert.equal(await tab.getAttribute("aria-selected"), "true");
         await page.waitForFunction((id) => {
           const a = document.getElementById(id)?.getBoundingClientRect();
-          const b = document.querySelector(".itd-tour-focus")?.getBoundingClientRect();
-          return a && b && Math.abs(a.left - b.left) < 12 &&
-            Math.abs(a.top - b.top) < 12 && Math.abs(a.width - b.width) < 24;
+          const b = document
+            .querySelector(".itd-tour-focus")
+            ?.getBoundingClientRect();
+          return (
+            a &&
+            b &&
+            Math.abs(a.left - b.left) < 12 &&
+            Math.abs(a.top - b.top) < 12 &&
+            Math.abs(a.width - b.width) < 24
+          );
         }, tabId);
-        if (i < 4)
-          await page.getByRole("button", { name: /Далее/ }).click();
-        else
-          await page.getByRole("button", { name: /Завершить/ }).click();
+        if (i < 4) await page.getByRole("button", { name: /Далее/ }).click();
+        else await page.getByRole("button", { name: /Завершить/ }).click();
       }
       await page.locator("#itd-tour-layer").waitFor({ state: "detached" });
-      assert.equal(await page.evaluate((account) =>
-        localStorage.getItem("itd-client-tour-v5:" + account.id + ":" + account.createdAt + ":project"),
-        user
-      ), "done");
-      assert.equal(await page.evaluate((id) =>
-        localStorage.getItem("itd-client-tour-v2:" + id), user.id
-      ), "done", "Legacy marker must stay untouched and must not block new onboarding");
-      assert.equal(await page.locator("#client-guide-trigger").isVisible(), true);
+      assert.equal(
+        await page.evaluate(
+          (account) =>
+            localStorage.getItem(
+              "itd-client-tour-v5:" +
+                account.id +
+                ":" +
+                account.createdAt +
+                ":project",
+            ),
+          user,
+        ),
+        "done",
+      );
+      assert.equal(
+        await page.evaluate(
+          (id) => localStorage.getItem("itd-client-tour-v2:" + id),
+          user.id,
+        ),
+        "done",
+        "Legacy marker must stay untouched and must not block new onboarding",
+      );
+      assert.equal(
+        await page.locator("#client-guide-trigger").isVisible(),
+        true,
+      );
       await page.locator("#client-guide-trigger").click();
       await page.locator("#itd-tour-layer").waitFor({ state: "visible" });
       await page.getByRole("button", { name: /Пропустить/ }).click();
@@ -254,43 +305,78 @@ try {
     assert.equal(stageCount, stages.length);
     const routeStage = clientRoute.locator(".route-step").nth(2);
     await routeStage.click();
-    assert.equal(await page.locator("#tab-client-home").getAttribute("aria-selected"), "true");
+    assert.equal(
+      await page.locator("#tab-client-home").getAttribute("aria-selected"),
+      "true",
+    );
     assert.equal(await clientRoute.locator(".route-strip").isVisible(), true);
     assert.equal(await clientPreview.isVisible(), true);
     assert.equal(await clientRoute.locator(".route-links").isVisible(), true);
-    assert.equal(await clientPreview.locator(".route-feature-body > .route-links").count(), 1);
+    assert.equal(
+      await clientPreview.locator(".route-feature-body > .route-links").count(),
+      1,
+    );
     assert.equal(await clientRoute.locator(".route-step").count(), stageCount);
     // The shortcuts are INSIDE the selected stage card. No overlap or horizontal overflow.
     const geometry = await clientPreview.evaluate((element) => {
       const feature = element.getBoundingClientRect();
-      const image = element.querySelector(".route-stage-artwork, .route-feature-placeholder").getBoundingClientRect();
-      const shortcuts = element.querySelector(".route-feature-body > .route-links").getBoundingClientRect();
+      const image = element
+        .querySelector(".route-stage-artwork, .route-feature-placeholder")
+        .getBoundingClientRect();
+      const shortcuts = element
+        .querySelector(".route-feature-body > .route-links")
+        .getBoundingClientRect();
       return {
-        withinCard: shortcuts.left >= feature.left - 1 && shortcuts.right <= feature.right + 1,
-        separated: image.right <= shortcuts.left + 1 || image.bottom <= shortcuts.top + 1,
+        withinCard:
+          shortcuts.left >= feature.left - 1 &&
+          shortcuts.right <= feature.right + 1,
+        separated:
+          image.right <= shortcuts.left + 1 ||
+          image.bottom <= shortcuts.top + 1,
       };
     });
-    assert.ok(geometry.withinCard, "Album and documents cannot extend outside the stage feature");
-    assert.ok(geometry.separated, "Album and documents cannot overlap the illustration");
-    assert.match(await clientPreview.locator(".route-stage-heading h2").innerText(), /Концепция интерьера/);
+    assert.ok(
+      geometry.withinCard,
+      "Album and documents cannot extend outside the stage feature",
+    );
+    assert.ok(
+      geometry.separated,
+      "Album and documents cannot overlap the illustration",
+    );
+    assert.match(
+      await clientPreview.locator(".route-stage-heading h2").innerText(),
+      /Концепция интерьера/,
+    );
     assert.equal(
-      await clientPreview.locator(".route-stage-artwork img").getAttribute("src"),
+      await clientPreview
+        .locator(".route-stage-artwork img")
+        .getAttribute("src"),
       "/assets/stages/03.webp",
       "Stage artwork is independent of uploaded materials",
     );
     assert.equal(await routeStage.getAttribute("aria-pressed"), "true");
-    assert.match(await clientPreview.locator(".route-stage-heading .eyebrow").innerText(), /Просмотр этапа/i);
+    assert.match(
+      await clientPreview.locator(".route-stage-heading .eyebrow").innerText(),
+      /Просмотр этапа/i,
+    );
     await clientRoute.locator(".route-step").nth(1).click();
-    assert.match(await clientPreview.locator(".route-stage-heading h2").innerText(), /Планировочное решение/);
+    assert.match(
+      await clientPreview.locator(".route-stage-heading h2").innerText(),
+      /Планировочное решение/,
+    );
     assert.equal(
-      await clientPreview.locator(".route-stage-artwork img").getAttribute("src"),
+      await clientPreview
+        .locator(".route-stage-artwork img")
+        .getAttribute("src"),
       "/assets/stages/02.webp",
     );
     // All seven editorial illustrations are based on stage meaning, not uploads.
     for (let i = 0; i < 7; i++) {
       await clientRoute.locator(".route-step").nth(i).click();
       assert.equal(
-        await clientPreview.locator(".route-stage-artwork img").getAttribute("src"),
+        await clientPreview
+          .locator(".route-stage-artwork img")
+          .getAttribute("src"),
         `/assets/stages/${String(i + 1).padStart(2, "0")}.webp`,
         `Art for stage ${i + 1} should match the semantic stage title`,
       );
@@ -336,23 +422,33 @@ try {
       );
     }
     await page.locator("#tab-review").click();
-    await page.locator("#review-material-list .review-open-button").click();
-    await page.locator("#review-version-select").waitFor();
+    if (width < 768)
+      await page
+        .locator(".ac-mobile-tools")
+        .getByRole("button", { name: "Материалы", exact: true })
+        .click();
+    await page.locator(".ac-material-open").click();
+    await page
+      .locator('.ac-view-heading select[aria-label="Версия"]')
+      .waitFor();
     if (!before) {
       assert.doesNotMatch(
-        await page.locator(".review-detail-heading h2").textContent(),
+        await page.locator(".ac-view-heading h3").textContent(),
         /CAMERA_EXPORT/,
       );
       assert.match(
-        await page.locator(".review-detail-heading h2").textContent(),
+        await page.locator(".ac-view-heading h3").textContent(),
         /Обмеры/,
       );
-      assert.equal(
-        await page.locator(".review-actual-file").textContent(),
-        filename,
+      assert.ok(
+        (await page.locator(".ac-view-heading p").textContent()).includes(
+          filename,
+        ),
       );
       assert.match(
-        await page.locator("#review-version-select").inputValue(),
+        await page
+          .locator('.ac-view-heading select[aria-label="Версия"]')
+          .inputValue(),
         /\d/,
       );
     }
@@ -375,46 +471,118 @@ try {
     await openProject(page, project.id);
     // Admin must keep the same overview route, too.
     const adminRoute = page.locator("#project-route");
-    const beforeProgress = await page.locator("#project-header-progress-text").innerText();
+    const beforeProgress = await page
+      .locator("#project-header-progress-text")
+      .innerText();
     await adminRoute.locator(".route-step").nth(2).click();
-    assert.equal(await page.locator("#tab-overview").getAttribute("aria-selected"), "true");
+    assert.equal(
+      await page.locator("#tab-overview").getAttribute("aria-selected"),
+      "true",
+    );
     assert.equal(await adminRoute.locator(".route-strip").isVisible(), true);
     assert.equal(await adminRoute.locator(".route-feature").isVisible(), true);
     assert.equal(await adminRoute.locator(".route-links").isVisible(), true);
-    assert.equal(await adminRoute.locator(".route-feature-body > .route-links").count(), 1);
-    assert.match(await adminRoute.locator(".route-stage-heading h2").innerText(), /Концепция интерьера/);
+    assert.equal(
+      await adminRoute.locator(".route-feature-body > .route-links").count(),
+      1,
+    );
+    assert.match(
+      await adminRoute.locator(".route-stage-heading h2").innerText(),
+      /Концепция интерьера/,
+    );
     assert.equal(
       await adminRoute.locator(".route-stage-artwork img").getAttribute("src"),
       "/assets/stages/03.webp",
     );
-    assert.equal(await adminRoute.locator(".route-step").nth(2).getAttribute("aria-pressed"), "true");
-    assert.equal(await page.locator("#project-header-progress-text").innerText(), beforeProgress);
+    assert.equal(
+      await adminRoute
+        .locator(".route-step")
+        .nth(2)
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    assert.equal(
+      await page.locator("#project-header-progress-text").innerText(),
+      beforeProgress,
+    );
     await adminRoute.locator(".route-step").nth(1).click();
-    assert.match(await adminRoute.locator(".route-stage-heading h2").innerText(), /Планировочное решение/);
+    assert.match(
+      await adminRoute.locator(".route-stage-heading h2").innerText(),
+      /Планировочное решение/,
+    );
     // The redesigned right-hand shortcuts still open the unified file library.
-    await adminRoute.locator(".route-links > .panel").nth(0).getByRole("button").click();
-    assert.equal(await page.locator("#tab-files").getAttribute("aria-selected"), "true");
-    assert.equal(await page.locator('[data-library-category="result"]').getAttribute("aria-pressed"), "true");
-    assert.equal(await page.locator("#library-stage").inputValue(), String(stages[1].id));
+    await adminRoute
+      .locator(".route-links > .panel")
+      .nth(0)
+      .getByRole("button")
+      .click();
+    assert.equal(
+      await page.locator("#tab-files").getAttribute("aria-selected"),
+      "true",
+    );
+    assert.equal(
+      await page
+        .locator('[data-library-category="result"]')
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    assert.equal(
+      await page.locator("#library-stage").inputValue(),
+      String(stages[1].id),
+    );
     await page.locator("#tab-overview").click();
-    await page.locator("#project-route .route-links > .panel").nth(1).getByRole("button").click();
-    assert.equal(await page.locator("#tab-files").getAttribute("aria-selected"), "true");
-    assert.equal(await page.locator('[data-library-category="document"]').getAttribute("aria-pressed"), "true");
-    assert.equal(await page.locator("#library-stage").inputValue(), String(stages[1].id));
+    await page
+      .locator("#project-route .route-links > .panel")
+      .nth(1)
+      .getByRole("button")
+      .click();
+    assert.equal(
+      await page.locator("#tab-files").getAttribute("aria-selected"),
+      "true",
+    );
+    assert.equal(
+      await page
+        .locator('[data-library-category="document"]')
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    assert.equal(
+      await page.locator("#library-stage").inputValue(),
+      String(stages[1].id),
+    );
     await page.locator("#tab-files").click();
-    assert.equal(await page.locator("#library-stage").inputValue(), "unassigned");
-    assert.equal(await page.locator('[data-library-category="all"]').getAttribute("aria-pressed"), "true");
+    assert.equal(
+      await page.locator("#library-stage").inputValue(),
+      "unassigned",
+    );
+    assert.equal(
+      await page
+        .locator('[data-library-category="all"]')
+        .getAttribute("aria-pressed"),
+      "true",
+    );
     assert.equal(await page.locator("#tab-review").isVisible(), true);
     // The redundant Stages tab is gone; staff can still edit status and dates.
     assert.equal(await page.locator("#tab-stages, #panel-stages").count(), 0);
     await page.locator("#tab-settings").click();
     await page.locator("#settings-stage-management > summary").click();
-    const settingsStage = page.locator(`#stage-list [data-stage-id="${stages[1].id}"]`);
+    const settingsStage = page.locator(
+      `#stage-list [data-stage-id="${stages[1].id}"]`,
+    );
     await settingsStage.waitFor({ state: "visible" });
-    assert.equal(await page.locator("#tab-settings").getAttribute("aria-selected"), "true");
-    assert.equal(await settingsStage.getByRole("button", {
-      name: "Загрузить материал в этап", exact: true,
-    }).count(), 1);
+    assert.equal(
+      await page.locator("#tab-settings").getAttribute("aria-selected"),
+      "true",
+    );
+    assert.equal(
+      await settingsStage
+        .getByRole("button", {
+          name: "Загрузить материал в этап",
+          exact: true,
+        })
+        .count(),
+      1,
+    );
     await shot("admin-stage-settings");
     // Passive navigation must never change actual stages or approval decisions.
     const after = (await api("/api/projects")).projects.find(

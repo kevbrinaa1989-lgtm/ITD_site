@@ -1473,6 +1473,23 @@
       "updatedAt": "2026-11-10T19:26:54.746773+00:00",
       "finalApprovalPending": false,
       "implementationAuthorized": true
+    },
+    "approval-center": {
+      "targetKind": "new-ui",
+      "projectId": "0a91e369-2692-4bb7-8c12-0055f988924c",
+      "activeDraftId": "a27d3c8e-4158-4d3c-b653-7faf048bf693",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "fcdbbb3461cfd62dd9e92c9365e7faffe61589adb33dc72a67d3a1039aabfb3f"
+      },
+      "referenceIds": [
+        "itd-official-logo.svg"
+      ],
+      "implementationAuthorized": true,
+      "notes": "User explicitly requested complete implementation. Credit-free import of adapted provided prototype; generated design blocked by exhausted credits."
     }
   }
 }

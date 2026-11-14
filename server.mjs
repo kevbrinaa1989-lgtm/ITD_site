@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import { openConfiguredData } from "./data-storage.mjs";
 import { initPasswordRecovery } from "./password-recovery.mjs";
 import { initAdminManagement } from "./admin-management.mjs";
+import { initApprovalCenter } from "./approval-center.mjs";
 import { initMaterialReview } from "./material-review.mjs";
 import { initAdminWorkspace, validateStageDates } from "./admin-workspace.mjs";
 import { migrateFileOwnership } from "./file-ownership-migration.mjs";
@@ -108,6 +109,12 @@ export function createApp(options = {}) {
       previewType(file, readFileSync(join(dataDir, "files", file.path))),
   });
   migrateFileOwnership(db, {dataDir});
+  const approvalCenter = initApprovalCenter({
+    db, review,
+    readFile: f => readFileSync(join(dataDir, "files", f.path)),
+    previewCheck: f => previewType(f, readFileSync(join(dataDir, "files", f.path))),
+    fontPath: join(ROOT, "assets/fonts/itd-font-1.ttf"),
+  });
   const fileOwnership = initFileOwnership({db, transaction:review.transaction, removeFile: f => {try {unlinkSync(join(dataDir,"files",f.path));} catch(e) {if(e.code!=="ENOENT")throw e;}}});
   const invitations = initInvitations({db, passwordHash: hashPassword, now: options.invitationNow});
   const uploadIntents = createUploadIntents({ now: options.uploadIntentNow });
@@ -124,7 +131,7 @@ export function createApp(options = {}) {
       size = 0;
     const max = req.url?.match(/^\/api\/projects\/\d+\/files(?:\?|$)/)
       ? 14 * 1024 * 1024
-      : 16 * 1024;
+      : req.url?.startsWith("/api/approval-center/") ? 2 * 1024 * 1024 : 16 * 1024;
     for await (const chunk of req) {
       size += chunk.length;
       if (size > max) fail(413, "Запрос слишком большой");
@@ -212,6 +219,7 @@ export function createApp(options = {}) {
         if (
           await workspace.handle({ req, res, path, method, url, user, body, json, fail })
         ) return;
+        if (await approvalCenter.handle({req, res, path, method, url, user, body, json})) return;
         if (await review.handle({ req, res, path, method, user, body, json, fail }))
           return;
         if (await fileOwnership.handle({req,res,path,method,url,user,project,admin,body,json,fail})) return;
@@ -607,6 +615,7 @@ export function createApp(options = {}) {
                   "expectedVersionId",
                   "document",
                   "uploadIntent",
+                  "correctionReport",
                 ].includes(key),
             )
           )
@@ -639,6 +648,8 @@ export function createApp(options = {}) {
             };
           }
           review.validateUpload(b, p.id, user, fail);
+          if (b.materialId) approvalCenter.reportValidation(b, b.materialId);
+          else if (b.correctionReport) fail(400, "Отчёт исправлений требует существующий материал");
           const storage = randomBytes(24).toString("hex");
           writeFileSync(join(dataDir, "files", storage), bytes, {
             mode: 0o600,
@@ -666,6 +677,7 @@ export function createApp(options = {}) {
                   id, document.title, document.kind, document.number || null, document.date || null,
                 );
               const fileReview = review.attachFile(id, b, p.id, user, fail);
+              if (fileReview) approvalCenter.attachCorrection(b, fileReview.versionId, user);
               return {
                 id,
                 name: b.name,
@@ -742,6 +754,10 @@ export function createApp(options = {}) {
         "/upload-context.js": "upload-context.js",
         "/material-preview.js": "material-preview.js",
         "/material-review.js": "material-review.js",
+        "/approval-center.js": "approval-center.js",
+        "/approval-viewer.js": "approval-viewer.js",
+        "/approval-thumbnails.js": "approval-thumbnails.js",
+        "/approval-center.css": "approval-center.css",
         "/file-viewer.js": "file-viewer.js",
         "/project-gallery.js": "project-gallery.js",
         "/cabinet.css": "cabinet.css",

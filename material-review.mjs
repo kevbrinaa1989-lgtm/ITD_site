@@ -198,7 +198,7 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
   function deriveStage(stageId) {
     if (stageId == null) return;
     const statuses = all(
-      `SELECT v.status FROM review_versions v JOIN review_materials m ON m.id=v.materialId WHERE m.stageId=? AND NOT EXISTS(SELECT 1 FROM review_versions n WHERE n.materialId=v.materialId AND n.versionNumber>v.versionNumber)`,
+      `SELECT v.status FROM review_versions v JOIN review_materials m ON m.id=v.materialId LEFT JOIN approval_metadata a ON a.materialId=m.id WHERE m.stageId=? AND COALESCE(a.required,1)=1 AND NOT EXISTS(SELECT 1 FROM review_versions n WHERE n.materialId=v.materialId AND n.versionNumber>v.versionNumber)`,
       stageId,
     ).map((row) => row.status);
     if (statuses.length)
@@ -208,7 +208,11 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
           ? "changes_requested"
           : statuses.includes("pending_approval")
             ? "pending_approval"
-            : "approved",
+            : ["approved", "completed"].includes(
+                  get("SELECT status FROM stages WHERE id=?", stageId)?.status,
+                )
+              ? get("SELECT status FROM stages WHERE id=?", stageId).status
+              : "pending_approval",
         stageId,
       );
   }
@@ -244,12 +248,13 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
     access(projectId, user, fail);
     if (
       b.category !== "result" ||
-      (b.stageId != null && (!Number.isSafeInteger(b.stageId) ||
-      !get(
-        "SELECT id FROM stages WHERE id=? AND projectId=?",
-        b.stageId,
-        projectId,
-      )))
+      (b.stageId != null &&
+        (!Number.isSafeInteger(b.stageId) ||
+          !get(
+            "SELECT id FROM stages WHERE id=? AND projectId=?",
+            b.stageId,
+            projectId,
+          )))
     )
       fail(400, "Для согласования выберите результат и этап проекта");
     if ("materialId" in b || "expectedVersionId" in b) {
@@ -268,7 +273,7 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
     }
     return { materialId: null };
   }
-  function attachFile(fileId, b, projectId, user, fail) {
+  function attachFile(fileId, b, projectId, user, fail, options = {}) {
     const plan = validateUpload(b, projectId, user, fail);
     if (!plan) return null;
     const file = get("SELECT * FROM files WHERE id=?", fileId);
@@ -314,13 +319,13 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
       user,
       previous ? "version_uploaded" : "submitted",
       "",
-      "client",
+      options.notify === false ? null : "client",
     );
     if (previous) addEvent(m, v, user, "version_replaced");
     deriveStage(m.stageId);
     return decorateReviewFiles(db, [{ id: fileId }])[0].review;
   }
-  const notificationSelect = `SELECT n.id,n.readAt,e.type,e.projectId,p.title AS projectTitle,e.stageId,e.materialId,e.versionId,m.title AS materialTitle,v.versionNumber,u.name AS actorName,e.createdAt FROM review_notifications n JOIN review_events e ON e.id=n.eventId JOIN projects p ON p.id=e.projectId JOIN review_materials m ON m.id=e.materialId JOIN review_versions v ON v.id=e.versionId JOIN users u ON u.id=e.actorId`;
+  const notificationSelect = `SELECT n.id,n.readAt,e.type,e.body,e.projectId,p.title AS projectTitle,e.stageId,e.materialId,e.versionId,m.title AS materialTitle,v.versionNumber,u.name AS actorName,e.createdAt FROM review_notifications n JOIN review_events e ON e.id=n.eventId JOIN projects p ON p.id=e.projectId JOIN review_materials m ON m.id=e.materialId JOIN review_versions v ON v.id=e.versionId JOIN users u ON u.id=e.actorId`;
   const visibleNotifications = (user) =>
     all(
       notificationSelect +
@@ -492,6 +497,18 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
             fail(409, "Решение уже сохранено");
           if (b.decision === "approved" && b.confirm !== true)
             fail(400, "Подтвердите согласование этой версии");
+          if (
+            b.decision === "approved" &&
+            !get(
+              "SELECT 1 FROM approval_view_confirmations WHERE versionId=? AND userId=?",
+              v.id,
+              user.id,
+            )
+          )
+            fail(
+              409,
+              "Подтвердите просмотр всех страниц в Центре согласования",
+            );
           if (b.decision === "changes_requested" && !validText(b.comment))
             fail(400, "Для изменений обязателен комментарий до 4000 символов");
           if ("comment" in b && b.comment !== "" && !validText(b.comment))
@@ -547,6 +564,11 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
   }
   return {
     handle,
+    access,
+    material,
+    latest,
+    addEvent,
+    deriveStage,
     validateUpload,
     attachFile,
     transaction,

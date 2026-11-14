@@ -1,3 +1,4 @@
+import { confirmFixtureReview } from "./approval-fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -145,6 +146,10 @@ try {
     review: true,
   });
   const d = await api(`/api/materials/${approved.review.materialId}`);
+  await confirmFixtureReview(
+    (path, body) => api(path, body, "POST", clientCookie),
+    approved.review.versionId,
+  );
   await api(
     `/api/material-versions/${approved.review.versionId}/decision`,
     {
@@ -523,11 +528,11 @@ try {
       await page.locator(".library-material .gallery-open").click();
       await page.waitForFunction(
         (id) =>
-          document.querySelector("#review-version-select")?.value ===
-          String(id),
+          document.querySelector('.ac-view-heading select[aria-label="Версия"]')
+            ?.value === String(id),
         old.review.versionId,
       );
-      assert.equal(await page.locator(".review-decision-actions").count(), 0);
+      assert.equal(await page.locator(".ac-decisions").count(), 0);
       await page.locator(".review-library-back").click();
       assert.equal(
         await page.locator("#library-search").inputValue(),
