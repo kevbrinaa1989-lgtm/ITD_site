@@ -11,7 +11,7 @@
     planned: "Не начат",
     in_progress: "В работе",
     pending_approval: "Ожидает согласования",
-    changes_requested: "Нужны изменения",
+    changes_requested: "На доработку",
     approved: "Согласован",
     completed: "Завершён",
   };

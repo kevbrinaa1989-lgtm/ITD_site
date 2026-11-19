@@ -54,7 +54,7 @@ try {
     await client.getByText("Все страницы просмотрены", { exact: true }).waitFor();
     await row(client, id).getByRole("checkbox").check();
   }
-  await button(client, "Согласовать выбранные").click();
+  await button(client, "Согласовать выбранные · 35").click();
   await button(client.getByRole("dialog"), "Подготовить решения").click();
   const returned = ids.slice(35);
   for (const id of returned) {

@@ -10,7 +10,7 @@
     planned: "Не начат",
     in_progress: "В работе",
     pending_approval: "Нужно решение",
-    changes_requested: "На доработке",
+    changes_requested: "На доработку",
     approved: "Согласован",
     completed: "Завершён",
   };

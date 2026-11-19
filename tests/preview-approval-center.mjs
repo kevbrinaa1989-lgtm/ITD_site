@@ -13,13 +13,13 @@ if (host !== "127.0.0.1" &&
 
 const f = await ownershipFixture({ host, port: Number(process.argv[3] || 4175) });
 try {
-  const { project, full, mobile, corrected } = await seedApprovalDemo(f);
+  const { project, full, mobile, corrected } = await seedApprovalDemo(f, { firstPlanPages: 5 });
   console.log(`Кабинет: ${f.base}/cabinet
 Клиент: ${f.clients[0].email}
 Дизайнер: admin@example.test
 Пароль демопользователей: ${f.password}
 Проект: ${project.title}
-40 материалов: ${full.title}
+40 материалов: ${full.title} (первый PDF — пять страниц)
 Samsung Internet / Chrome Android / Safari: ${mobile.slice(0, 3).map(s => s.title).join(" / ")}
 Файл v2 для загрузки дизайнером (после входа): ${f.base}/api/files/${corrected.id}/download
 Остановить демоверсию: Ctrl+C.`);

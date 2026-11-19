@@ -56,7 +56,8 @@
       page = position.page || 1,
       zoom = position.zoom || 1,
       addMode = false,
-      pageSave = Promise.resolve();
+      scrollTimer;
+    const pendingPages = new Map(), failedPages = new Set(), reported = new Set();
     const abort = new AbortController(),
       viewport = el("div", undefined, "ac-viewport"),
       sheet = el("div", undefined, "ac-sheet"),
@@ -83,16 +84,23 @@
     const previous = toolButton("Предыдущая страница", "‹", () => go(page - 1)),
       next = toolButton("Следующая страница", "›", () => go(page + 1)),
       pageLabel = el("span", "Документ", "ac-page-label"),
+      pageControl = el("label", undefined, "ac-page-jump"),
+      pagePicker = el("select"),
       seen = el("span", "", "ac-seen"),
       zoomButton = btn("", () => setZoom(1)),
       pages = el("div", undefined, "ac-page-controls"),
       scale = el("div", undefined, "ac-scale-controls");
+    pagePicker.setAttribute("aria-label", "Перейти на страницу");
+    pagePicker.hidden = true;
+    pagePicker.onchange = () => go(Number(pagePicker.value));
+    pageControl.append(pageLabel, pagePicker);
     zoomButton.title = "Вернуть исходный масштаб";
     zoomButton.className = "ac-zoom";
     seen.hidden = !showProgress;
     function controls() {
       const count = pdf?.numPages || 1;
       pageLabel.textContent = pdf ? `Страница ${page} из ${count}` : "Документ";
+      pagePicker.value = String(page);
       previous.disabled = !pdf || !media || page <= 1;
       next.disabled = !pdf || !media || page >= count;
       zoomButton.textContent = Math.round(zoom * 100) + "%";
@@ -138,7 +146,7 @@
       }
     });
     document.addEventListener("fullscreenchange", fullState);
-    pages.append(previous, pageLabel, next);
+    pages.append(previous, pageControl, next);
     scale.append(
       toolButton("Уменьшить масштаб", "−", () => setZoom(zoom - 0.25)),
       zoomButton,
@@ -150,21 +158,26 @@
     host.append(tools, viewport);
     controls();
     progress();
-    let painted = 0,
-      inView = false,
-      reporting = 0;
-    const reported = new Set();
+    let painted = 0, inView = false;
+    function savePage(n) {
+      if (pendingPages.has(n)) return pendingPages.get(n);
+      const request = Promise.resolve().then(() => onPage(n)).then(() => {
+        reported.add(n);
+        failedPages.delete(n);
+        if (alive) progress();
+      }).catch(() => {
+        failedPages.add(n);
+      }).finally(() => {
+        pendingPages.delete(n);
+        if (alive) onDisplay();
+      });
+      pendingPages.set(n, request);
+      return request;
+    }
     function recordPage() {
-      if (
-        !alive ||
-        !painted ||
-        !inView ||
-        document.hidden ||
-        !sheet.getClientRects().length ||
-        reported.has(painted) ||
-        reporting === painted
-      )
-        return pageSave;
+      if (!alive || !painted || !inView || document.hidden ||
+          !sheet.getClientRects().length || reported.has(painted) || failedPages.has(painted))
+        return;
       const sheetRect = sheet.getBoundingClientRect(),
         area = viewport.getBoundingClientRect();
       const left = Math.max(sheetRect.left, area.left, 0),
@@ -178,24 +191,8 @@
           document.elementFromPoint((left + right) / 2, (top + bottom) / 2),
         )
       )
-        return pageSave;
-      const n = painted;
-      reporting = n;
-      pageSave = Promise.resolve(onPage(n))
-        .then(() => {
-          reported.add(n);
-          if (alive) progress();
-        })
-        .catch((error) => {
-          if (alive) {
-            status.hidden = false;
-            status.textContent = error.message;
-          }
-        })
-        .finally(() => {
-          if (reporting === n) reporting = 0;
-        });
-      return pageSave;
+        return;
+      return savePage(painted);
     }
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -405,7 +402,6 @@
     viewport.addEventListener("touchend", () => {
       pinch = null;
     });
-    let scrollTimer;
     viewport.addEventListener(
       "scroll",
       () => {
@@ -458,6 +454,11 @@
           });
           pdf = await task.promise;
           if (!alive) return;
+          if (pdf.numPages > 1) {
+            for (let n = 1; n <= pdf.numPages; n++)
+              pagePicker.add(new Option(String(n), String(n)));
+            pagePicker.hidden = false;
+          }
           page = Math.min(page, pdf.numPages);
           controls();
           progress();
@@ -499,7 +500,16 @@
             rect.top < area.bottom;
         }
         await recordPage();
-        await pageSave;
+        await Promise.all(pendingPages.values());
+      },
+      get failedPages() {
+        return [...failedPages].sort((a, b) => a - b);
+      },
+      async retryViews() {
+        await Promise.all([...failedPages].map(savePage));
+      },
+      get position() {
+        return { page, zoom, scrollX: viewport.scrollLeft, scrollY: viewport.scrollTop };
       },
       setPinMode(enabled) {
         addMode = enabled;

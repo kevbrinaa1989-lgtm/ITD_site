@@ -64,7 +64,7 @@ try {
   await page
     .getByRole("button", { name: "Согласовать и далее", exact: true })
     .click();
-  await page.getByText("Просмотрены 1 из 2 страниц", { exact: true }).waitFor();
+  await page.getByText("Чтобы согласовать материал, просмотрите все страницы. Просмотрено 1 из 2. Осталось 1", { exact: true }).waitFor();
   await button(page, "Нужны правки").click();
   await button(page.getByRole("dialog"), "Поставить отметку на документе").click();
   // Between selecting a new page and painting it, the old sheet must not accept pins.

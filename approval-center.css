@@ -339,9 +339,26 @@ body:has(> .approval-center:not([hidden])) #app-view {
   font-size: 14px;
 }
 .ac-bulk {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 5px 8px;
+  padding-bottom: 5px;
+}
+.ac-bulk strong {
+  justify-self: end;
+  font-size: 13px;
+}
+.ac-bulk .ac-group-approve {
+  color: var(--ac-green);
+  border-color: var(--ac-green);
+}
+.ac-selection-notice {
+  grid-column: 1 / -1;
+  color: var(--ac-muted);
+}
+.ac-selection-notice:empty {
+  display: none;
 }
 .ac-bulk button {
   min-height: 35px;
@@ -589,6 +606,22 @@ body:has(> .approval-center:not([hidden])) #app-view {
   font-size: 15px;
   min-width: 44px;
 }
+.ac-page-jump {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.ac-page-jump select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.ac-page-jump:focus-within {
+  outline: 2px solid var(--ac-green);
+  outline-offset: 2px;
+}
 .ac-page-label {
   min-width: 86px;
   text-align: center;
@@ -652,9 +685,27 @@ body:has(> .approval-center:not([hidden])) #app-view {
   border: 2px solid white;
   font-size: 13px;
 }
+.ac-view-feedback {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 8px 12px;
+  border-inline-start: 3px solid #9c723f;
+  background: #f7f1e5;
+  color: #634a29;
+  font-size: 14px;
+}
+.ac-view-feedback button {
+  min-height: 38px;
+  font-size: inherit;
+}
 .ac-footer {
   grid-area: 2/2;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 14px;
   padding: 12px clamp(14px, 1.6vw, 26px) max(12px, env(safe-area-inset-bottom));
@@ -728,6 +779,18 @@ body:has(> .approval-center:not([hidden])) #app-view {
 }
 .ac-rail :is(p, small, label, select, summary) {
   font-size: 14px;
+}
+.ac-rail label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ac-rail input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--ac-green);
 }
 .ac-rail input:not([type="checkbox"]),
 .ac-rail select,
@@ -1035,6 +1098,11 @@ body:has(> .approval-center:not([hidden])) #app-view {
   .ac-save[data-state="error"] small {
     display: block;
   }
+  .ac-view-feedback {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+  .ac-view-feedback button { min-height: 36px; }
   .ac-footer > button {
     min-height: 34px;
     font-size: 12px;

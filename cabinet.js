@@ -6,7 +6,7 @@
     planned: "Не начат",
     in_progress: "В работе",
     pending_approval: "Ожидает согласования",
-    changes_requested: "Нужны изменения",
+    changes_requested: "На доработку",
     approved: "Согласован",
     completed: "Завершён",
   };
@@ -1853,6 +1853,21 @@
     const count = result.count || 1;
     message(count === 1 ? "Файл загружен" : `Загружено файлов: ${count}`);
   });
+  let refreshOnWindowReturn = false;
+  function refreshOpenPanel() {
+    if (!refreshOnWindowReturn || document.hidden || document.querySelector("dialog[open]")) return;
+    refreshOnWindowReturn = false;
+    if (activeTab === "files") window.ITDLibrary?.onTab("files");
+    if (activeTab === "review" && user?.role === "admin")
+      window.ITDApprovalCenter?.onTab("review").catch((e) => message(e.message, true));
+  }
+  window.addEventListener("blur", () => { refreshOnWindowReturn = true; });
+  window.addEventListener("focus", refreshOpenPanel);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) refreshOnWindowReturn = true;
+    else refreshOpenPanel();
+  });
+  document.addEventListener("close", refreshOpenPanel, true);
   window.addEventListener("itd-preview-session-expired", () => {
     if (user) {
       showAuth();

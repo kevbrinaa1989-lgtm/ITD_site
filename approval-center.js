@@ -15,6 +15,11 @@
     confirmed: "Подтверждено клиентом",
     reopened: "Повторная доработка",
   };
+  const draftLabels = {
+    approved: "К отправке: согласование",
+    changes_requested: "К отправке: правки",
+  };
+  const revisionSaved = "Правки сохранены в черновик. Дизайнер увидит их после отправки пакета";
   const date = (n) => new Date(n).toLocaleString("ru-RU");
   let hooks,
     project,
@@ -32,6 +37,10 @@
     packageButton,
     bulk,
     bulkToggle,
+    selectAll, selectionCount, clearSelection, approveSelected, selectionNotice,
+    incompleteVersion = null,
+    confirmationError = null,
+    lastViewContext = null,
     queueProgress,
     queueCount,
     selectionMode = false,
@@ -269,6 +278,7 @@
   }
   function reset() {
     historyByMaterial.clear();
+    lastViewContext = incompleteVersion = confirmationError = null;
     window.ITDApprovalThumbnails?.clear(root || document.createElement("div"));
     window.ITDApprovalViewer.clearPrefetch();
     epoch++;
@@ -387,8 +397,11 @@
     search.field.placeholder = "Найти материал";
     search.wrap.className = "ac-search";
     search.field.oninput = () => {
-      query = search.field.value.trim().toLocaleLowerCase("ru-RU");
-      renderList();
+      const value = search.field.value.trim().toLocaleLowerCase("ru-RU");
+      if (query !== value) {
+        query = value;
+        resetFilteredSelection();
+      }
     };
     const filters = el("div", undefined, "ac-filters");
     filters.append(
@@ -408,29 +421,34 @@
         filter,
         (value) => {
           filter = value;
-          renderList();
+          resetFilteredSelection();
         },
       ),
     );
     bulk = el("div", undefined, "ac-bulk");
     bulkToggle = button("Выбрать", () => {
       selectionMode = !selectionMode;
+      selectionNotice.textContent = "";
       selected.clear();
       renderList();
     });
+    selectionNotice = el("small", "", "ac-selection-notice");
+    selectionNotice.setAttribute("role", "status");
     if (!admin()) {
       filters.append(bulkToggle);
-      bulk.append(
-        button("Выбрать показанные", () => {
-          visible().forEach((m) => selected.add(m.id));
-          renderList();
-        }),
-        button("Снять выбор", () => {
-          selected.clear();
-          renderList();
-        }),
-        button("Согласовать выбранные", bulkApprove),
-      );
+      selectAll = button("", () => {
+        selected = new Set(visible().map((m) => m.id));
+        selectionNotice.textContent = "";
+        renderList();
+      });
+      clearSelection = button("Снять выбор", () => {
+        selected.clear();
+        renderList();
+      });
+      selectionCount = el("strong");
+      selectionCount.setAttribute("role", "status");
+      approveSelected = button("", bulkApprove, "ac-group-approve");
+      bulk.append(selectAll, selectionCount, clearSelection, approveSelected, selectionNotice);
     }
     listHost = el("div", undefined, "ac-list");
     left.append(
@@ -519,6 +537,7 @@
   async function loadScope(s, target) {
     const pid = project.id,
       generation = ++epoch;
+    const context = target?.context;
     build();
     const work = root.querySelector(".ac-work");
     work.inert = true;
@@ -534,7 +553,7 @@
           viewHost.replaceChildren(
             button("Повторить загрузку", () => loadScope(s, target)),
           );
-        say(error.message);
+        say(context ? `Не удалось обновить данные. Показано предыдущее состояние. ${error.message}` : error.message);
       }
       return;
     } finally {
@@ -548,8 +567,12 @@
     dirty = saved = 0;
     saveError = null;
     operation = null;
-    selected.clear();
-    selectionMode = busy = false;
+    if (!context) {
+      selected.clear();
+      selectionMode = false;
+      selectionNotice.textContent = "";
+    }
+    busy = false;
     advanceAfterSave = pinRequest = null;
     stopPreview();
     stagePicker.querySelector("select").value = scope;
@@ -578,7 +601,7 @@
     });
     mid =
       target?.mid || data.draft.position.materialId || data.materials[0]?.id;
-    vid = target?.vid || data.draft.position.versionId;
+    vid = target?.mid ? target.vid : data.draft.position.versionId;
     if (!data.materials.some((m) => m.id === mid)) {
       mid = data.materials[0]?.id;
       vid = null;
@@ -589,8 +612,36 @@
         ? "Сохранено"
         : "Сохраняем";
     renderList();
-    await showMaterial(mid, vid);
+    await showMaterial(mid, vid, context);
     if (generation !== epoch) return;
+    if (context && active) {
+      if (context.versionId === vid) {
+        const filter = rail.querySelector(".ac-notes select");
+        if (filter && context.noteFilter) {
+          filter.value = context.noteFilter;
+          filter.dispatchEvent(new Event("change"));
+        }
+        const discussion = rail.querySelector(".ac-discussion");
+        if (discussion) {
+          discussion.open = context.discussionOpen;
+          discussion.querySelector("textarea").value = context.comment;
+        }
+        const history = rail.querySelector(".ac-history");
+        if (history) history.open = context.historyOpen;
+      }
+      if (context.properties && target.mid === mid) {
+        const room = rail.querySelector('input[aria-label="Помещение"]');
+        const required = rail.querySelector('input[type="checkbox"]');
+        if (room && required) {
+          room.value = context.properties.room;
+          required.checked = context.properties.required;
+          room.dataset.revision = context.properties.revision;
+        }
+      }
+      panel(context.panel);
+      listHost.scrollTop = context.scroll;
+      rail.scrollTop = context.railScroll;
+    }
     if (result.conflicts.length)
       say(
         "Есть черновики по изменённым версиям. Откройте замечания и проверьте новую версию.",
@@ -641,6 +692,21 @@
     queueProgress.value = progress;
     queueProgress.setAttribute("aria-label", summaryHost.textContent);
   }
+  function resetFilteredSelection() {
+    if (selected.size) {
+      selected.clear();
+      selectionNotice.textContent = "Выбор снят после изменения поиска или фильтра.";
+    }
+    renderList();
+  }
+  function updateSelection(total) {
+    if (admin() || !selectionMode) return;
+    selectAll.textContent = `Выбрать все · ${total}`;
+    selectAll.disabled = !total;
+    selectionCount.textContent = `Выбрано: ${selected.size}`;
+    clearSelection.disabled = approveSelected.disabled = !selected.size;
+    approveSelected.textContent = `Согласовать выбранные · ${selected.size}`;
+  }
   function renderList() {
     if (!data || !listHost) return;
     renderSummary();
@@ -648,6 +714,9 @@
     bulkToggle.textContent = selectionMode ? "Отмена" : "Выбрать";
     const materials = visible(),
       ids = new Set(materials.map((m) => m.id));
+    // A draft or status filter can change membership as decisions are edited.
+    for (const id of selected) if (!ids.has(id)) selected.delete(id);
+    updateSelection(materials.length);
     const rows = new Map();
     for (const row of Array.from(listHost.children)) {
       const id = Number(row.dataset.materialId);
@@ -671,8 +740,12 @@
         const check = el("input");
         check.type = "checkbox";
         check.setAttribute("aria-label", `Выбрать ${displayTitle(m)}`);
-        check.onchange = () =>
-          check.checked ? selected.add(m.id) : selected.delete(m.id);
+        check.onchange = () => {
+          if (check.checked) selected.add(m.id);
+          else selected.delete(m.id);
+          selectionNotice.textContent = "";
+          updateSelection(visible().length);
+        };
         const open = button("", () => showMaterial(m.id), "ac-material-open"),
           copy = el("span", undefined, "ac-row-copy");
         copy.append(el("strong"), el("span", "", "ac-row-status"));
@@ -695,7 +768,7 @@
       status.textContent = data.conflicts.includes(m.id)
         ? "Проверьте новую версию"
         : draft?.decision
-          ? "К отправке"
+          ? draftLabels[draft.decision]
           : v.status === "pending_approval" && v.versionNumber > 1
             ? "Проверить исправления"
             : labels[v.status];
@@ -705,7 +778,7 @@
     if (!materials.length)
       listHost.append(el("p", "Материалов в этой выборке нет."));
   }
-  async function showMaterial(id, requested) {
+  async function showMaterial(id, requested, context) {
     if (!id) {
       viewHost.replaceChildren(
         el("p", "В этом разделе ещё нет материалов для согласования."),
@@ -723,6 +796,7 @@
     }
     if (busy) return;
     pinRequest = advanceAfterSave = null;
+    incompleteVersion = confirmationError = null;
     say("");
     mid = id;
     const m = current();
@@ -795,7 +869,7 @@
       button("Обновить данные", async () => {
         if (saveError?.status === 409) return recoverDraft();
         await flush();
-        await loadScope(scope, { mid });
+        await refreshView();
       }),
     );
     if (admin())
@@ -812,6 +886,7 @@
     if (selectedRow) selectedRow.scrollIntoView({ block: "nearest" });
     const host = el("div", undefined, "ac-media-host");
     viewHost.append(host);
+    lastViewContext = null;
     const ownEntry = entry(),
       markers = m.notes
         .filter((n) => n.versionId === vid)
@@ -820,7 +895,7 @@
             ? ownEntry.markers.map((n, i) => ({ ...n, draft: true, index: i }))
             : [],
         );
-    let position =
+    const position = context?.versionId === vid ? context.position :
       data.draft.position.materialId === mid &&
       data.draft.position.versionId === vid
         ? data.draft.position
@@ -909,7 +984,8 @@
       "POST",
       { page },
     );
-    v.viewedPages = Math.max(v.viewedPages || 0, res.pages.length);
+    v.viewedPageNumbers = [...new Set([...(v.viewedPageNumbers || []), ...res.pages])];
+    v.viewedPages = v.viewedPageNumbers.length;
     v.pageCount = res.pageCount;
   }
   function canDecide() {
@@ -1057,6 +1133,7 @@
         check = el("input");
       check.type = "checkbox";
       check.checked = m.required;
+      room.field.dataset.revision = m.metadataRevision;
       required.prepend(check);
       rail.append(
         room.wrap,
@@ -1068,7 +1145,7 @@
             {
               room: room.field.value,
               required: check.checked,
-              expectedRevision: m.metadataRevision,
+              expectedRevision: Number(room.field.dataset.revision),
             },
           );
           await loadScope(scope, { mid, vid });
@@ -1174,6 +1251,7 @@
           filter = "all";
           root.querySelector(".ac-search input").value = "";
           root.querySelector(".ac-filters select").value = "all";
+          resetFilteredSelection();
         }
         await showMaterial(m.id);
         return;
@@ -1195,6 +1273,7 @@
       advanceAfterSave = null;
       busy = false;
       await nextUndecided();
+      if (generation === epoch && target.decision === "changes_requested") say(revisionSaved);
     }
   }
   async function decide(decision) {
@@ -1206,14 +1285,34 @@
     try {
       if (decision === "approved") {
         await viewer.confirmReady();
-        if (generation !== epoch || !(await confirmView(v))) return;
+        if (!active || generation !== epoch || v.id !== vid || !viewer || viewer.failedPages.length) return;
+        if (missingPage(v)) {
+          incompleteVersion = v.id;
+          return;
+        }
+        const draft = entry();
+        if (hasDraftRemarks(draft)) {
+          const question = draft.decision === "changes_requested"
+            ? `Заменить решение «Нужны правки» на согласование для «${displayTitle(current())}»?`
+            : `Согласовать «${displayTitle(current())}» вместе с черновыми замечаниями?`;
+          if (!window.confirm(question + " Замечания и отметки сохранятся в пакете.")) return;
+        }
+        try {
+          if (!(await confirmView(v))) return;
+          confirmationError = null;
+        } catch (error) {
+          if (generation !== epoch || v.id !== vid) return;
+          if (error.status && error.status < 500) throw error;
+          confirmationError = v.id;
+          return;
+        }
       }
-      if (generation !== epoch || v.id !== vid) return;
+      if (!active || generation !== epoch || v.id !== vid) return;
       const e = entry(true);
       if (decision === "changes_requested" && !e.comment.trim())
         throw Error("Напишите замечание");
       e.decision = decision;
-      advanceAfterSave = { mid, vid };
+      advanceAfterSave = { mid, vid, decision };
       change();
       renderList();
       renderRail();
@@ -1225,63 +1324,86 @@
       }
     }
   }
-  async function bulkApprove() {
+  function missingPage(v) {
+    if (v.file.contentType !== "application/pdf" || v.confirmedView) return 0;
+    const count = v.pageCount || viewer?.pageCount || 0;
+    const seen = new Set(v.viewedPageNumbers);
+    for (let page = 1; page <= count; page++) if (!seen.has(page)) return page;
+    return 0;
+  }
+  function hasDraftRemarks(e) {
+    return !!(e && (e.decision === "changes_requested" || e.comment.trim() || e.markers.length));
+  }
+  function bulkBlocker(m) {
+    const v = m.currentVersion, e = data.draft.entries.find((e) => e.materialId === m.id);
+    if (hasDraftRemarks(e)) return e.decision === "changes_requested"
+      ? draftLabels.changes_requested : "Есть черновик замечания или отметки";
+    if (data.conflicts.includes(m.id) || (e && (e.versionId !== v.id || e.expectedRevision !== v.revision)))
+      return "Версия материала изменилась";
+    if (v.status !== "pending_approval") return labels[v.status];
+    if (!v.confirmedView && !(v.pageCount && v.viewedPages === v.pageCount))
+      return "Просмотрены не все страницы";
+    return "";
+  }
+  function bulkApprove() {
     const items = data.materials.filter((m) => selected.has(m.id));
-    if (!items.length) throw Error("Выберите материалы");
-    if (
-      items.some((m) => {
-        const v = m.currentVersion;
-        return (
-          (!v.confirmedView &&
-            !(v.pageCount && v.viewedPages === v.pageCount)) ||
-          v.status !== "pending_approval" ||
-          data.conflicts.includes(m.id)
-        );
-      })
-    )
-      throw Error(
-        "Проверьте все выбранные материалы. Для группового согласования откройте каждую страницу актуальной версии.",
-      );
-    modal("Подготовить групповое согласование", (d) => {
-      d.append(
-        el(
-          "p",
-          `Подтвердите просмотр всех страниц выбранных материалов. Решений к подготовке — ${items.length}.`,
-        ),
-      );
-      const apply = button(
-        "Подготовить решения",
-        async () => {
-          apply.disabled = true;
-          try {
-            for (const m of items) await confirmView(m.currentVersion);
-            for (const m of items) {
-              let e = data.draft.entries.find((e) => e.materialId === m.id);
-              if (!e) {
-                e = {
-                  materialId: m.id,
-                  versionId: m.currentVersion.id,
-                  expectedRevision: m.currentVersion.revision,
-                  comment: "",
-                  markers: [],
-                };
-                data.draft.entries.push(e);
-              }
-              e.decision = "approved";
-            }
-            change();
-            await flush();
-            selected.clear();
-            selectionMode = false;
+    if (!items.length) return;
+    const generation = epoch;
+    const blocked = items.filter(bulkBlocker);
+    if (blocked.length) {
+      modal("Проверьте состав выбора", (d) => {
+        d.append(el("p", "Эти материалы требуют отдельного решения. Их решения, замечания и отметки сохранятся."));
+        const list = el("ul");
+        for (const m of blocked) list.append(el("li", `${displayTitle(m)} · ${bulkBlocker(m)}`));
+        d.append(list);
+        if (blocked.length < items.length)
+          d.append(button("Исключить перечисленные", () => {
+            if (generation !== epoch) { d.close(); return; }
+            for (const m of blocked) selected.delete(m.id);
             renderList();
-            renderRail();
             d.close();
-          } finally {
-            apply.disabled = false;
+            bulkApprove();
+          }));
+      });
+      return;
+    }
+    modal("Подготовить групповое согласование", (d) => {
+      d.append(el("p", `Подтвердите просмотр всех страниц и состав группы. Материалов: ${items.length}.`));
+      const list = el("ul");
+      for (const m of items)
+        list.append(el("li", `${displayTitle(m)} · v${m.currentVersion.versionNumber}`));
+      d.append(list);
+      const apply = button("Подготовить решения", async () => {
+        apply.disabled = true;
+        try {
+          const checkGroup = () => {
+            if (generation !== epoch || items.length !== selected.size ||
+                items.some((m) => !selected.has(m.id) || bulkBlocker(m)))
+              throw Error("Состав группы или черновик изменился. Закройте сводку и проверьте выбор.");
+          };
+          checkGroup();
+          for (const m of items) if (!(await confirmView(m.currentVersion))) return;
+          checkGroup();
+          for (const m of items) {
+            const existing = data.draft.entries.find((e) => e.materialId === m.id);
+            if (existing) existing.decision = "approved";
+            else data.draft.entries.push({
+              materialId: m.id, versionId: m.currentVersion.id,
+              expectedRevision: m.currentVersion.revision, decision: "approved",
+              comment: "", markers: [],
+            });
           }
-        },
-        "primary",
-      );
+          change();
+          await flush();
+          selected.clear();
+          selectionMode = false;
+          renderList();
+          renderRail();
+          d.close();
+        } finally {
+          apply.disabled = false;
+        }
+      }, "primary");
       d.append(apply);
     });
   }
@@ -1554,10 +1676,35 @@
         .getElementById(`ac-note-${n.id}`)
         ?.scrollIntoView({ block: "nearest" });
   }
+  function appendViewFeedback() {
+    const v = version();
+    if (!v || admin() || !viewer) return;
+    const failed = viewer.failedPages;
+    const missing = incompleteVersion === v.id && missingPage(v);
+    if (!failed.length && confirmationError !== v.id && !missing) return;
+    const box = el("div", undefined, "ac-view-feedback");
+    box.setAttribute("role", "status");
+    if (failed.length || confirmationError === v.id) {
+      const text = failed.length
+        ? `Не удалось сохранить просмотр. Страницы: ${failed.join(", ")}.`
+        : "Не удалось сохранить подтверждение просмотра.";
+      box.append(el("strong", text), button("Повторить сохранение просмотра", () =>
+        failed.length ? viewer.retryViews() : decide("approved"),
+      ));
+    } else {
+      const count = v.pageCount || viewer.pageCount;
+      box.append(
+        el("strong", `Чтобы согласовать материал, просмотрите все страницы. Просмотрено ${v.viewedPages} из ${count}. Осталось ${count - v.viewedPages}`),
+        button("Открыть непросмотренную страницу", () => viewer.go(missing)),
+      );
+    }
+    footer.append(box);
+  }
   function updateFooter() {
     if (!footer || !data) return;
     renderSummary();
     footer.replaceChildren();
+    appendViewFeedback();
     const state = el("div", undefined, "ac-save");
     state.dataset.state = saveError
       ? "error"
@@ -1582,8 +1729,8 @@
           saveError.status === 409
             ? recoverDraft
             : async () => {
-                await finishSave();
                 say("");
+                await finishSave();
               },
         ),
       );
@@ -1656,7 +1803,7 @@
           ),
           el(
             "p",
-            e.decision === "approved" ? "К согласованию" : "Нужны правки",
+            draftLabels[e.decision],
           ),
         );
         if (data.conflicts.includes(e.materialId))
@@ -2052,19 +2199,47 @@
       if (pendingOpen === token) pendingOpen = null;
     }
   }
+  function captureView() {
+    if (!viewer) return lastViewContext;
+    const discussion = rail.querySelector(".ac-discussion");
+    const comment = discussion?.querySelector("textarea").value || "";
+    const room = rail.querySelector('input[aria-label="Помещение"]');
+    const required = rail.querySelector('input[type="checkbox"]');
+    const properties = room && required && (room.value !== current().room || required.checked !== current().required)
+      ? { room: room.value, required: required.checked, revision: room.dataset.revision }
+      : null;
+    return {
+      mid,
+      vid: comment || vid !== current()?.currentVersion.id ? vid : undefined,
+      context: {
+        versionId: vid, position: viewer.position, panel: root.dataset.mobile,
+        scroll: listHost.scrollTop, railScroll: rail.scrollTop,
+        discussionOpen: !!discussion?.open, comment, properties,
+        historyOpen: !!rail.querySelector(".ac-history")?.open,
+        noteFilter: rail.querySelector(".ac-notes select")?.value,
+      },
+    };
+  }
+  async function refreshView() {
+    const target = captureView() || { mid };
+    await flush();
+    if (active && !pendingOpen) await loadScope(scope, target);
+  }
   async function onTab(tab) {
     if (pendingOpen) return;
+    if (active && tab !== "review") lastViewContext = captureView();
     active = tab === "review";
     if (root) root.hidden = !active;
     document.getElementById("app-view").inert = active && !!root;
     if (!active) {
+      const leaving = viewer;
       await flush();
-      stopPreview();
+      if (!active && viewer === leaving) stopPreview();
       return;
     }
     if (!project) return;
     if (root && data) {
-      await showMaterial(mid, vid);
+      await refreshView();
       return;
     }
     const pid = project.id,

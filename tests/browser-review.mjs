@@ -6,3 +6,4 @@ await import("./browser-approval-pdf.mjs");
 await import("./browser-approval-compat.mjs");
 await import("./browser-approval-round.mjs");
 await import("./browser-approval-layout.mjs");
+await import("./browser-approval-decisions.mjs");

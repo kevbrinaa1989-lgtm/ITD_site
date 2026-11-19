@@ -5,7 +5,7 @@
   const $ = (id) => document.getElementById(id);
   const labels = {
     pending_approval: "На согласовании",
-    changes_requested: "Нужны изменения",
+    changes_requested: "На доработку",
     approved: "Согласован",
   };
   const states = new Map();
@@ -437,7 +437,7 @@
     closeDocument();
     loadScope();
   }
-  async function loadScope() {
+  async function loadScope(refresh = false) {
     if (!project) return;
     const epoch = ++scopeEpoch,
       pid = project.id,
@@ -449,8 +449,10 @@
         stage,
       ),
     );
-    scopeFiles = null;
-    render();
+    if (!refresh) {
+      scopeFiles = null;
+      render();
+    }
     try {
       const result = await h.api(
         `/api/projects/${pid}/files?stageId=${stage === "unassigned" ? "none" : encodeURIComponent(stage)}`,
@@ -570,7 +572,8 @@
     showScope,
     filterStage: (id) => showScope("all", id),
     onTab: (tab) => {
-      if (tab !== "files") closeDocument();
+      if (tab === "files") return loadScope(true);
+      closeDocument();
     },
     reset: () => {
       closeDocument();

@@ -313,9 +313,7 @@ test("drafts restore after restart, CAS prevents two-tab overwrite, stale versio
 test("PDF requires all real pages plus explicit confirmation; malformed coordinates and unread approvals rejected", async (t) => {
   const f = await setup(t, 0),
     pdf = await PDFDocument.create();
-  pdf.addPage();
-  pdf.addPage();
-  pdf.addPage();
+  for (let page = 1; page <= 5; page++) pdf.addPage();
   await f.upload({
     name: "План.pdf",
     contentType: "application/pdf",
@@ -326,10 +324,16 @@ test("PDF requires all real pages plus explicit confirmation; malformed coordina
   const d = await f.save([f.entry(m)]);
   await f.submit(d.revision, randomUUID(), 409);
   await f.api(path, { page: 1 }, f.client);
+  await f.api(path, { page: 5 }, f.client);
+  const refreshed = (await f.state()).materials[0];
+  const sparse = refreshed.versions.find((v) => v.id === refreshed.currentVersion.id);
+  assert.deepEqual(sparse.viewedPageNumbers, [1, 5]);
+  assert.equal(sparse.viewedPages, 2);
+  assert.equal(sparse.pageCount, 5);
+  assert.equal(sparse.confirmedView, false);
   await f.api(path, { confirm: true }, f.client, "POST", 409);
-  await f.api(path, { page: 4 }, f.client, "POST", 400);
-  await f.api(path, { page: 2 }, f.client);
-  await f.api(path, { page: 3 }, f.client);
+  await f.api(path, { page: 6 }, f.client, "POST", 400);
+  for (const page of [2, 3, 4]) await f.api(path, { page }, f.client);
   assert.equal(
     (await f.api(path, { confirm: true }, f.client)).confirmed,
     true,

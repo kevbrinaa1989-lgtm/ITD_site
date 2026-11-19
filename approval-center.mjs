@@ -92,6 +92,13 @@ export function initApprovalCenter({
       ),
     }));
   }
+  function viewedPageNumbers(versionId, userId) {
+    return all(
+      "SELECT page FROM approval_view_pages WHERE versionId=? AND userId=? ORDER BY page",
+      versionId,
+      userId,
+    ).map((row) => row.page);
+  }
   function list(pid, scope, user) {
     const p = review.access(pid, user, fail);
     return all(
@@ -101,23 +108,16 @@ export function initApprovalCenter({
     ).map(({ id }) => {
       const m = review.material(id, user),
         meta = get("SELECT * FROM approval_metadata WHERE materialId=?", id);
-      return {
-        ...m,
-        room: meta?.room || "",
-        required: meta?.required !== 0,
-        metadataRevision: meta?.revision || 0,
-        notes: notes(id),
-        versions: m.versions.map((v) => ({
+      const versions = m.versions.map((v) => {
+        const pages = viewedPageNumbers(v.id, p.clientId);
+        return {
           ...v,
           correction: get(
             "SELECT report FROM approval_corrections WHERE versionId=?",
             v.id,
           )?.report,
-          viewedPages: get(
-            "SELECT COUNT(*) AS n FROM approval_view_pages WHERE versionId=? AND userId=?",
-            v.id,
-            p.clientId,
-          ).n,
+          viewedPageNumbers: pages,
+          viewedPages: pages.length,
           pageCount: get(
             "SELECT pageCount FROM approval_preview_metadata WHERE versionId=?",
             v.id,
@@ -127,7 +127,15 @@ export function initApprovalCenter({
             v.id,
             p.clientId,
           ),
-        })),
+        };
+      });
+      return {
+        ...m,
+        versions,
+        room: meta?.room || "",
+        required: meta?.required !== 0,
+        metadataRevision: meta?.revision || 0,
+        notes: notes(id),
       };
     });
   }
@@ -905,11 +913,7 @@ export function initApprovalCenter({
             now(),
           );
         }
-        const seen = all(
-          "SELECT page FROM approval_view_pages WHERE versionId=? AND userId=? ORDER BY page",
-          v.id,
-          user.id,
-        ).map((x) => x.page);
+        const seen = viewedPageNumbers(v.id, user.id);
         if (b.confirm === true) {
           if (seen.length !== count)
             fail(409, `Просмотрены ${seen.length} из ${count} страниц`);

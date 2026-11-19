@@ -5,7 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import PDFDocument from "pdfkit";
 
 // Vector originals in the disposable fixture. The preview uses the same file API and PDF renderer as a client project.
-async function drawing(title, pages, revised = false) {
+export async function drawing(title, pages, revised = false) {
   const pdf = new PDFDocument({
     size: [800, 490],
     margin: 0,
@@ -155,7 +155,7 @@ async function drawing(title, pages, revised = false) {
   return (await bytes).toString("base64");
 }
 
-export async function seedApprovalDemo(f) {
+export async function seedApprovalDemo(f, { firstPlanPages = 1 } = {}) {
   const project = f.projects[0],
     [full, ...mobile] = project.stages;
   const db = new DatabaseSync(join(f.dataDir, "itd.sqlite"));
@@ -198,14 +198,8 @@ export async function seedApprovalDemo(f) {
     for (const group of groups) {
       for (const subject of subjects) {
         const title = subject + group;
-        await upload(
-          title,
-          await drawing(
-            title,
-            subject === "План перегородок" || group === groups[3] ? 2 : 1,
-          ),
-          full,
-        );
+        const pages = subject === "План перегородок" || group === groups[3] ? 2 : 1;
+        await upload(title, await drawing(title, title === subjects[0] ? firstPlanPages : pages), full);
       }
     }
     for (const stage of mobile.slice(0, 3)) {
