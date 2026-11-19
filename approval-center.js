@@ -56,6 +56,7 @@
     viewer,
     comparison,
     epoch = 0,
+    scopeRequest = null,
     openSeq = 0,
     saveTimer,
     dirty = 0,
@@ -297,6 +298,7 @@
     query = "";
     data = null;
     active = false;
+    scopeRequest = null;
     pendingOpen = null;
     returnToLibrary = null;
     dirty = saved = 0;
@@ -564,8 +566,15 @@
   async function changeScope(s) {
     build();
     const center = root;
+    const opening = center.dataset.openingStage;
+    if (opening === String(s) || (data && s === scope && opening == null && !pendingOpen)) return;
+    // A stage selected by the user supersedes an unfinished link from the library.
+    pendingOpen = null;
+    scopeRequest = null;
+    center.querySelector(".ac-work").inert = false;
+    packageButton.disabled = !data;
     if (data && s === scope) {
-      if (center.hasAttribute("data-opening-stage")) finishScope(center.dataset.openingStage, scope);
+      if (opening != null) finishScope(opening, scope);
       return;
     }
     beginScope(s);
@@ -583,6 +592,7 @@
   async function loadScope(s, target) {
     const pid = project.id,
       generation = ++epoch;
+    scopeRequest = generation;
     const context = target?.context;
     const changing = !data || s !== scope;
     build();
@@ -594,7 +604,7 @@
     try {
       result = await hooks.api(route(s));
     } catch (error) {
-      if (generation === epoch && (!changing || root?.dataset.openingStage === String(s))) {
+      if (scopeRequest === generation && (!changing || root?.dataset.openingStage === String(s))) {
         finishScope(s, data ? scope : s);
         if (data) await showMaterial(mid, vid);
         else
@@ -605,12 +615,12 @@
       }
       return;
     } finally {
-      if (generation === epoch) {
+      if (scopeRequest === generation) {
         work.inert = false;
         packageButton.disabled = !data;
       }
     }
-    if (generation !== epoch || project?.id !== pid || !active ||
+    if (scopeRequest !== generation || project?.id !== pid || !active ||
         (changing && root.dataset.openingStage !== String(s))) return;
     scope = s;
     dirty = saved = 0;
@@ -862,8 +872,10 @@
     const m = current();
     if (!m) return;
     vid = m.versions.find((v) => v.id === requested)?.id || m.currentVersion.id;
-    const seq = ++openSeq,
-      generation = epoch;
+    const seq = ++openSeq;
+    const work = root.querySelector(".ac-work");
+    const displayed = () => seq === openSeq && current() === m && active &&
+      !work.inert && !root.hasAttribute("data-opening-stage");
     stopPreview();
     viewHost.replaceChildren();
     rail.replaceChildren();
@@ -966,7 +978,7 @@
       position,
       showProgress: !admin(),
       onDisplay: () => {
-        if (seq !== openSeq || generation !== epoch) return;
+        if (!displayed()) return;
         updateFooter();
         updateCorrectionChecks(v);
       },
@@ -987,7 +999,7 @@
         compose(request.index, n);
       },
       onPosition: (pos) => {
-        if (generation !== epoch || seq !== openSeq || admin()) return;
+        if (!displayed() || admin()) return;
         const updated = { materialId: mid, versionId: vid, ...pos };
         if (
           Object.keys(updated).some(
@@ -1018,7 +1030,7 @@
       }
     });
     const detail = await hooks.api(`/api/materials/${mid}`);
-    if (seq !== openSeq || generation !== epoch) return;
+    if (seq !== openSeq || current() !== m) return;
     historyByMaterial.set(mid, detail.events);
     renderHistory();
   }
@@ -2508,7 +2520,7 @@
         vid: requested,
         panel: options.panel,
       });
-      return true;
+      return pendingOpen === token;
     } finally {
       if (pendingOpen === token) pendingOpen = null;
     }

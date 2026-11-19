@@ -110,6 +110,65 @@ export async function checkFirstUse(browser) {
     assert.deepEqual(await cards.evaluateAll(items => items.map(item => Number(item.dataset.fileId))),
       files.map(file => file.id));
   }
+  async function checkStageSwitches(page, ids, previousMaterialId) {
+    const picker = page.locator(".ac-stage select");
+    const previousScope = `/api/approval-center/projects/${project.id}/stages/${previous.id}`;
+    const previousDraft = async () => (await f.api(previousScope, null, client.cookie)).draft.entries;
+    const untouched = await previousDraft();
+    async function pause(path) {
+      const url = f.base + path, release = Promise.withResolvers();
+      await page.route(url, async route => { await release.promise; await route.continue(); }, { times: 1 });
+      const started = page.waitForRequest(url);
+      return { started, async resume() {
+        const response = page.waitForResponse(url);
+        release.resolve();
+        await (await response).finished();
+      } };
+    }
+    // A stage chosen while a library link is opening takes priority over its late result.
+    const library = await pause(scope);
+    await page.locator(".library-material .library-history").first().click();
+    await library.started;
+    try {
+      await picker.selectOption(String(previous.id));
+      await page.locator(`.ac-material[data-material-id="${previousMaterialId}"]`).waitFor();
+    } finally { await library.resume(); }
+    assert.equal(await picker.inputValue(), String(previous.id));
+
+    await openCurrent(page, false);
+    const row = id => page.locator(`.ac-material[data-material-id="${id}"] .ac-material-open`);
+    await row(ids[0]).click();
+    await page.locator(".ac-save[data-state=saved]").waitFor();
+    const text = "Уточнить высоту у окна";
+    const draft = await pause(scope + "/draft");
+    await page.getByRole("button", { name: "Нужны правки", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Текст замечания").fill(text);
+    await dialog.getByRole("button", { name: "Закрыть", exact: true }).click();
+    await draft.started;
+    try {
+      await picker.selectOption(String(previous.id));
+      await picker.selectOption(String(current.id));
+      assert.equal(await row(ids[0]).isVisible(), true);
+    } finally { await draft.resume(); }
+    await page.locator(".ac-save[data-state=saved]").waitFor();
+    assert.equal((await state()).draft.entries.find(e => e.materialId === ids[0]).comment, text);
+
+    const slowStage = await pause(previousScope);
+    await picker.selectOption(String(previous.id));
+    await slowStage.started;
+    try {
+      assert.equal(await row(ids[0]).isVisible(), false);
+      await picker.selectOption(String(current.id));
+      await page.getByRole("button", { name: "Позже", exact: true }).click();
+      assert.equal(await row(ids[1]).getAttribute("aria-current"), "true");
+    } finally { await slowStage.resume(); }
+    await page.locator(".ac-save[data-state=saved]").waitFor();
+    assert.equal(await picker.inputValue(), String(current.id));
+    assert.equal((await state()).draft.position.materialId, ids[1]);
+    assert.deepEqual(await previousDraft(), untouched);
+    await leaveApproval(page);
+  }
   try {
     await f.api("/api/admin/projects/" + project.id, { title: projectTitle }, f.admin, "PATCH");
     await f.api("/api/projects", { title: "Проект мастерской", clientId: client.id, stageTemplates: ["measurements"] },
@@ -149,6 +208,7 @@ export async function checkFirstUse(browser) {
     try { db.prepare("UPDATE review_materials SET title=? WHERE id=?").run(titles[2], ids[2]); }
     finally { db.close(); }
     await checkOrder(customer, false, ids, titles, files);
+    await checkStageSwitches(customer, ids, previousFile.review.materialId);
     await checkOrder(staff, true, ids, titles, files);
 
     const remark = "Перенесите светильник ближе к столу.";
