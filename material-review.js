@@ -131,7 +131,7 @@
     window.ITDUI.materialLabel({
       title: material.title,
       file: {
-        ...material.currentVersion.file,
+        ...(material.versions?.[0]?.file || material.currentVersion.file),
         review: { materialId: material.id },
       },
       stage: project?.stages.find((s) => s.id === material.stageId),
@@ -339,9 +339,9 @@
     project = next || null;
     if (project) loadList();
   }
-  async function open(id, requestedVersion, back) {
+  async function open(id, requestedVersion, back, options) {
     if (window.ITDApprovalCenter)
-      return window.ITDApprovalCenter.open(id, requestedVersion, back);
+      return window.ITDApprovalCenter.open(id, requestedVersion, back, options);
     if (back) returnToLibrary = back;
     document.body.classList.toggle("review-from-library", !!returnToLibrary);
     if (!project) return false;
@@ -909,7 +909,7 @@
     });
   }
   function onTab(tab, stageId) {
-    window.ITDApprovalCenter?.onTab(tab, stageId).catch((e) => notice(e.message));
+    const centerReady = window.ITDApprovalCenter?.onTab(tab, stageId).catch((e) => notice(e.message));
     if (tab !== "review") {
       returnToLibrary = null;
       document.body.classList.remove("review-from-library");
@@ -921,6 +921,7 @@
     );
     if (tab === "review" && project) loadList();
     if (tab === "notifications") loadNotifications();
+    return centerReady;
   }
   window.ITDReview = {
     init,

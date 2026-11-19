@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import "./project-state.js";
-const { currentStage, progress, materialLabel } = globalThis.ITDProjectState;
+const { currentStage, selectedStage, progress, materialLabel } = globalThis.ITDProjectState;
 const stages = (statuses) =>
   statuses.map((status, id) => ({
     id: id + 1,
@@ -70,6 +70,14 @@ test("accepted progress is not a completed-stage count and never counts a stage 
     );
   }
 });
+test("overview selection distinguishes the default, a deliberately empty stage and unassigned files", () => {
+  const all = stages(["planned", "in_progress", "completed"]);
+  assert.equal(selectedStage(all)?.id, 2);
+  assert.equal(selectedStage(all, null)?.id, 2);
+  assert.equal(selectedStage(all, 1)?.id, 1);
+  assert.equal(selectedStage(all, 0), null);
+  assert.equal(selectedStage([], null), null);
+});
 test("logical labels stay separate from real filenames and remain stable between versions", () => {
   const stage = { title: "Обмеры" },
     file = { id: 12, name: "CAMERA_EXPORT_V2.pdf", review: { materialId: 3 } };
@@ -79,7 +87,7 @@ test("logical labels stay separate from real filenames and remain stable between
   );
   assert.equal(
     materialLabel({ title: "CAMERA_EXPORT_V1.jpg", file, stage }),
-    "Обмеры · Материал №3",
+    "Материал №3",
   );
   assert.equal(
     materialLabel({ file, stage }),
@@ -87,4 +95,16 @@ test("logical labels stay separate from real filenames and remain stable between
   );
   assert.equal(file.name, "CAMERA_EXPORT_V2.pdf");
   assert.equal(materialLabel({}), "Материал проекта");
+});
+test("ordinary filenames keep their readable stem and replacement files keep the original title", () => {
+  const original = "План кухни. Итоговая версия.лист 3.pdf";
+  const file = { id: 19, name: "Заменённый файл.pdf", review: { materialId: 5, title: original, originalName: original } };
+  assert.equal(materialLabel({ file }), "План кухни. Итоговая версия.лист 3");
+  assert.equal(materialLabel({ file, title: "Расстановка мебели. Вариант 2" }), "Расстановка мебели. Вариант 2");
+  for (const stem of ["План кухни", "План спальни", "Развёртка стен гостиной с указанием отметок и чистовых материалов"]) {
+    assert.equal(materialLabel({ file: { name: stem + ".pdf" } }), stem);
+  }
+  for (const name of ["IMG_20261119.jpg", "c1526f9a-676a-4b73-81fc-8b1766473990.pdf", "0123456789abcdef01234567.pdf", "123456.jpg", "v2.pdf"]) {
+    assert.equal(materialLabel({ file: { ...file, review: { materialId: 5, title: name, originalName: name } } }), "Материал №5");
+  }
 });

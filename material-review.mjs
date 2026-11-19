@@ -2,6 +2,11 @@ const iso = (value) => (value == null ? null : new Date(value).toISOString());
 export function decorateReviewFiles(db, files) {
   const query =
     db.prepare(`SELECT v.materialId,m.title,v.id AS versionId,v.versionNumber,v.status,v.revision,
+    (SELECT original.name FROM review_versions first JOIN files original ON original.id=first.fileId
+      WHERE first.materialId=v.materialId ORDER BY first.versionNumber LIMIT 1) AS originalName,
+    COALESCE((SELECT e.type FROM review_events e WHERE e.materialId=v.materialId AND e.versionId=v.id
+      AND e.type IN ('approved','changes_requested') ORDER BY e.id DESC LIMIT 1),
+      CASE WHEN v.status IN ('approved','changes_requested') THEN v.status END) AS lastDecision,
     NOT EXISTS(SELECT 1 FROM review_versions n WHERE n.materialId=v.materialId AND n.versionNumber>v.versionNumber) AS isCurrent
     FROM review_versions v JOIN review_materials m ON m.id=v.materialId WHERE v.fileId=?`);
   return files.map((file) => {

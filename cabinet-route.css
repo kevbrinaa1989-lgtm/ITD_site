@@ -739,11 +739,134 @@ progress::-moz-progress-bar {
   font-size: 12px;
   margin-bottom: 8px;
 }
-.client-other-decisions {
-  margin-top: 28px;
+.client-home-intro {
+  flex: 1;
+  min-width: 0;
 }
-.client-other-decisions > .review-card {
-  margin: 12px 0;
+.client-project-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+#app-view .client-project-name h1 {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.client-next-decision {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 20px;
+  margin-top: 14px;
+  padding: 16px 20px;
+  border-left: 3px solid #405f4a;
+  background: var(--paper);
+}
+#app-view .client-next-label {
+  margin: 0 0 5px;
+  color: #405f4a;
+  font-size: 14px;
+  font-weight: 600;
+}
+#app-view .client-next-decision h2,
+#app-view .client-decision-card h3 {
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+  font-size: 19px;
+  line-height: 1.35;
+}
+#app-view .client-decision-context,
+#app-view .client-decision-state {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+#app-view .client-home-intro > .client-decision-context {
+  margin-top: 10px;
+}
+#app-view .client-next-decision .primary {
+  margin: 0;
+  font-size: 15px;
+  background: #405f4a;
+  border-color: #405f4a;
+}
+#app-view .client-next-decision .primary:hover {
+  background: #344d3c;
+}
+.client-decision-filters {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 14px 0 0;
+  border-bottom: 1px solid var(--line);
+}
+#app-view .client-decision-filters button {
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+}
+#app-view .client-decision-filters button[aria-pressed="true"] {
+  border-bottom-color: var(--copper);
+  color: var(--ink);
+  font-weight: 600;
+}
+.client-decision-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 24px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.client-decision-card > div {
+  min-width: 0;
+}
+.client-decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+}
+#app-view .client-decision-actions button {
+  font-size: 14px;
+  text-align: left;
+}
+#app-view .client-decision-actions button:first-child {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 600;
+}
+#app-view .client-decision-actions button + button {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 640px) {
+  #app-view .client-project-name h1,
+  #app-view .client-next-decision h2 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+  }
+  .client-next-decision {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 13px 14px;
+  }
+  .client-decision-card {
+    display: grid;
+    gap: 4px;
+  }
+  #app-view .client-decision-filters button {
+    padding-inline: 7px;
+  }
 }
 .project-grid {
   gap: 20px;
@@ -1042,7 +1165,7 @@ progress::-moz-progress-bar {
     line-height: 1.2;
   }
   #mobile-bottom-nav button > small {
-    font-size: 10px;
+    font-size: 12px;
   }
   #mobile-bottom-nav button[aria-current="page"] {
     color: var(--copper);

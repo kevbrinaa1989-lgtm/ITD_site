@@ -23,7 +23,7 @@
         query: "",
         stage: "unassigned",
         type: "",
-        sort: "newest",
+        sort: "oldest",
       });
     return states.get(project.id);
   };
@@ -360,7 +360,7 @@
       if (project)
         Object.assign(state(), {
           stage: "unassigned",
-          sort: "newest",
+          sort: "oldest",
           category: "all",
           query: "",
           type: "",
@@ -425,9 +425,9 @@
   // search/filter selections so that another stage cannot leak into the view.
   function showScope(categoryValue, stageValue, openAlbum = false) {
     if (!project) return;
-    const stage = stageValue == null ? "unassigned" : String(stageValue);
+    const stage = stageValue == null || stageValue === 0 ? "unassigned" : String(stageValue);
     const s = state();
-    if (s.stage !== stage) s.sort = stage === "unassigned" ? "newest" : "oldest";
+    if (s.stage !== stage) s.sort = "oldest";
     Object.assign(s, {
       category: categoryValue,
       stage,
@@ -572,7 +572,7 @@
     openReview,
     category,
     showScope,
-    stageId: () => project && state().stage !== "unassigned" ? Number(state().stage) : undefined,
+    stageId: () => project ? (state().stage === "unassigned" ? 0 : Number(state().stage)) : undefined,
     filterStage: (id) => showScope("all", id),
     onTab: (tab) => {
       if (tab === "files") return loadScope(true);

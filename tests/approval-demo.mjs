@@ -5,7 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import PDFDocument from "pdfkit";
 
 // Vector originals in the disposable fixture. The preview uses the same file API and PDF renderer as a client project.
-export async function drawing(title, pages, revised = false) {
+export async function drawing(title, pages, revised = false, revisedPage = 2) {
   const pdf = new PDFDocument({
     size: [800, 490],
     margin: 0,
@@ -79,7 +79,7 @@ export async function drawing(title, pages, revised = false) {
     line(32, 67, 768, 67, 0.75);
     dimension(114, 92, 688, 92, "11 480");
     dimension(86, 112, 86, 398, "5 720");
-    const divide = revised && page === 2 ? 392 : 384;
+    const divide = revised && page === revisedPage ? 392 : 384;
     wall(109, 108, 584, 9);
     wall(109, 108, 9, 293);
     wall(684, 108, 9, 293);
@@ -155,7 +155,49 @@ export async function drawing(title, pages, revised = false) {
   return (await bytes).toString("base64");
 }
 
-export async function seedApprovalDemo(f, { firstPlanPages = 1 } = {}) {
+// Build a repeatable first-use example through the same upload, package and correction
+// operations as the cabinet. Production data and previous acceptance runs are independent.
+async function firstUseRound(f, project, stage) {
+  const client = f.clients[0].cookie;
+  const upload = (file) => f.api("/api/projects/" + project.id + "/files", {
+    contentType: "application/pdf", category: "result", stageId: stage.id, ...file,
+  }, f.admin, "POST", 201);
+  const route = "/api/approval-center/projects/" + project.id + "/stages/" + stage.id;
+  const state = () => f.api(route, null, client);
+  const files = [];
+  for (const title of ["План кухни", "План спальни", "План освещения"]) {
+    files.push(await upload({ name: title + ".pdf", data: await drawing(title, 1) }));
+  }
+  await f.api(route + "/publish", {
+    fileIds: [files[2].id, files[0].id, files[1].id], operationId: "demo-first-use-publish", confirm: true,
+  }, f.admin);
+  const initial = await state();
+  const [kitchen, bedroom] = files.map(file => initial.materials.find(m => m.currentVersion.file.id === file.id));
+  const kitchenNote = "Уточните положение перегородки между кухней и гостиной.";
+  const bedroomNotes = [
+    "Укажите ширину прохода вдоль кровати.", "Покажите привязку выключателя у входа.",
+    "Добавьте глубину шкафа на плане.", "Проверьте направление открывания дверцы.",
+    "Уточните высоту настенного светильника.", "Обозначьте розетку для пылесоса.",
+    "Добавьте размер от окна до края стола.", "Покажите место подключения штор.",
+    "Проверьте ширину дверного проёма.", "Укажите расстояние от кровати до тумбы.",
+  ];
+  const entries = [[kitchen, [kitchenNote]], [bedroom, bedroomNotes]].map(([m, notes]) => ({
+    materialId: m.id, versionId: m.currentVersion.id, expectedRevision: m.currentVersion.revision,
+    decision: "changes_requested", comment: notes[0],
+    markers: notes.map((body, i) => ({ page: 1, x: 0.16 + i % 5 * 0.14, y: 0.35 + Math.floor(i / 5) * 0.25, body })),
+  }));
+  const draft = await f.api(route + "/draft", {expectedRevision: initial.draft.revision, entries, position: {}}, client, "PUT");
+  await f.api(route + "/submit", {expectedRevision: draft.revision, confirm: true, operationId: "demo-first-use-returns"}, client);
+  const returned = (await state()).materials.find(m => m.id === kitchen.id);
+  const explanation = "Перегородка смещена. Исправленное положение показано на третьем листе.";
+  await upload({ name: "Уточнённая планировка.pdf", data: await drawing("План кухни", 3, true, 3),
+    materialId: kitchen.id, expectedVersionId: kitchen.currentVersion.id,
+    correctionReport: {description: explanation, resolutions: [{noteId: returned.notes[0].id, fixed: true, explanation}]},
+  });
+  await f.api("/api/stages/" + stage.id, {status: "in_progress"}, f.admin, "PATCH");
+}
+
+export async function seedApprovalDemo(f, { firstPlanPages = 1, firstUse = false } = {}) {
   const project = f.projects[0],
     [full, ...mobile] = project.stages;
   const db = new DatabaseSync(join(f.dataDir, "itd.sqlite"));
@@ -203,6 +245,10 @@ export async function seedApprovalDemo(f, { firstPlanPages = 1 } = {}) {
       }
     }
     for (const stage of mobile.slice(0, 3)) {
+      if (firstUse && stage.id === mobile[0].id) {
+        await firstUseRound(f, project, stage);
+        continue;
+      }
       await upload("Общий план", await drawing("Общий план", 1), stage);
       await upload(
         "План перегородок",

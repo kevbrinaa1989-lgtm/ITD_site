@@ -93,7 +93,10 @@ try {
   await action(client, "Обновить данные");
   for (const id of returned) {
     await view(client, id);
+    await client.getByText("Все страницы просмотрены", { exact: true }).waitFor();
     await notes(client);
+    await button(client, "Проверить исправление · версия 2").waitFor();
+    await button(client, "Исходное замечание · версия 1").waitFor();
     await button(client, "Подтвердить исправление").click();
     const confirmation = client.getByRole("dialog");
     await confirmation.getByLabel("Пояснение").fill("Исправление проверено");
@@ -119,10 +122,21 @@ try {
   assert.ok((await PDFDocument.load(await response.body())).getPageCount() >= 1);
   await button(client.getByRole("dialog"), "Закрыть").click();
   await action(client, "Готовность этапа");
-  await button(client.getByRole("dialog"), "Подтверждаю согласование этапа").click();
-  await client.getByText("Этап согласован отдельным действием", { exact: true }).waitFor();
+  const stageEvents = () => f.rows("SELECT COUNT(*) AS count FROM approval_stage_events WHERE stageId=?", stage.id)[0].count;
+  const beforeAcceptance = stageEvents();
+  await button(client.getByRole("dialog"), "Подтверждаю согласование этапа").evaluate(b => { b.click(); b.click(); });
+  const accepted = client.locator(".ac-stage-approved").filter({ hasText: "Этап согласован отдельным действием" });
+  await accepted.waitFor();
   assert.equal((await state()).stage.approved, true);
-  console.log("PASS", browser.version(), "40 materials, 35 bulk approvals, 5 returns and uploads, 5 client confirmations, 2 rounds, statement PDF and separate stage acceptance");
+  await action(client, "Обновить данные");
+  await view(client, ids[0]);
+  await accepted.waitFor();
+  await action(client, "Готовность этапа");
+  const stageDialog = client.getByRole("dialog");
+  await stageDialog.getByText("Этап уже согласован или завершён.", { exact:true }).waitFor();
+  assert.equal(await button(stageDialog, "Подтверждаю согласование этапа").count(), 0);
+  assert.equal(stageEvents(), beforeAcceptance + 1);
+  console.log("PASS", browser.version(), "40 materials, 35 bulk approvals, 5 returns and uploads, 5 client confirmations, 2 rounds, PDF statement and persistent separate stage acceptance without a duplicate event");
 } finally {
   await browser?.close();
   await f.close();

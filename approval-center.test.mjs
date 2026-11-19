@@ -252,17 +252,16 @@ test("full 40 → 35 + 5 → corrections → confirmation → new versions → s
       "POST",
       403,
     );
-    await f.api(
-      `/api/approval-center/notes/${note.id}/events`,
-      {
-        type: "confirmed",
-        body: "Исправление проверено",
-        expectedRevision: note.revision,
-        versionId: uploaded.review.versionId,
-      },
-      f.client,
-    );
-    await f.confirm(updated.currentVersion);
+    const confirmNote = {
+      type: "confirmed", body: "Исправление проверено",
+      expectedRevision: note.revision, versionId: uploaded.review.versionId,
+    };
+    const notePath = `/api/approval-center/notes/${note.id}/events`;
+    const viewPath = `/api/approval-center/versions/${uploaded.review.versionId}/view`;
+    await f.api(notePath, confirmNote, f.client, "POST", 409);
+    await f.api(viewPath, { page: 1 }, f.client);
+    await f.api(notePath, confirmNote, f.client);
+    await f.api(viewPath, { confirm: true }, f.client);
     newEntries.push(f.entry(updated));
   }
   const nextDraft = await f.save(newEntries),
@@ -278,6 +277,7 @@ test("full 40 → 35 + 5 → corrections → confirmation → new versions → s
   );
   current = await f.state();
   assert.equal(current.stage.approved, false);
+  assert.equal(current.stage.acceptedSeparately, false);
   assert.deepEqual(current.stage.blockers, []);
   const operationId = randomUUID();
   await f.api(
@@ -285,7 +285,9 @@ test("full 40 → 35 + 5 → corrections → confirmation → new versions → s
     { operationId, token: current.stage.token, confirm: true },
     f.client,
   );
-  assert.equal((await f.state()).stage.approved, true);
+  const accepted = (await f.state()).stage;
+  assert.equal(accepted.approved, true);
+  assert.equal(accepted.acceptedSeparately, true);
   assert.equal(
     (
       await f.api(
@@ -339,6 +341,119 @@ test("drafts restore after restart, CAS prevents two-tab overwrite, stale versio
   assert.equal(after.draft.entries.length, 2);
   assert.equal(after.conflicts.length, 1);
   assert.equal(f.rows("SELECT count(*) AS n FROM review_events")[0].n, before);
+});
+test("a correction receipt belongs to one note, revision and fully displayed replacement file", async (t) => {
+  const f = await setup(t, 0);
+  async function uploadPlan(pageLabels, extra = {}) {
+    const pdf = await PDFDocument.create();
+    for (const label of pageLabels) pdf.addPage().drawText(label);
+    return f.upload({
+      name: "План.pdf", contentType: "application/pdf",
+      data: Buffer.from(await pdf.save()).toString("base64"), ...extra,
+    });
+  }
+  const readPage = (versionId, page, status = 200) =>
+    f.api(`/api/approval-center/versions/${versionId}/view`, { page }, f.client, "POST", status);
+  const receipt = (note, versionId) => ({
+    type: "confirmed", body: "Проверила листы.", expectedRevision: note.revision, versionId,
+  });
+  const events = (note, action, status = 200, user = f.client) =>
+    f.api(`/api/approval-center/notes/${note.id}/events`, action, user, "POST", status);
+  const counters = () => f.rows(`SELECT
+    (SELECT count(*) FROM approval_note_events) AS notes,
+    (SELECT count(*) FROM review_events) AS history,
+    (SELECT count(*) FROM review_notifications) AS notifications,
+    (SELECT count(*) FROM approval_stage_events) AS stages`)[0];
+
+  await uploadPlan(["A", "B", "C"]);
+  const original = (await f.state()).materials[0];
+  const firstVersion = original.currentVersion.id;
+  for (const page of [1, 2, 3]) await readPage(firstVersion, page);
+  await f.api(`/api/approval-center/versions/${firstVersion}/view`, { confirm: true }, f.client);
+  const draft = await f.save([f.entry(original, "changes_requested", "Уточните размеры.", [
+    { page: 1, x: 0.22, y: 0.35, body: "Размер на листе A" },
+    { page: 2, x: 0.44, y: 0.58, body: "Размер на листе B" },
+  ])]);
+  await f.submit(draft.revision);
+  const open = (await f.state()).materials[0].notes;
+  const second = await uploadPlan(["B", "C", "A"], {
+    materialId: original.id, expectedVersionId: firstVersion,
+    correctionReport: { description: "Переставлены листы и указаны размеры.",
+      resolutions: open.map((n) => ({ noteId: n.id, fixed: true, explanation: n.body + " уточнён." })) },
+  });
+  const secondVersion = second.review.versionId;
+  const before = await f.state();
+  const [a, b] = before.materials[0].notes;
+  assert.equal(a.versionId, firstVersion);
+  assert.equal(a.correctionVersionId, secondVersion);
+  assert.equal(a.correctionVersionNumber, 2);
+  assert.equal(a.correctionExplanation, a.body + " уточнён.");
+
+  const confirmation = receipt(a, secondVersion);
+  await events(a, { type: "confirmed", body: confirmation.body, expectedRevision: a.revision }, 400);
+  await events(a, confirmation, 403, f.clients[1].cookie);
+  await events(a, receipt(a, firstVersion), 409);
+  await events(a, { type: "fixed", body: "Уточнено", expectedRevision: a.revision, versionId: firstVersion }, 409, f.admin);
+  const preview = await f.request(`/api/files/${second.id}/preview`, null, f.client);
+  assert.equal(preview.status, 200);
+  await preview.arrayBuffer();
+  await events(a, confirmation, 409);
+  await readPage(secondVersion, 1);
+  await events(a, confirmation, 409);
+  await readPage(secondVersion, 4, 400);
+  await readPage(secondVersion, 3);
+  await events(a, confirmation, 409);
+  await readPage(secondVersion, 2);
+
+  const initialCounts = counters();
+  await events(a, confirmation);
+  const once = counters();
+  assert.deepEqual(once, { notes: initialCounts.notes + 1, history: initialCounts.history + 1,
+    notifications: initialCounts.notifications + 1, stages: initialCounts.stages });
+  assert.equal((await events(a, confirmation)).replayed, true);
+  await events(a, { ...confirmation, body: "Другое действие" }, 409);
+  assert.deepEqual(counters(), once);
+  const after = await f.state();
+  assert.equal(after.stage.status, before.stage.status);
+  assert.equal(after.stage.approved, false);
+  const material = after.materials[0];
+  assert.equal(material.currentVersion.status, before.materials[0].currentVersion.status);
+  assert.equal(material.versions.find((v) => v.id === secondVersion).confirmedView, false);
+  assert.deepEqual(material.notes.map((n) => n.status), ["confirmed", "fixed"]);
+
+  const stale = receipt(b, secondVersion);
+  const third = await uploadPlan(["A", "C", "B"], {
+    materialId: original.id, expectedVersionId: secondVersion,
+    correctionReport: { description: "Уточнён размер на листе B.",
+      resolutions: [{ noteId: b.id, fixed: true, explanation: "Размер на листе B обновлён." }] },
+  });
+  const thirdVersion = third.review.versionId;
+  const current = (await f.state()).materials[0].notes[1];
+  assert.equal(current.id, b.id);
+  assert.equal(current.correctionVersionId, thirdVersion);
+  await events(b, stale, 409);
+  await events(b, { ...stale, versionId: thirdVersion }, 409);
+  await events(b, { ...stale, expectedRevision: current.revision }, 409);
+  for (const page of [1, 2, 3]) await readPage(thirdVersion, page);
+  await events(b, { type: "reply", body: "Приложен ответ студии.", expectedRevision: current.revision,
+    versionId: thirdVersion }, 200, f.admin);
+  await events(b, receipt(current, thirdVersion), 409);
+  assert.equal((await f.state()).materials[0].notes[1].status, "fixed");
+
+  // Older events can legitimately lack a version. An earlier known fix must
+  // not be used as evidence for a later, unbound assertion.
+  const db = new DatabaseSync(join(f.dataDir, "itd.sqlite"));
+  try {
+    const actor = current.history.findLast((e) => e.type === "fixed").actorId;
+    db.prepare("INSERT INTO approval_note_events(noteId,actorId,type,body,versionId,createdAt) VALUES(?,?,'fixed',?,NULL,?)")
+      .run(b.id, actor, "Старая отметка без версии", Date.now());
+    db.prepare("UPDATE approval_notes SET revision=revision+1 WHERE id=?").run(b.id);
+  } finally {
+    db.close();
+  }
+  const legacy = (await f.state()).materials[0].notes[1];
+  assert.equal(legacy.correctionVersionId, null);
+  await events(legacy, receipt(legacy, thirdVersion), 409);
 });
 test("PDF requires all real pages plus explicit confirmation; malformed coordinates and unread approvals rejected", async (t) => {
   const f = await setup(t, 0),
@@ -439,6 +554,10 @@ test("ownership, roles, stage scoping, idempotency payload binding and optional 
   await f.confirm(remaining.currentVersion);
   const d2 = await f.save([f.entry(remaining)]);
   assert.equal((await f.submit(d2.revision)).roundNumber, 1);
+  await f.api(`/api/stages/${f.s.id}`, { status: "approved" }, f.admin, "PATCH");
+  const manual = (await f.state()).stage;
+  assert.equal(manual.approved, true);
+  assert.equal(manual.acceptedSeparately, false);
 });
 test("designer publishes selected existing files atomically with one notification and stable retry", async (t) => {
   const f = await setup(t, 0),
@@ -446,7 +565,7 @@ test("designer publishes selected existing files atomically with one notificatio
   for (let i = 0; i < 10; i++)
     files.push(await f.upload({ name: `Публикация-${i}.png`, review: false }));
   const request = {
-    fileIds: files.map((f) => f.id),
+    fileIds: files.map((f) => f.id).reverse(),
     operationId: randomUUID(),
     confirm: true,
   };
@@ -459,7 +578,14 @@ test("designer publishes selected existing files atomically with one notificatio
     before + 1,
   );
   assert.deepEqual(await f.api(f.route + "/publish", request, f.admin), result);
-  assert.equal((await f.state()).materials.length, 10);
+  const ordered = (await f.state()).materials;
+  assert.deepEqual(ordered.map((m) => m.currentVersion.file.id), files.map((file) => file.id));
+  const first = ordered[0];
+  await f.upload({ materialId: first.id, expectedVersionId: first.currentVersion.id, name: "Первый-v2.png" });
+  await f.restart();
+  const revised = (await f.state()).materials;
+  assert.deepEqual(revised.map((m) => m.id), ordered.map((m) => m.id));
+  assert.equal(revised[0].currentVersion.versionNumber, 2);
 });
 
 test("backup and restore preserve approval snapshots, drafts, annotations and corrections exactly", async (t) => {

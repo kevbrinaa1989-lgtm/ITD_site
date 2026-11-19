@@ -13,7 +13,8 @@ if (host !== "127.0.0.1" &&
 
 const f = await ownershipFixture({ host, port: Number(process.argv[3] || 4175) });
 try {
-  const { project, full, mobile, corrected } = await seedApprovalDemo(f, { firstPlanPages: 5 });
+  const firstUse = process.argv.includes("--first-use");
+  const { project, full, mobile, corrected } = await seedApprovalDemo(f, { firstPlanPages: 5, firstUse });
   console.log(`Кабинет: ${f.base}/cabinet
 Клиент: ${f.clients[0].email}
 Дизайнер: admin@example.test
@@ -23,6 +24,7 @@ try {
 Samsung Internet / Chrome Android / Safari: ${mobile.slice(0, 3).map(s => s.title).join(" / ")}
 Файл v2 для загрузки дизайнером (после входа): ${f.base}/api/files/${corrected.id}/download
 Остановить демоверсию: Ctrl+C.`);
+  if (firstUse) console.log("Повторная приёмка: в этапе «" + mobile[0].title + "» откройте «План кухни» (исправление на листе 3) и «План спальни» (10 замечаний).");
   await new Promise((resolve) => {
     process.once("SIGINT", resolve);
     process.once("SIGTERM", resolve);

@@ -33,6 +33,7 @@
     saveStatus,
     footer,
     stagePicker,
+    stageApproval,
     summaryHost,
     packageButton,
     bulk,
@@ -80,7 +81,7 @@
   const displayTitle = (m) =>
     window.ITDUI.materialLabel({
       title: m.title,
-      file: { ...m.currentVersion.file, review: { materialId: m.id } },
+      file: { ...(m.versions[0]?.file || m.currentVersion.file), review: { materialId: m.id } },
       stage: project?.stages.find((s) => s.id === m.stageId),
     });
   const current = () => data?.materials.find((m) => m.id === mid);
@@ -345,7 +346,7 @@
       const back = returnToLibrary;
       returnToLibrary = null;
       back();
-    } else hooks.backToStage(scope || null);
+    } else hooks.backToStage(scope);
   }
   function build() {
     if (root) return;
@@ -381,7 +382,10 @@
     );
     stagePicker.className = "ac-stage";
     stagePicker.append(el("span", "", "ac-stage-name"));
-    context.append(el("span", project.title), el("span", "·"), stagePicker);
+    stageApproval = el("span", "", "ac-stage-approved");
+    stageApproval.hidden = true;
+    stageApproval.setAttribute("role", "status");
+    context.append(el("span", project.title), el("span", "·"), stagePicker, stageApproval);
     intro.append(el("h2", "Центр согласования"), context);
     packageButton = button(
       admin() ? "Ведомости" : "К отправке",
@@ -659,8 +663,10 @@
       }
       panel(context.panel);
       listHost.scrollTop = context.scroll;
-      rail.scrollTop = context.railScroll;
+      const body = rail.querySelector(".ac-rail-body");
+      if (body) body.scrollTop = context.railScroll;
     }
+    if (target?.panel === "notes" && target.mid === mid && active) panel("notes");
     if (result.conflicts.length)
       say(
         "Есть черновики по изменённым версиям. Откройте замечания и проверьте новую версию.",
@@ -699,6 +705,10 @@
     if (!data || !summaryHost) return;
     const count = data.draft.entries.filter((e) => e.decision).length,
       total = data.materials.length;
+    const stageStatus = data.stage.acceptedSeparately ? "Этап согласован отдельным действием" :
+      data.stage.approved ? (data.stage.status === "completed" ? "Этап завершён" : "Этап согласован") : "";
+    if (stageApproval.textContent !== stageStatus) stageApproval.textContent = stageStatus;
+    stageApproval.hidden = !stageStatus;
     queueCount.textContent = total;
     if (!admin()) packageButton.textContent = `К отправке · ${count}`;
     const progress = admin()
@@ -892,11 +902,10 @@
         await refreshView();
       }),
     );
-    if (admin())
-      tools.append(
-        button("Очередь замечаний", showNoteQueue),
-        button("Направить материалы на согласование", publishFiles),
-      );
+    if (admin()) {
+      tools.append(button("Очередь замечаний", showNoteQueue));
+      if (vid === m.currentVersion.id) tools.append(button("Направить материалы на согласование", publishFiles));
+    }
     else tools.append(button("Восстановление черновиков", recoverDraft));
     menu.append(trigger, tools);
     if (canDecide() && (m.notes.length || m.returnComments?.length))
@@ -926,7 +935,11 @@
       markers,
       position,
       showProgress: !admin(),
-      onDisplay: updateFooter,
+      onDisplay: () => {
+        if (seq !== openSeq || generation !== epoch) return;
+        updateFooter();
+        updateCorrectionChecks(v);
+      },
       onPage: (page) => recordView(v, page),
       onMarker: (n) => {
         if (n.id) {
@@ -981,7 +994,8 @@
   function renderHistory() {
     rail.querySelector(".ac-history")?.remove();
     const events = historyByMaterial.get(mid);
-    if (!events) return;
+    const body = rail.querySelector(".ac-rail-body");
+    if (!events || !body) return;
     const history = el("details", undefined, "ac-history");
     history.append(el("summary", "Комментарии и история решений"));
     for (const e of events) {
@@ -991,7 +1005,7 @@
       if (e.body) item.append(el("p", e.body));
       history.append(item);
     }
-    rail.insertBefore(history, rail.querySelector(".ac-properties"));
+    body.insertBefore(history, body.querySelector(".ac-properties"));
   }
   function navigate(delta) {
     const items = visible(),
@@ -999,12 +1013,12 @@
     if (items[index + delta])
       showMaterial(items[index + delta].id).catch((e) => say(e.message));
   }
-  async function recordView(v, page) {
+  async function recordView(v, page, downloaded = false) {
     if (admin()) return;
     const res = await hooks.api(
       `/api/approval-center/versions/${v.id}/view`,
       "POST",
-      { page },
+      downloaded ? { page, downloaded: true } : { page },
     );
     v.viewedPageNumbers = [...new Set([...(v.viewedPageNumbers || []), ...res.pages])];
     v.viewedPages = v.viewedPageNumbers.length;
@@ -1044,7 +1058,8 @@
   }
   function feedbackFor(m, v) {
     const applies = (n) => n.versionId === v.id ||
-      (v.id === m.currentVersion.id && n.versionNumber < v.versionNumber);
+      (v.id === m.currentVersion.id && n.versionNumber < v.versionNumber) ||
+      n.history?.some((e) => e.versionId === v.id && e.type === "fixed");
     return {
       markers: m.notes.filter(applies),
       comments: (m.returnComments || []).filter(applies),
@@ -1062,14 +1077,19 @@
       v = version();
     if (!m) return;
     const { markers, comments } = feedbackFor(m, v);
-    const top = el("div", undefined, "ac-rail-top"), heading = el("div");
+    const archived = vid !== m.currentVersion.id;
+    const top = el("div", undefined, "ac-rail-top"), heading = el("div"),
+      body = el("div", undefined, "ac-rail-body");
     const total = markers.length + comments.length;
     heading.append(el("h3", total ? `Замечания · ${total}` : "Замечания"),
       el("p", `${displayTitle(m)} · v${v.versionNumber}`, "ac-rail-context"));
     top.append(heading, iconButton("Закрыть панель", "×", () => panel("viewer")));
-    rail.replaceChildren(top);
-    if (vid !== m.currentVersion.id)
-      rail.append(
+    if (admin() && !archived)
+      top.append(button("Загрузить исправленную версию", uploadVersion,
+        v.status === "changes_requested" ? "primary ac-upload-version" : "ac-upload-version"));
+    rail.replaceChildren(top, body);
+    if (archived)
+      body.append(
         el(
           "p",
           "Историческая версия — только просмотр. Решение по ней сохранено.",
@@ -1091,6 +1111,11 @@
         for (const c of visibleComments.filter(n => n.versionNumber === number)) {
           const card = generalNote(c);
           card.id = `ac-return-${c.id}`;
+          if (v.id !== c.versionId) card.append(button(`Исходное замечание · версия ${c.versionNumber}`, async () => {
+            await showMaterial(m.id, c.versionId);
+            panel("notes");
+            rail.querySelector(`#ac-return-${c.id}`)?.scrollIntoView({ block: "nearest" });
+          }));
           noteList.append(card);
         }
         for (const n of matchingMarkers.filter(n => n.versionNumber === number)) noteList.append(noteCard(n));
@@ -1106,17 +1131,18 @@
       noteSection.append(filters);
     }
     fill("");
-    rail.append(noteSection);
+    body.append(noteSection);
     if (v.correction) {
       const report = JSON.parse(v.correction);
       const changes = disclosure(`Что исправлено в v${v.versionNumber}`, "ac-correction-report");
-      changes.append(el("p", report.description));
+      if (report.resolutions.length !== 1 || report.description !== report.resolutions[0].explanation)
+        changes.append(el("p", report.description));
       for (const item of report.resolutions) {
         const n = m.notes.find((n) => n.id === item.noteId);
         changes.append(el("p", `${n ? "Отметка " + n.number + " · v" + n.versionNumber : "Замечание"} · ${item.fixed ? "Исправлено" : "Осталось исправить"}`),
           el("p", item.explanation));
       }
-      rail.append(changes);
+      body.append(changes);
     }
     if (
       !admin() &&
@@ -1127,7 +1153,7 @@
         conflict =
           d && (d.versionId !== vid || d.expectedRevision !== v.revision);
       if (conflict) {
-        rail.append(
+        body.append(
           el(
             "p",
             "Черновик относится к прежней версии. Его текст сохранён. Проверьте новую версию; старые маркеры не переносятся.",
@@ -1157,16 +1183,13 @@
         draft.append(el("small", "До отправки пакета этот черновик видите только вы."));
         if (d.comment || d.markers.length)
           draft.append(button("Изменить замечание", () => compose()));
-        rail.append(draft);
+        body.append(draft);
         if (d.decision) draft.append(
           button("Убрать черновое решение", () => removeDecision(mid)),
         );
       }
     }
     if (admin()) {
-      if (vid === m.currentVersion.id)
-        rail.append(button("Загрузить исправленную версию", uploadVersion,
-          v.status === "changes_requested" ? "primary ac-upload-version" : "ac-upload-version"));
       const views = disclosure("Просмотр клиентом", "ac-view-history");
       views.append(
         el(
@@ -1183,8 +1206,11 @@
             `Первый просмотр: ${date(v.view.firstViewedAt)} · Последний: ${date(v.view.lastViewedAt)} · Открытий: ${v.view.viewCount}`,
           ),
         );
+      body.append(views);
+    }
+    if (admin() && !archived) {
       const properties = disclosure("Свойства материала", "ac-properties");
-      if (vid === m.currentVersion.id && v.status === "approved")
+      if (v.status === "approved")
         properties.append(
           button("Отменить согласование версии", () =>
             modal("Отмена согласования версии", (d) => {
@@ -1235,19 +1261,23 @@
           await loadScope(scope, { mid, vid });
         }),
       );
-      rail.append(properties, views);
+      body.insertBefore(properties, body.querySelector(".ac-view-history"));
+    }
+    if (archived) {
+      renderHistory();
+      return;
     }
     const d = entry();
     if (d?.versionId === vid)
       d.markers.forEach((n, i) =>
-        rail.append(
+        body.append(
           button(`Черновик маркера ${i + 1} · стр. ${n.page}: ${n.body}`, () =>
             compose(i),
           ),
         ),
       );
     if (canDecide() && d?.markers.length)
-      rail.append(
+      body.append(
         button("Добавить ещё одну отметку", () => {
           panel("viewer");
           pinRequest = { index: -1 };
@@ -1279,7 +1309,7 @@
       }),
     );
     // Keep the discussion and history together, ahead of administrative settings.
-    rail.insertBefore(discussion, rail.querySelector(".ac-properties"));
+    body.insertBefore(discussion, body.querySelector(".ac-properties"));
     renderHistory();
   }
   function removeDecision(id) {
@@ -1385,7 +1415,9 @@
   }
   function missingPage(v) {
     if (v.file.contentType !== "application/pdf" || v.confirmedView) return 0;
-    const count = v.pageCount || viewer?.pageCount || 0;
+    return firstUnseenPage(v, v.pageCount || viewer?.pageCount || 0);
+  }
+  function firstUnseenPage(v, count) {
     const seen = new Set(v.viewedPageNumbers);
     for (let page = 1; page <= count; page++) if (!seen.has(page)) return page;
     return 0;
@@ -1585,7 +1617,120 @@
         ),
     );
   }
+  async function checkCorrection(m, fixedVersion) {
+    // A pin locates a point only on the original drawing. Pages in a replacement
+    // can have a different order, so start with its first unregistered page.
+    const page = firstUnseenPage(fixedVersion, fixedVersion.pageCount || 1) || 1;
+    if (vid !== fixedVersion.id || comparison || viewer?.displayError) {
+      await showMaterial(m.id, fixedVersion.id, { versionId: fixedVersion.id, position: { page } });
+    } else {
+      if (matchMedia("(max-width: 767px)").matches) panel("viewer");
+      await viewer?.ready;
+      if (mid !== m.id || vid !== fixedVersion.id) return;
+      viewer?.go(page);
+    }
+    if (mid !== m.id || vid !== fixedVersion.id) return;
+    const target = matchMedia("(max-width: 767px)").matches ? "viewer" : "notes";
+    if (root.dataset.mobile !== target) panel(target);
+  }
+  function updateCorrectionCheck(box, v) {
+    const total = v.pageCount || viewer?.pageCount || 0;
+    const missing = firstUnseenPage(v, total);
+    // Only the server registration supplies pageCount and the accepted page numbers.
+    const complete = !!v.pageCount && !missing;
+    const failed = !complete && !!viewer?.failedPages.length;
+    const supported = window.ITDViewer.supported(v.file);
+    const pdf = v.file.contentType === "application/pdf";
+    const status = box.querySelector(".ac-correction-progress");
+    let message;
+    if (complete) {
+      message = `Просмотр исправленной версии ${v.versionNumber} сохранён.`;
+    } else if (failed) {
+      message = `Не удалось сохранить просмотр версии ${v.versionNumber}. Повторите сохранение.`;
+    } else if (viewer?.displayError) {
+      message = "Не удалось отобразить исправленный файл. Нажмите «Проверить исправление», чтобы открыть его заново.";
+    } else if (pdf) {
+      message = `Для подтверждения просмотрите все страницы исправленной версии ${v.versionNumber}.`;
+      if (total) message += ` Просмотрено ${v.viewedPageNumbers?.length || 0} из ${total}.`;
+      if (missing) message += ` Следующий лист — ${missing}.`;
+    } else {
+      message = supported ? "Откройте исправленное изображение и дождитесь сохранения просмотра."
+        : "Скачайте исправленный оригинал и сообщите, когда проверите его.";
+    }
+    if (status.textContent !== message) status.textContent = message;
+    box.querySelector(".ac-confirm-note").disabled = !complete;
+    box.querySelector(".ac-retry-note-view").hidden = !failed;
+    const original = box.querySelector(".ac-check-original");
+    if (original) original.hidden = complete;
+  }
+  function updateCorrectionChecks(v) {
+    if (v.id !== vid || admin()) return;
+    rail?.querySelectorAll(".ac-correction-check").forEach(box => updateCorrectionCheck(box, v));
+  }
+  function noteAction(n, type, label) {
+    const m = current(), v = version();
+    if (!m || !v || v.id !== m.currentVersion.id) return;
+    const confirm = type === "confirmed";
+    if (confirm && (admin() || n.status !== "fixed" || n.correctionVersionId !== v.id ||
+        !v.pageCount || firstUnseenPage(v, v.pageCount))) return;
+    const pid = project.id, stageId = scope, materialId = m.id, versionId = v.id,
+      noteId = n.id, expectedRevision = n.revision;
+    modal(label, (dialog) => {
+      if (confirm) dialog.append(
+        el("p", `Замечание №${n.number} · ${displayTitle(m)} · исправленная версия ${v.versionNumber}`),
+        el("p", n.body, "ac-note-body"),
+        el("p", `Ответ студии: ${n.correctionExplanation}`),
+        el("p", "Вы подтверждаете исправление этого замечания. Решение по материалу принимается отдельно."),
+      );
+      const text = input("Пояснение", "textarea");
+      const errorMessage = el("p", "", "ac-dialog-error");
+      errorMessage.setAttribute("role", "alert");
+      errorMessage.hidden = true;
+      const reload = button("Открыть актуальное исправление", async () => {
+        if (!active || project?.id !== pid || scope !== stageId) {
+          dialog.close();
+          return;
+        }
+        await flush();
+        dialog.close();
+        await loadScope(stageId, { mid: materialId, panel: "notes" });
+        rail?.querySelector(`#ac-note-${noteId}`)?.scrollIntoView({ block: "nearest" });
+      });
+      reload.hidden = true;
+      const save = button("Сохранить в истории", async () => {
+        if (save.disabled) return;
+        save.disabled = true;
+        errorMessage.hidden = true;
+        try {
+          const currentNote = current()?.notes.find(item => item.id === noteId);
+          if (!active || project?.id !== pid || mid !== materialId || vid !== versionId ||
+              current()?.currentVersion.id !== versionId || currentNote?.revision !== expectedRevision) {
+            errorMessage.textContent = "Версия или замечание изменились. Откройте актуальное исправление.";
+            errorMessage.hidden = false;
+            reload.hidden = false;
+            return;
+          }
+          await hooks.api(`/api/approval-center/notes/${noteId}/events`, "POST",
+            { type, body: text.field.value, expectedRevision, versionId });
+          dialog.close();
+          if (active && project?.id === pid && scope === stageId && mid === materialId) {
+            await flush();
+            await loadScope(stageId, { mid: materialId, vid: versionId, panel: "notes" });
+          }
+        } catch (error) {
+          errorMessage.textContent = error.message;
+          errorMessage.hidden = false;
+          reload.hidden = error.status !== 409;
+        } finally {
+          save.disabled = !reload.hidden;
+        }
+      });
+      dialog.append(text.wrap, save, errorMessage, reload);
+    });
+  }
   function noteCard(n) {
+    const m = current(), v = version(), archived = v.id !== m.currentVersion.id;
+    const corrected = m.versions.find(item => item.id === n.correctionVersionId);
     const card = el("article", undefined, "ac-note ac-feedback-card");
     card.id = `ac-note-${n.id}`;
     card.tabIndex = -1;
@@ -1594,12 +1739,24 @@
     state.dataset.status = n.status;
     heading.append(el("strong", `Замечание клиента №${n.number}`), state);
     card.append(heading, el("p", n.body, "ac-note-body"),
-      el("small", `${n.authorName} · ${date(n.createdAt)}`),
-      button(`Показать на листе ${n.page} · v${n.versionNumber}`, () => focusNote(n), "ac-locate-note"));
+      el("small", `${n.authorName} · ${date(n.createdAt)}`));
+    if (corrected) {
+      card.append(el("small", `Исходная отметка: лист ${n.page} · версия ${n.versionNumber}`),
+        button(`Проверить исправление · версия ${corrected.versionNumber}`, () => checkCorrection(m, corrected), "ac-check-fix"),
+        button(`Исходное замечание · версия ${n.versionNumber}`, () => focusNote(n), "ac-locate-note"));
+    } else {
+      card.append(button(`Показать на листе ${n.page} · v${n.versionNumber}`, () => focusNote(n), "ac-locate-note"));
+    }
     const lastReply = n.history.filter((e) => e.type !== "open" || e.body !== n.body).at(-1);
-    if (lastReply) {
+    if (corrected) {
+      const fix = el("div", undefined, "ac-note-reply");
+      fix.append(el("strong", `Исправление студии · версия ${corrected.versionNumber}`), el("p", n.correctionExplanation));
+      card.append(fix);
+    }
+    if (lastReply && !(corrected && lastReply.type === "fixed" && lastReply.versionId === corrected.id)) {
       const reply = el("div", undefined, "ac-note-reply");
-      reply.append(el("strong", lastReply.actorRole === "admin" ? "Ответ студии" : "Ответ клиента"),
+      const author = lastReply.actorRole === "admin" ? "Ответ студии" : "Ответ клиента";
+      reply.append(el("strong", lastReply.versionNumber ? `${author} · версия ${lastReply.versionNumber}` : author),
         el("p", lastReply.body));
       card.append(reply);
     }
@@ -1612,7 +1769,34 @@
           `${date(e.createdAt)} · ${e.actorName} · ${window.ITDReview.eventName("annotation_" + e.type)}\n${e.body}`,
         ),
       );
+    if (archived) {
+      card.append(history);
+      return card;
+    }
     const controls = el("div", undefined, "ac-note-actions");
+    if (!admin() && n.status === "fixed" && corrected?.id === v.id) {
+      const box = el("div", undefined, "ac-correction-check");
+      const progress = el("p", "", "ac-correction-progress");
+      progress.setAttribute("role", "status");
+      box.append(progress);
+      if (!window.ITDViewer.supported(v.file)) {
+        const original = el("div", undefined, "ac-check-original");
+        const download = el("a", "Скачать исправленный оригинал");
+        download.href = `/api/files/${v.file.id}/download`;
+        download.download = v.file.name;
+        original.append(download, button("Я проверил скачанный оригинал", async () => {
+          await recordView(v, 1, true);
+          updateCorrectionChecks(v);
+        }));
+        box.append(original);
+      }
+      box.append(button("Повторить сохранение", () => viewer?.retryViews(), "ac-retry-note-view"),
+        button("Подтвердить исправление", () => noteAction(n, "confirmed", "Подтвердить исправление"), "primary ac-confirm-note"));
+      updateCorrectionCheck(box, v);
+      card.append(box);
+    } else if (!admin() && n.status === "fixed") {
+      card.append(el("p", "Для подтверждения нужен ответ студии об исправлении в актуальной версии."));
+    }
     const actions = admin()
       ? [
           ["reply", "Ответить"],
@@ -1620,39 +1804,11 @@
         ]
       : [
           ["reply", "Дополнить"],
-          ...(n.status === "fixed"
-            ? [["confirmed", "Подтвердить исправление"]]
-            : []),
           ...(n.status !== "open" ? [["open", "Оставить открытым"]] : []),
           ...(n.status !== "reopened" ? [["reopened", "Повторная доработка"]] : []),
         ];
     for (const [type, label] of actions)
-      controls.append(
-        button(label, () =>
-          modal(label, (d) => {
-            const text = input("Пояснение", "textarea");
-            d.append(
-              text.wrap,
-              button("Сохранить в истории", async () => {
-                await hooks.api(
-                  `/api/approval-center/notes/${n.id}/events`,
-                  "POST",
-                  {
-                    type,
-                    body: text.field.value,
-                    expectedRevision: n.revision,
-                    versionId: current().currentVersion.id,
-                  },
-                );
-                await flush();
-                d.close();
-                await loadScope(scope, { mid, vid });
-                panel("notes");
-              }),
-            );
-          }),
-        ),
-      );
+      controls.append(button(label, () => noteAction(n, type, label)));
     card.append(controls, history);
     return card;
   }
@@ -1939,7 +2095,7 @@
             );
             operation = null;
             d.close();
-            await loadScope(scope, { mid, vid });
+            await hooks.refresh();
             say(
               `Пакет принят. Ведомость №${result.packageId}, раунд ${result.roundNumber}.`,
             );
@@ -1954,7 +2110,7 @@
   }
   function showStage() {
     modal("Отдельное согласование этапа", (d) => {
-      const state = data.stage;
+      const state = data.stage, stageRoute = route(), operationId = newOperationId();
       d.append(
         el(
           "p",
@@ -1964,24 +2120,22 @@
         ),
       );
       for (const b of state.blockers) d.append(el("p", b));
-      if (!admin() && !state.approved && !state.blockers.length)
-        d.append(
-          button(
-            "Подтверждаю согласование этапа",
-            async () => {
-              await hooks.api(route() + "/approve-stage", "POST", {
-                operationId: newOperationId(),
-                token: state.token,
-                confirm: true,
-              });
-              d.close();
-              await loadScope(scope, { mid, vid });
-              await hooks.refresh();
-              say("Этап согласован отдельным действием");
-            },
-            "primary",
-          ),
-        );
+      if (!admin() && !state.approved && !state.blockers.length && (!current() || vid === current().currentVersion.id)) {
+        const accept = button("Подтверждаю согласование этапа", async () => {
+          if (accept.disabled) return;
+          accept.disabled = true;
+          try {
+            await hooks.api(stageRoute + "/approve-stage", "POST", {
+              operationId, token: state.token, confirm: true,
+            });
+            d.close();
+            await hooks.refresh();
+          } finally {
+            accept.disabled = false;
+          }
+        }, "primary");
+        d.append(accept);
+      }
     });
   }
   function showPackages() {
@@ -2089,9 +2243,13 @@
     });
     viewer = window.ITDApprovalViewer.mount(rh, v, {
       markers: m.notes.filter((n) => n.versionId === v.id),
-      onMarker: focusNote,
       onPosition: (p) => syncPos(comparison, p),
       showProgress: !admin(),
+      onDisplay: () => {
+        if (!active || v.id !== vid) return;
+        updateFooter();
+        updateCorrectionChecks(v);
+      },
       onPage: (p) => recordView(v, p),
       onMarker: (n) => focusNote(n, true),
     });
@@ -2108,7 +2266,9 @@
         right.style.clipPath = "";
       }),
     );
-    await Promise.all([viewer.ready, comparison.ready]);
+    const rightPreview = viewer, leftPreview = comparison;
+    await Promise.all([rightPreview.ready, leftPreview.ready]);
+    if (rightPreview !== viewer || leftPreview !== comparison) return;
     const a = comparison.dimensions,
       b = viewer.dimensions;
     if (
@@ -2292,7 +2452,7 @@
       });
     });
   }
-  async function open(id, requested, back) {
+  async function open(id, requested, back, options = {}) {
     if (!project) return false;
     id = Number(id);
     requested = requested == null ? undefined : Number(requested);
@@ -2315,6 +2475,7 @@
       await loadScope(detail.material.stageId || 0, {
         mid: id,
         vid: requested,
+        panel: options.panel,
       });
       return true;
     } finally {
@@ -2335,7 +2496,7 @@
       vid: comment || vid !== current()?.currentVersion.id ? vid : undefined,
       context: {
         versionId: vid, position: viewer.position, panel: root.dataset.mobile,
-        scroll: listHost.scrollTop, railScroll: rail.scrollTop,
+        scroll: listHost.scrollTop, railScroll: rail.querySelector(".ac-rail-body")?.scrollTop || 0,
         discussionOpen: !!discussion?.open, comment, properties,
         historyOpen: !!rail.querySelector(".ac-history")?.open,
         noteFilter: rail.querySelector(".ac-notes select")?.value,
@@ -2372,14 +2533,8 @@
       await refreshView();
       return;
     }
-    const pid = project.id,
-      generation = epoch;
-    const mats = await hooks.api(`/api/projects/${pid}/materials`);
-    if (pendingOpen || !active || project?.id !== pid || generation !== epoch)
-      return;
-    scope = mats.materials[0]?.stageId || 0;
     build();
-    await loadScope(scope);
+    await loadScope(window.ITDProjectState.selectedStage(project.stages)?.id ?? 0);
   }
   function init(h) {
     hooks = h;

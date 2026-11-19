@@ -7,6 +7,7 @@ import { randomBytes } from "node:crypto";
 import { createApp } from "../server.mjs";
 import { fixtures } from "./preview-fixtures.mjs";
 import { prepareFixtureUpload } from "./upload-fixture.mjs";
+import { checkFirstUse } from "./browser-first-use.mjs";
 import {
   openProject,
   openGlobal,
@@ -216,6 +217,7 @@ try {
     executablePath: process.env.ITD_CHROMIUM || "/usr/bin/chromium",
     args: ["--no-sandbox"],
   });
+  if (!before) await checkFirstUse(browser);
   const reports = [];
   for (const width of [360, 390, 768, 1024, 1440]) {
     const context = await browser.newContext({

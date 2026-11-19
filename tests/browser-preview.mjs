@@ -249,10 +249,13 @@ try {
           right: card.getBoundingClientRect().right,
         })),
       );
+    const expectedTitles = files.filter(f => f.contentType.startsWith("image/")).map(f =>
+      f.name.startsWith("image.") ? "Материал №" + f.id : f.name.replace(/\.[^.]+$/, "").trim(),
+    );
+    assert.deepEqual(cardGeometry.map(card => card.title), expectedTitles);
     for (const card of cardGeometry) {
       assert.ok(card.width > 100 && card.media > 80);
       assert.equal(card.title, card.fullTitle);
-      assert.match(card.title, /Визуализации/);
       assert.ok(card.right <= viewport.width + 1);
     }
     const documentToken = await page.evaluate(

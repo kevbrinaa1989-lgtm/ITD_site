@@ -42,7 +42,7 @@
           : globalThis.ITDProjectState.materialLabel({
               title: file.review?.title,
               file,
-              stage,
+              originalName: ordered.at(-1).name,
             }),
         type: format(file),
         status: file.review?.status || null,
@@ -62,7 +62,7 @@
       query = "",
       stage = "",
       type = "",
-      sort = stage && stage !== "unassigned" ? "oldest" : "newest",
+      sort = "oldest",
     } = {},
   ) {
     const needle = normalize(query);

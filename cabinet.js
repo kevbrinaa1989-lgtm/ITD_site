@@ -190,11 +190,17 @@
   function showStageOverview(id) {
     routeStageId = id;
     activeTab = "overview";
-    render();
+    return render();
   }
   function selectTab(tab, options = {}) {
-    const reviewStage = tab === "review" && activeTab === "overview" ? routeStageId :
-      tab === "review" && activeTab === "files" ? window.ITDLibrary?.stageId() : undefined;
+    const project = projects.find((item) => item.id === selectedId);
+    let reviewStage;
+    if (tab === "review" && project) {
+      if (activeTab === "overview")
+        reviewStage = window.ITDProjectState.selectedStage(project.stages, routeStageId)?.id ?? 0;
+      else if (activeTab === "files")
+        reviewStage = window.ITDLibrary?.stageId();
+    }
     // Compatibility: old stage links now land on the overview timeline.
     if (tab === "stages") tab = "overview";
     if (tab === "results" || tab === "documents") {
@@ -211,13 +217,14 @@
     }
     const admin = user?.role === "admin";
     const home = admin ? "workspace" : "client-home";
-    const hasProject = projects.some((project) => project.id === selectedId);
+    const hasProject = !!project;
     if (
       (adminTabs.includes(tab) && !admin) ||
       (clientTabs.includes(tab) && admin)
     )
       tab = home;
     if (projectTabNames.includes(tab) && !hasProject) tab = home;
+    const keepMenu = options.preserveMenu && tab === activeTab;
     activeTab = tab;
     const inProject = projectTabNames.includes(tab) && hasProject;
     if (inProject) projectTabs.set(selectedId, tab);
@@ -257,27 +264,30 @@
       "create-project": "Новый проект",
       "client-home": "Главная",
       "client-projects": "Мои проекты",
-      "client-review": "На согласование",
+      "client-review": "Решения",
       profile: "Мой профиль",
     };
     $("shell-location").textContent = inProject
-      ? "Проекты / " + (projects.find((p) => p.id === selectedId)?.title || "")
+      ? "Проекты / " + project.title
       : titles[tab] || "Главная";
     $("shell-role-label").textContent = admin
       ? "Рабочее пространство студии"
       : "Личный кабинет";
-    document.body.classList.remove("menu-open");
-    $("mobile-menu-button")?.setAttribute("aria-expanded", "false");
+    if (!keepMenu) {
+      document.body.classList.remove("menu-open");
+      $("mobile-menu-button")?.setAttribute("aria-expanded", "false");
+    }
     if (tab === "recovery" && admin) refreshRecovery();
     if (tab === "settings" && admin)
       window.ITDAdmin?.openSettings(selectedId, options);
     window.ITDWorkspace?.onTab(tab);
     window.ITDInvitations?.onTab(tab);
     window.ITDAdmin?.onTab(tab);
-    window.ITDReview?.onTab(tab, reviewStage);
+    const reviewReady = window.ITDReview?.onTab(tab, reviewStage);
     window.ITDLibrary?.onTab(tab);
     window.ITDClientWorkspace?.onTab(tab);
     window.ITDUI?.syncShell(user, tab, inProject, selectTab);
+    return reviewReady;
   }
   async function openProject(id, options = {}) {
     id = Number(id);
@@ -288,14 +298,18 @@
     if (!user || user !== currentUser) throw new Error("Сессия изменилась.");
     const project = projects.find((p) => p.id === id);
     if (!project) throw new Error("Проект недоступен.");
-    if (options.stageId != null && !project.stages.some((s) => s.id === options.stageId))
+    if (options.stageId != null && options.stageId !== 0 && !project.stages.some((s) => s.id === options.stageId))
       throw new Error("Выбранный этап больше недоступен.");
-    if (Object.hasOwn(options, "stageId")) routeStageId = options.stageId;
+    if (Object.hasOwn(options, "stageId")) routeStageId = options.stageId ?? 0;
     else if (selectedId !== id) routeStageId = null;
     selectedId = id;
     returnClientId = options.clientId || null;
     activeTab = options.tab || "overview";
-    render(options);
+    return render(options);
+  }
+  async function openProjectMaterial(pid, mid, vid, options) {
+    await openProject(pid, { tab: "overview" });
+    return window.ITDReview.open(mid, vid, undefined, options);
   }
   function projectAction(label, action) {
     const button = node("button", label, "text-button");
@@ -522,8 +536,7 @@
     if (!project) {
       window.ITDReview?.setProject(null);
       window.ITDLibrary?.setProject(null);
-      selectTab(activeTab, navigation);
-      return;
+      return selectTab(activeTab, navigation);
     }
     $("project-title").textContent = project.title;
     $("project-client").replaceChildren();
@@ -712,8 +725,9 @@
       stageSelect.value = previousStage;
     window.ITDLibrary?.setProject(project);
     window.ITDReview?.setProject(project);
-    selectTab(activeTab, navigation);
+    const tabReady = selectTab(activeTab, navigation);
     window.ITDUploads?.reconcile();
+    return tabReady;
   }
   async function refresh() {
     window.ITDViewer?.invalidate();
@@ -723,7 +737,7 @@
     projects = result.projects;
     if (!projects.some((project) => project.id === selectedId))
       selectedId = null;
-    render();
+    return render({ preserveMenu: true });
   }
   async function refreshClients() {
     if (user?.role !== "admin") return;
@@ -798,8 +812,8 @@
         target: "#tab-client-projects",
       },
       {
-        title: "На согласование",
-        text: "Когда студия подготовит решения, они появятся здесь. Вы сможете согласовать материал или оставить замечания.",
+        title: "Решения",
+        text: "Здесь появятся материалы студии. Вы сможете согласовать их, попросить правки и вернуться к отправленным замечаниям.",
         tab: "client-review",
         target: "#tab-client-review",
       },
@@ -830,8 +844,8 @@
         target: "#tab-client-projects",
       },
       {
-        title: "На согласование",
-        text: "Здесь появляются материалы, ожидающие вашего решения. Вы можете их подтвердить или оставить комментарий.",
+        title: "Решения",
+        text: "Здесь можно согласовать материал, открыть отправленное замечание и посмотреть, что исправила студия.",
         tab: "client-review",
         target: "#tab-client-review",
       },
@@ -1615,7 +1629,7 @@
     backToStage: showStageOverview,
     encodeFile: encodeUploadFile,
     refresh,
-    openProject: (id) => openProject(id, { tab: "review" }),
+    openProject: (id) => openProject(id, { tab: "overview" }),
   });
   window.ITDViewer.onDiscuss(async (file) => {
     const owner = projects.find((p) => p.files.some((f) => f.id === file.id));
@@ -1624,10 +1638,7 @@
       if (await window.ITDLibrary.openReview(file)) window.ITDReview.openDiscussion();
       return;
     }
-    await openProject(owner.id, { tab: "review" });
-    if (
-      await window.ITDReview.open(file.review.materialId, file.review.versionId)
-    )
+    if (await openProjectMaterial(owner.id, file.review.materialId, file.review.versionId))
       window.ITDReview.openDiscussion();
   });
   window.addEventListener("itd-viewer-error", (e) => message(e.detail));
@@ -1636,16 +1647,14 @@
     api,
     getUser: () => user,
     getProjects: () => projects,
+    refresh,
     selectTab,
     openProject,
     openStage: async (pid, sid) => {
       await openProject(pid, { tab: "overview", stageId: Number(sid) });
     },
     message,
-    openMaterial: async (pid, mid, vid) => {
-      await openProject(pid, { tab: "review" });
-      await window.ITDReview.open(mid, vid);
-    },
+    openMaterial: openProjectMaterial,
     updateUser: (next) => {
       if (user && next.id === user.id) {
         Object.assign(user, next);
@@ -1670,10 +1679,7 @@
     getUser: () => user,
     selectTab,
     openProject: (id) => openWorkspaceProject(id, "overview"),
-    openMaterial: async (pid, mid, vid) => {
-      await openWorkspaceProject(pid, "review");
-      await window.ITDReview.open(mid, vid);
-    },
+    openMaterial: openProjectMaterial,
     openStage: async (pid, sid) => {
       await openProject(pid, { tab: "overview", stageId: Number(sid) });
       document

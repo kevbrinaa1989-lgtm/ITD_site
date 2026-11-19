@@ -366,6 +366,10 @@ try {
     await page.reload();
     await openProject(page, project.id, { client: true });
     await page.locator("#tab-review").click();
+    await page.getByText("В этом разделе ещё нет материалов для согласования.", { exact: true }).waitFor();
+    const scope = page.locator(".ac-stage select");
+    assert.equal(await scope.locator("option:checked").textContent(), "Рабочая документация");
+    await scope.selectOption(String(project.stage.id));
     await page.locator(".ac-view-heading").waitFor();
     assert.equal(await (await currentRemark()).inputValue(), draftText);
     await button(page.getByRole("dialog"), "Закрыть").click();

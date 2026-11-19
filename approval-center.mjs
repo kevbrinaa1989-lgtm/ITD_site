@@ -80,17 +80,30 @@ export function initApprovalCenter({
     if (!v) fail(404, "Версия не найдена");
     return { v, m: materialAccess(v.materialId, user) };
   };
+  function noteDetails(note) {
+    const history = all(
+      `SELECT e.*,u.name AS actorName,u.role AS actorRole,v.versionNumber
+       FROM approval_note_events e JOIN users u ON u.id=e.actorId
+       LEFT JOIN review_versions v ON v.id=e.versionId AND v.materialId=?
+       WHERE e.noteId=? ORDER BY e.id`,
+      note.materialId, note.id,
+    );
+    const lastFix = history.findLast((event) => event.type === "fixed");
+    const correction = lastFix?.actorRole === "admin" && lastFix.versionNumber &&
+      ["fixed", "confirmed"].includes(note.status)
+      ? lastFix : null;
+    return {
+      ...note, history,
+      correctionVersionId: correction?.versionId ?? null,
+      correctionVersionNumber: correction?.versionNumber ?? null,
+      correctionExplanation: correction?.body ?? null,
+    };
+  }
   function notes(mid) {
     return all(
       "SELECT n.*,u.name AS authorName,v.versionNumber FROM approval_notes n JOIN users u ON u.id=n.authorId JOIN review_versions v ON v.id=n.versionId WHERE n.materialId=? ORDER BY n.id",
       mid,
-    ).map((n) => ({
-      ...n,
-      history: all(
-        "SELECT e.*,u.name AS actorName,u.role AS actorRole FROM approval_note_events e JOIN users u ON u.id=e.actorId WHERE noteId=? ORDER BY e.id",
-        n.id,
-      ),
-    }));
+    ).map(noteDetails);
   }
   function viewedPageNumbers(versionId, userId) {
     return all(
@@ -111,7 +124,9 @@ export function initApprovalCenter({
     );
     const comments = Map.groupBy(returns, (r) => r.materialId);
     return all(
-      "SELECT id FROM review_materials WHERE projectId=? AND stageId IS ? ORDER BY id",
+      `SELECT m.id FROM review_materials m WHERE m.projectId=? AND m.stageId IS ?
+       ORDER BY (SELECT v.fileId FROM review_versions v WHERE v.materialId=m.id
+                 ORDER BY v.versionNumber LIMIT 1), m.id`,
       pid,
       scope || null,
     ).map(({ id }) => {
@@ -183,20 +198,21 @@ export function initApprovalCenter({
         blockers.push(`${m.title}: есть неподтверждённые замечания`);
     }
     const stage = scope ? get("SELECT * FROM stages WHERE id=?", scope) : null;
+    const approved = stage?.status === "approved" || stage?.status === "completed";
+    const materialState = materials.map((m) => [
+      m.id, m.currentVersion.id, m.currentVersion.revision, m.required, m.metadataRevision,
+      m.notes.map((n) => [n.id, n.revision, n.status]),
+    ]);
+    const receipt = approved && get(
+      "SELECT snapshot FROM approval_stage_events WHERE stageId=? ORDER BY id DESC LIMIT 1", scope,
+    );
+    const accepted = receipt && parse(receipt.snapshot);
     return {
-      blockers,
-      approved: stage?.status === "approved" || stage?.status === "completed",
-      token: hash([
-        stage,
-        materials.map((m) => [
-          m.id,
-          m.currentVersion.id,
-          m.currentVersion.revision,
-          m.required,
-          m.metadataRevision,
-          m.notes.map((n) => [n.id, n.revision, n.status]),
-        ]),
-      ]),
+      blockers, approved, status: stage?.status ?? null,
+      // The receipt contains the state immediately before acceptance.
+      acceptedSeparately: !!accepted?.status &&
+        accepted.token === hash([{ ...stage, status: accepted.status }, materialState]),
+      token: hash([stage, materialState]),
     };
   }
   function validateDraft(b, pid, scope, user) {
@@ -395,6 +411,20 @@ export function initApprovalCenter({
       count,
     );
     return count;
+  }
+  function requireCorrectionView(version, user) {
+    // Only a successfully registered page has a row. The original pin has no
+    // mapping to the pages of a replacement file, so every new page is required.
+    const view = get(
+      `SELECT p.pageCount,(SELECT count(*) FROM approval_view_pages a
+          WHERE a.versionId=p.versionId AND a.userId=? AND a.page BETWEEN 1 AND p.pageCount) AS seen
+       FROM approval_preview_metadata p WHERE p.versionId=?`,
+      user.id, version.id,
+    );
+    if (!view || !int(view.pageCount) || view.seen !== view.pageCount) {
+      const progress = view ? ` Просмотрено ${view.seen} из ${view.pageCount}.` : "";
+      fail(409, `Просмотрите исправленную версию ${version.versionNumber} целиком и дождитесь сохранения просмотра.${progress}`);
+    }
   }
   function snapshot(pid, scope, user, roundNumber, materials, entries) {
     const p = review.access(pid, user, fail),
@@ -1011,28 +1041,39 @@ export function initApprovalCenter({
       strict(b, ["type", "body", "expectedRevision", "versionId"]);
       if (
         !text(b.body) ||
-        !Number.isSafeInteger(b.expectedRevision) ||
+        !Number.isSafeInteger(b.expectedRevision) || b.expectedRevision < 0 ||
         !["reply", "fixed", "confirmed", "reopened", "open"].includes(b.type)
       )
         fail(400, "Укажите действие и пояснение");
-      review.transaction(() => {
+      const result = review.transaction(() => {
         const n = get("SELECT * FROM approval_notes WHERE id=?", +match[1]);
         if (!n) fail(404, "Замечание не найдено");
         const m = materialAccess(n.materialId, user);
-        if (n.revision !== b.expectedRevision)
-          fail(409, "Замечание изменилось. Обновите данные");
         if (
-          (user.role === "admin" &&
-            ["confirmed", "reopened"].includes(b.type)) ||
+          (user.role !== "client" && ["confirmed", "reopened"].includes(b.type)) ||
           (user.role !== "admin" && b.type === "fixed")
         )
           fail(403, "Это действие другой стороны");
-        if (b.type === "confirmed" && n.status !== "fixed")
-          fail(409, "Дизайнер ещё не отметил исправление");
-        const v = b.versionId
-          ? versionAccess(b.versionId, user).v
-          : review.latest(m.id);
-        if (v.materialId !== m.id) fail(400, "Версия другого материала");
+        if ((b.type !== "reply" || b.versionId !== undefined) && !int(b.versionId))
+          fail(400, "Укажите версию материала, которую вы открыли.");
+        const v = review.latest(m.id);
+        if (b.versionId !== undefined && b.versionId !== v.id)
+          fail(409, "Версия материала изменилась. Откройте актуальное исправление.");
+        if (b.type === "confirmed") {
+          const note = noteDetails(n);
+          const last = note.history.at(-1);
+          const replay = n.status === "confirmed" && n.revision === b.expectedRevision + 1 &&
+            last?.type === "confirmed" && last.versionId === b.versionId &&
+            last.actorId === user.id && last.body === b.body;
+          if (!replay && (n.status !== "fixed" || n.revision !== b.expectedRevision))
+            fail(409, "Замечание изменилось. Откройте актуальное исправление.");
+          if (note.correctionVersionId !== b.versionId)
+            fail(409, "Студия ещё не отметила это замечание исправленным в открытой версии. Откройте актуальное исправление.");
+          requireCorrectionView(v, user);
+          if (replay) return { ok: true, replayed: true };
+        } else if (n.revision !== b.expectedRevision) {
+          fail(409, "Замечание изменилось. Откройте его заново.");
+        }
         const status = b.type === "reply" ? n.status : b.type;
         run(
           "UPDATE approval_notes SET status=?,revision=revision+1 WHERE id=?",
@@ -1068,9 +1109,10 @@ export function initApprovalCenter({
           b.body,
           user.role === "admin" ? "client" : "admin",
         );
-        review.deriveStage(m.stageId);
+        if (b.type !== "confirmed") review.deriveStage(m.stageId);
+        return { ok: true };
       });
-      json(res, 200, { ok: true });
+      json(res, 200, result);
       return true;
     }
     match = path.match(/^\/api\/approval-center\/packages\/(\d+)(\/pdf)?$/);

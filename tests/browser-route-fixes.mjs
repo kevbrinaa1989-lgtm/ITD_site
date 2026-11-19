@@ -235,7 +235,7 @@ try {
       for (const [i, [title, tabId]] of [
         ["Главная", "tab-client-home"],
         ["Мои проекты", "tab-client-projects"],
-        ["На согласование", "tab-client-review"],
+        ["Решения", "tab-client-review"],
         ["Уведомления", "tab-notifications"],
         ["Мой профиль", "tab-profile"],
       ].entries()) {
@@ -248,7 +248,7 @@ try {
         assert.equal(
           await tab.isVisible(),
           true,
-          "Global menu item must be visible",
+          `Tour target ${tabId} must be visible at ${width}px (step ${title})`,
         );
         assert.equal(await tab.getAttribute("aria-selected"), "true");
         await page.waitForFunction((id) => {
@@ -423,6 +423,12 @@ try {
       );
     }
     await page.locator("#tab-review").click();
+    if (!before) {
+      await page.getByText("В этом разделе ещё нет материалов для согласования.", { exact: true }).waitFor();
+      const stageSelect = page.locator(".ac-stage select");
+      assert.equal(await stageSelect.inputValue(), String(stages[1].id));
+      await stageSelect.selectOption(String(stages[0].id));
+    }
     await queue(page);
     await page.locator(".ac-material-open").click();
     await page
@@ -433,9 +439,9 @@ try {
         await page.locator(".ac-view-heading h3").textContent(),
         /CAMERA_EXPORT/,
       );
-      assert.match(
+      assert.equal(
         await page.locator(".ac-view-heading h3").textContent(),
-        /Обмеры/,
+        `Материал №${file.review.materialId}`,
       );
       assert.ok(
         (await page.locator(".ac-view-heading p").getAttribute("title")).includes(

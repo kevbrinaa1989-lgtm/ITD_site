@@ -14,23 +14,28 @@
     notificationError = "",
     profileBusy = false,
     notificationsRequest = null,
+    reviewView = "waiting",
+    lastTab = null,
     viewedStages = new Map();
   const client = () => hooks?.getUser()?.role === "client";
   const valid = (generation, user) =>
     generation === epoch && client() && hooks.getUser() === user;
-  const pending = () =>
-    hooks
-      .getProjects()
-      .filter(window.ITDUI.active)
-      .flatMap((project) =>
-        (project.files || [])
-          .filter(
-            (file) =>
-              file.review?.isCurrent &&
-              file.review.status === "pending_approval",
-          )
-          .map((file) => ({ project, file })),
-      );
+  function reviewMaterials() {
+    return hooks.getProjects().flatMap((project) => {
+      const entries = window.ITDProjectFiles.entries(project);
+      return window.ITDProjectFiles.select(entries, { category: "result", sort: "oldest" })
+        .filter((entry) => entry.file.review?.isCurrent)
+        .map((entry) => ({ ...entry, project }));
+    });
+  }
+  const waitingForDecision = (item) =>
+    window.ITDUI.active(item.project) && item.status === "pending_approval";
+  const sentDecision = (file) => file.review.lastDecision;
+  function previousReturn(item) {
+    const previous = item.versions.find((f) =>
+      f.review.versionNumber < item.file.review.versionNumber && sentDecision(f));
+    return previous && sentDecision(previous) === "changes_requested" ? previous : null;
+  }
   const date = (value) =>
     value ? new Date(value).toLocaleString("ru-RU") : "Дата не указана";
   function button(label, action, className = "text-button") {
@@ -102,38 +107,65 @@
     card.append(open);
     return card;
   }
-  function materialCard({ project, file }) {
-    const card = node("article", undefined, "review-card");
-    const stage = (project.stages || []).find(
-      (stage) => stage.id === file.stageId,
+  function materialButton(item, file, text, panel, className = "text-button") {
+    const open = button(text, () => hooks.openMaterial(
+      item.project.id, file.review.materialId, file.review.versionId,
+      panel === "notes" ? { panel } : undefined,
+    ), className);
+    open.dataset.projectId = item.project.id;
+    return open;
+  }
+  function decisionCard(item, file = item.file) {
+    const card = node("article", undefined, "client-decision-card");
+    const copy = node("div");
+    const actions = node("div", undefined, "client-decision-actions");
+    const history = reviewView === "history";
+    const decision = history ? sentDecision(file) : file.review.status;
+    const original = decision === "pending_approval" ? previousReturn(item) : null;
+    let state;
+    if (decision === "changes_requested") state = "Отправлено на доработку";
+    else if (decision === "approved")
+      state = file.review.status === "pending_approval" ? "Согласование отменено" : "Согласовано";
+    else state = original ? "Исправления готовы к проверке" : "Ожидает решения";
+    copy.append(
+      node("p", [item.project.title, item.stage?.title || "Без этапа",
+        item.project.status === "Архив" ? "Архив" : ""].filter(Boolean).join(" · "), "client-decision-context"),
+      node("h3", item.title),
+      node("p", `Версия ${file.review.versionNumber} · ${state}`, "client-decision-state"),
     );
-    card.append(
-      node(
-        "p",
-        `${project.title}${stage ? ` · ${stage.title}` : ""}${project.status === "Архив" ? " · Архив" : ""}`,
-        "review-context",
-      ),
-      node("h3", window.ITDUI.materialLabel({ file, stage })),
-      node("p", file.name, "file-meta material-filename"),
-      node(
-        "p",
-        `Версия ${file.review.versionNumber} · Ожидает согласования`,
-        "review-status",
-      ),
-    );
-    const open = button(
-      "Посмотреть и согласовать →",
-      () =>
-        hooks.openMaterial(
-          project.id,
-          file.review.materialId,
-          file.review.versionId,
-        ),
-      "primary",
-    );
-    open.dataset.projectId = String(project.id);
-    card.append(open);
+    card.dataset.materialId = file.review.materialId;
+    card.dataset.versionId = file.review.versionId;
+    if (decision === "changes_requested") {
+      const next = item.versions.find((v) => v.review.versionNumber === file.review.versionNumber + 1);
+      actions.append(materialButton(item, file, next ?
+        `Исходное замечание · версия ${file.review.versionNumber}` : "Открыть замечания", "notes"));
+      if (next) {
+        actions.append(materialButton(item, next, `Исправленная версия ${next.review.versionNumber}`, "notes"));
+        if (next.id !== item.file.id) actions.append(materialButton(item, item.file,
+          `Текущая версия ${item.file.review.versionNumber}`, "notes"));
+      }
+    } else if (history) {
+      actions.append(materialButton(item, file, "Открыть решение", "notes"));
+    } else {
+      actions.append(materialButton(item, file, original ? "Проверить исправления" : "Посмотреть и решить",
+        original ? "notes" : "viewer"));
+      if (original) actions.append(materialButton(item, original,
+        `Исходное замечание · версия ${original.review.versionNumber}`, "notes"));
+    }
+    card.append(copy, actions);
     return card;
+  }
+  function homeDecision(item) {
+    const section = node("section", undefined, "client-next-decision");
+    section.setAttribute("aria-label", "Ждёт вашего решения");
+    const copy = node("div");
+    copy.append(node("p", "Ждёт вашего решения", "client-next-label"),
+      node("h2", item.title),
+      node("p", `${item.stage?.title || "Без этапа"} · Версия ${item.file.review.versionNumber}`, "client-decision-context"));
+    const corrected = !!previousReturn(item);
+    section.append(copy, materialButton(item, item.file,
+      corrected ? "Проверить исправления" : "Посмотреть и решить", corrected ? "notes" : "viewer", "primary"));
+    return section;
   }
   function heading(host, title, subtitle) {
     host.replaceChildren(node("h1", title));
@@ -158,30 +190,51 @@
       );
     host.append(grid);
   }
-  function renderReview() {
+  function renderReview(materials = reviewMaterials()) {
     const host = $("client-review-panel");
-    heading(
-      host,
-      "На согласование",
-      "Проверьте текущую версию материала и оставьте решение в его карточке.",
-    );
-    const list = node("div", undefined, "review-material-list");
-    pending().forEach((item) => list.append(materialCard(item)));
-    if (!list.childElementCount)
-      list.append(
-        node(
-          "p",
-          "Сейчас нет материалов, ожидающих вашего согласования. История решений доступна внутри проекта.",
-          "empty-note",
-        ),
-      );
-    host.append(list);
+    heading(host, "Решения");
+    const choices = node("div", undefined, "client-decision-filters");
+    choices.setAttribute("role", "group");
+    choices.setAttribute("aria-label", "Показать решения");
+    const list = node("div", undefined, "client-decision-list");
+    list.id = "client-decision-list";
+    const views = [
+      ["waiting", "Ожидают решения", "Сейчас нет материалов, ожидающих вашего решения."],
+      ["returned", "На доработке", "Материалов на доработке пока нет."],
+      ["history", "История", "Здесь появятся решения после отправки студии."],
+    ];
+    let empty;
+    for (const [key, label, emptyText] of views) {
+      const selected = key === reviewView;
+      const toggle = button(label, () => {
+        if (key === reviewView) return;
+        reviewView = key;
+        renderReview();
+        host.querySelector('.client-decision-filters [aria-pressed="true"]').focus({ preventScroll: true });
+      });
+      toggle.setAttribute("aria-pressed", String(selected));
+      toggle.setAttribute("aria-controls", list.id);
+      choices.append(toggle);
+      if (selected) empty = emptyText;
+    }
+    if (reviewView === "history") {
+      for (const item of materials) {
+        for (const file of item.versions.filter(sentDecision)) list.append(decisionCard(item, file));
+      }
+    } else {
+      const shown = reviewView === "waiting" ? materials.filter(waitingForDecision) :
+        materials.filter((item) => window.ITDUI.active(item.project) &&
+          (item.status === "changes_requested" || (item.status === "pending_approval" && previousReturn(item))));
+      shown.forEach((item) => list.append(decisionCard(item)));
+    }
+    if (!list.childElementCount) list.append(node("p", empty, "empty-note"));
+    host.append(choices, list);
   }
-  function renderHome() {
+  function renderHome(materials = reviewMaterials()) {
     const host = $("client-home-panel"),
       user = hooks.getUser(),
       projects = hooks.getProjects(),
-      waiting = pending();
+      waiting = materials.filter(waitingForDecision);
     const activeProjects = projects.filter(window.ITDUI.active);
     const project =
       activeProjects.find((p) => waiting.some((w) => w.project.id === p.id)) ||
@@ -191,12 +244,18 @@
     host.replaceChildren();
     if (project) {
       const header = node("div", undefined, "route-home-heading"),
-        copy = node("div");
-      copy.append(
-        node("p", "Ваш проект", "eyebrow"),
-        node("h1", project.title),
-        node("p", project.status, "badge"),
-      );
+        copy = node("div", undefined, "client-home-intro");
+      const selected = window.ITDProjectState.selectedStage(project.stages, viewedStages.get(project.id));
+      const projectWaiting = waiting.filter((item) => item.project.id === project.id);
+      const featured = projectWaiting.find((item) => item.file.stageId === (selected?.id ?? null)) || projectWaiting[0];
+      const name = node("div", undefined, "client-project-name");
+      const title = node("h1", project.title);
+      title.title = project.title;
+      name.append(title, node("p", project.status, "badge"));
+      copy.append(node("p", "Ваш проект", "eyebrow"), name);
+      if (featured) copy.append(homeDecision(featured));
+      else if (window.ITDUI.active(project))
+        copy.append(node("p", "Сейчас от вас не требуется решений.", "client-decision-context"));
       header.append(copy, window.ITDUI.progress(project));
       host.append(header);
       if (projects.length > 1)
@@ -207,6 +266,7 @@
         );
       host.append(
         window.ITDUI.journey(project, {
+          featuredMaterialId: featured?.file.review.materialId,
           openStage: (id) => {
             viewedStages.set(project.id, id);
             renderHome();
@@ -218,26 +278,13 @@
               file.review.materialId,
               file.review.versionId,
             ),
-        }, viewedStages.get(project.id) ?? null),
+        }, viewedStages.get(project.id)),
       );
-      const selectedStage = viewedStages.get(project.id) ?? window.ITDProjectState.currentStage(project.stages)?.id;
-      const featured = waiting.find(
-        (w) =>
-          w.project.id === project.id && w.file.stageId === selectedStage,
-      );
-      const other = waiting.filter((item) => item !== featured);
-      if (other.length) {
-        const attention = node("section", undefined, "client-other-decisions");
-        attention.append(node("h2", "Также ждут вашего решения"));
-        other
-          .slice(0, 3)
-          .forEach((item) => attention.append(materialCard(item)));
-        if (other.length > 3)
-          attention.append(
-            button("Все решения →", () => hooks.selectTab("client-review")),
-          );
-        host.append(attention);
-      }
+      if (waiting.length > 1)
+        host.append(button(`Все ожидающие решения · ${waiting.length}`, () => {
+          reviewView = "waiting";
+          hooks.selectTab("client-review");
+        }));
     } else {
       heading(
         host,
@@ -269,6 +316,8 @@
     };
     for (const event of notifications.slice(0, 5)) {
       const card = node("article", undefined, "panel");
+      const material = materials.find((item) => item.project.id === event.projectId &&
+        item.file.review.materialId === event.materialId);
       card.append(
         node(
           "p",
@@ -278,7 +327,7 @@
         node("h3", labels[event.type] || "Обновление проекта"),
         node(
           "p",
-          `${window.ITDUI.materialTitle(event.materialTitle)} · Версия ${event.versionNumber}`,
+          `${material?.title || window.ITDUI.materialTitle(event.materialTitle)} · Версия ${event.versionNumber}`,
         ),
       );
       const open = button("Открыть материал →", () =>
@@ -332,19 +381,31 @@
   }
   function render() {
     if (client()) {
-      renderHome();
+      const materials = reviewMaterials();
+      renderHome(materials);
       renderProjects();
-      renderReview();
+      renderReview(materials);
     }
   }
   function onTab(tab) {
     if (!client()) return;
+    const entering = lastTab !== tab;
+    lastTab = tab;
     if (tab === "client-home") {
       renderHome();
       loadNotifications();
     }
     if (tab === "client-projects") renderProjects();
-    if (tab === "client-review") renderReview();
+    if (tab === "client-review") {
+      renderReview();
+      if (entering) {
+        const generation = epoch, user = hooks.getUser();
+        hooks.refresh().catch((error) => {
+          if (lastTab === tab && valid(generation, user))
+            hooks.message(error.message || "Не удалось обновить решения.", true);
+        });
+      }
+    }
     if (tab === "profile") fillProfile();
   }
   function reset() {
@@ -354,6 +415,8 @@
     notificationError = "";
     profileBusy = false;
     notificationsRequest = null;
+    reviewView = "waiting";
+    lastTab = null;
     viewedStages.clear();
     $("profile-form")
       ?.querySelectorAll("input,button")

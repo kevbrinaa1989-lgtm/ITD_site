@@ -53,6 +53,7 @@
       pendingRender,
       blobUrl,
       media,
+      displayError = "",
       page = position.page || 1,
       zoom = position.zoom || 1,
       addMode = false,
@@ -268,6 +269,7 @@
       renderTask?.cancel();
       media = null;
       painted = 0;
+      displayError = "";
       controls();
       pageLabel.textContent = "Загрузка…";
       onDisplay();
@@ -307,8 +309,10 @@
         positionChanged();
         p.cleanup();
       } catch (e) {
-        if (alive && seq === serial && e.name !== "RenderingCancelledException")
-          status.textContent = e.message;
+        if (alive && seq === serial && e.name !== "RenderingCancelledException") {
+          displayError = status.textContent = e.message;
+          onDisplay();
+        }
       }
     }
     function go(n) {
@@ -483,11 +487,17 @@
         }
         viewport.scrollTo(position.scrollX || 0, position.scrollY || 0);
       } catch (e) {
-        if (alive && e.name !== "AbortError") status.textContent = e.message;
+        if (alive && e.name !== "AbortError") {
+          displayError = status.textContent = e.message;
+          onDisplay();
+        }
       }
     })();
     return {
       ready,
+      get displayError() {
+        return displayError;
+      },
       async confirmReady() {
         await ready;
         await pendingRender;
@@ -531,7 +541,7 @@
           : null;
       },
       get pageCount() {
-        return pdf?.numPages || 1;
+        return pdf?.numPages || (version.file.contentType === "application/pdf" ? 0 : 1);
       },
       get viewport() {
         return viewport;
