@@ -138,8 +138,19 @@ try {
   await saved(mobile);
   await snapshot(mobile, "approval-mobile");
   await mobile.setViewportSize({ width: 320, height: 640 });
-  const narrow = await mobile.locator(".ac-approve").boundingBox();
-  assert.ok(narrow.x + narrow.width <= 320 && narrow.y + narrow.height <= 640);
+  try {
+    await mobile.waitForFunction(() => {
+      const rect = document.querySelector(".ac-approve").getBoundingClientRect();
+      return rect.left >= 0 && rect.right <= 320 && rect.bottom <= 640 &&
+        document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)?.closest(".ac-approve");
+    }, null, { timeout: 5000 });
+  } catch (error) {
+    console.error("320px layout", await mobile.evaluate(() => ({
+      viewport: [innerWidth, innerHeight, visualViewport.width, visualViewport.height, visualViewport.scale],
+      action: document.querySelector(".ac-approve").getBoundingClientRect().toJSON(),
+    })));
+    throw error;
+  }
   await mobile.setViewportSize({ width: 390, height: 844 });
   await button(mobile, "На весь экран").click();
   await button(mobile, "Выйти из полноэкранного режима").click();

@@ -4,6 +4,11 @@
 body:has(> .approval-center:not([hidden])) {
   overflow: hidden;
 }
+body:has(> .approval-center:not([hidden])) #app-view {
+  position: fixed;
+  inset: 0;
+  overflow: clip;
+}
 .approval-center,
 .ac-dialog {
   --ac-paper: #fcfbf9;
@@ -1071,9 +1076,13 @@ body:has(> .approval-center:not([hidden])) {
   }
 }
 @media (max-width: 359px) {
-  .ac-actions button {
-    padding-inline: 5px;
-    font-size: 13px;
+  .ac-actions.ac-decisions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
+  }
+  .ac-actions .ac-approve {
+    grid-column: 1 / -1;
   }
   .ac-approve::after {
     display: none;
