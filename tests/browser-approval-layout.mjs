@@ -110,6 +110,7 @@ try {
     await button(page, "Согласовать и далее").click();
     await heading(page, next);
   }
+  await page.getByText("Просмотрено 1 из 2", { exact: true }).waitFor();
   await button(page, "Следующая страница").click();
   await page.getByText("Все страницы просмотрены", { exact: true }).waitFor();
   await saved(page);

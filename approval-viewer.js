@@ -93,8 +93,8 @@
     function controls() {
       const count = pdf?.numPages || 1;
       pageLabel.textContent = pdf ? `Страница ${page} из ${count}` : "Документ";
-      previous.disabled = !pdf || page <= 1;
-      next.disabled = !pdf || page >= count;
+      previous.disabled = !pdf || !media || page <= 1;
+      next.disabled = !pdf || !media || page >= count;
       zoomButton.textContent = Math.round(zoom * 100) + "%";
     }
     function progress() {
