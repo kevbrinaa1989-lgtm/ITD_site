@@ -90,7 +90,7 @@
     original.download = selected.name;
     actions.append(original);
     if (selected.review)
-      actions.append(window.ITDReview.reviewControl(selected));
+      actions.append(window.ITDReview.reviewControl(selected, window.ITDLibrary.openReview));
     host.append(actions);
   }
   function reset() {

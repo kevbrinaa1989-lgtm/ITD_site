@@ -187,13 +187,20 @@
   function empty(list, text) {
     list.replaceChildren(node("p", text, "empty-note"));
   }
+  function showStageOverview(id) {
+    routeStageId = id;
+    activeTab = "overview";
+    render();
+  }
   function selectTab(tab, options = {}) {
+    const reviewStage = tab === "review" && activeTab === "overview" ? routeStageId :
+      tab === "review" && activeTab === "files" ? window.ITDLibrary?.stageId() : undefined;
     // Compatibility: old stage links now land on the overview timeline.
     if (tab === "stages") tab = "overview";
     if (tab === "results" || tab === "documents") {
       const category = tab === "documents" ? "document" : "result";
       if (Object.hasOwn(options, "stageId"))
-        window.ITDLibrary?.showScope(category, options.stageId);
+        window.ITDLibrary?.showScope(category, options.stageId, options.album);
       else window.ITDLibrary?.category(category);
       tab = "files";
     } else if (tab === "files" && options.projectDocuments) {
@@ -267,7 +274,7 @@
     window.ITDWorkspace?.onTab(tab);
     window.ITDInvitations?.onTab(tab);
     window.ITDAdmin?.onTab(tab);
-    window.ITDReview?.onTab(tab);
+    window.ITDReview?.onTab(tab, reviewStage);
     window.ITDLibrary?.onTab(tab);
     window.ITDClientWorkspace?.onTab(tab);
     window.ITDUI?.syncShell(user, tab, inProject, selectTab);
@@ -279,15 +286,16 @@
     const currentUser = user;
     await refresh();
     if (!user || user !== currentUser) throw new Error("Сессия изменилась.");
-    if (!projects.some((project) => project.id === id))
-      throw new Error("Проект недоступен.");
-    if (selectedId !== id) {
-      routeStageId = null;
-    }
+    const project = projects.find((p) => p.id === id);
+    if (!project) throw new Error("Проект недоступен.");
+    if (options.stageId != null && !project.stages.some((s) => s.id === options.stageId))
+      throw new Error("Выбранный этап больше недоступен.");
+    if (Object.hasOwn(options, "stageId")) routeStageId = options.stageId;
+    else if (selectedId !== id) routeStageId = null;
     selectedId = id;
     returnClientId = options.clientId || null;
     activeTab = options.tab || "overview";
-    render();
+    render(options);
   }
   function projectAction(label, action) {
     const button = node("button", label, "text-button");
@@ -494,7 +502,7 @@
     details.append(form);
     return details;
   }
-  function render() {
+  function render(navigation = {}) {
     const admin = user.role === "admin";
     if ($("user-avatar"))
       $("user-avatar").textContent = user.name
@@ -511,10 +519,10 @@
     $("project-content").hidden = !project;
     for (const id of ["add-stage-form", "upload-file-form"])
       $(id).hidden = !project;
-    selectTab(activeTab);
     if (!project) {
       window.ITDReview?.setProject(null);
       window.ITDLibrary?.setProject(null);
+      selectTab(activeTab, navigation);
       return;
     }
     $("project-title").textContent = project.title;
@@ -557,6 +565,7 @@
       window.ITDUI.journey(
         project,
         {
+          admin,
           openStage: (id) => {
             routeStageId = id;
             render();
@@ -703,6 +712,7 @@
       stageSelect.value = previousStage;
     window.ITDLibrary?.setProject(project);
     window.ITDReview?.setProject(project);
+    selectTab(activeTab, navigation);
     window.ITDUploads?.reconcile();
   }
   async function refresh() {
@@ -1562,6 +1572,7 @@
     api,
     refresh,
     selectTab,
+    backToStage: showStageOverview,
     openUpload,
     deleteControl: deleteFileButton,
     message,
@@ -1601,6 +1612,7 @@
     api,
     getUser: () => user,
     selectTab,
+    backToStage: showStageOverview,
     encodeFile: encodeUploadFile,
     refresh,
     openProject: (id) => openProject(id, { tab: "review" }),
@@ -1608,6 +1620,10 @@
   window.ITDViewer.onDiscuss(async (file) => {
     const owner = projects.find((p) => p.files.some((f) => f.id === file.id));
     if (!owner || !file.review) return;
+    if (activeTab === "files" && owner.id === selectedId) {
+      if (await window.ITDLibrary.openReview(file)) window.ITDReview.openDiscussion();
+      return;
+    }
     await openProject(owner.id, { tab: "review" });
     if (
       await window.ITDReview.open(file.review.materialId, file.review.versionId)
@@ -1623,9 +1639,7 @@
     selectTab,
     openProject,
     openStage: async (pid, sid) => {
-      await openProject(pid, { tab: "overview" });
-      routeStageId = Number(sid);
-      render();
+      await openProject(pid, { tab: "overview", stageId: Number(sid) });
     },
     message,
     openMaterial: async (pid, mid, vid) => {
@@ -1661,9 +1675,7 @@
       await window.ITDReview.open(mid, vid);
     },
     openStage: async (pid, sid) => {
-      await openWorkspaceProject(pid, "overview");
-      routeStageId = Number(sid);
-      render();
+      await openProject(pid, { tab: "overview", stageId: Number(sid) });
       document
         .querySelector("#project-route")
         ?.scrollIntoView({ block: "start" });

@@ -221,6 +221,7 @@
             onMarker({ ...n, existing: true, index: n.draft ? n.index : i });
           });
           b.className = "ac-pin";
+          if (n.id) b.dataset.noteId = n.id;
           b.style.left = `${n.x * 100}%`;
           b.style.top = `${n.y * 100}%`;
           b.setAttribute(
@@ -548,6 +549,8 @@
         go(n.page);
         await pendingRender;
         if (!alive || !media) return;
+        sheet.querySelector(".ac-pin.is-located")?.classList.remove("is-located");
+        if (n.id) sheet.querySelector(`.ac-pin[data-note-id="${n.id}"]`)?.classList.add("is-located");
         const r = sheet.getBoundingClientRect(),
           area = viewport.getBoundingClientRect();
         viewport.scrollBy({

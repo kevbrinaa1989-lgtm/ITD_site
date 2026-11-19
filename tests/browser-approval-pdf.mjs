@@ -164,7 +164,7 @@ try {
     .getByRole("button", { name: "Сохранить в истории", exact: true })
     .click();
   await page
-    .locator(".ac-note button")
+    .locator(".ac-note-state")
     .filter({ hasText: "Подтверждено клиентом" })
     .first()
     .waitFor();

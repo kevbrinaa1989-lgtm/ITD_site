@@ -62,7 +62,7 @@
       query = "",
       stage = "",
       type = "",
-      sort = "newest",
+      sort = stage && stage !== "unassigned" ? "oldest" : "newest",
     } = {},
   ) {
     const needle = normalize(query);
@@ -112,7 +112,7 @@
                 a.file.document?.date || "",
               ) || b.file.id - a.file.id
             : sort === "oldest"
-              ? a.file.id - b.file.id
+              ? a.versions.at(-1).id - b.versions.at(-1).id
               : b.file.id - a.file.id,
       );
   }

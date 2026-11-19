@@ -225,17 +225,18 @@ try {
   await a
     .getByRole("button", { name: "Загрузить исправленную версию", exact: true })
     .click();
+  await a.getByRole("dialog").getByText("Добавить другие изменения", {exact:true}).click();
   await a
     .getByRole("dialog")
-    .getByLabel("Что изменено", { exact: true })
+    .getByLabel("Другие изменения в файле (необязательно)", { exact: true })
     .fill("Заменён светильник");
   await a
     .getByRole("dialog")
-    .getByLabel(/Исправлено замечание/)
+    .getByRole("radio", { name: "Исправлено", exact: true })
     .check();
   await a
     .getByRole("dialog")
-    .getByLabel("Результат или причина, почему не исправлено", { exact: true })
+    .getByLabel("Что исправлено", { exact: true })
     .fill("Исправлено в новой версии");
   await a.getByRole("dialog").locator("input[type=file]").setInputFiles({
     name: "Новая-версия.png",

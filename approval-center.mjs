@@ -101,6 +101,15 @@ export function initApprovalCenter({
   }
   function list(pid, scope, user) {
     const p = review.access(pid, user, fail);
+    const returns = all(
+      `SELECT e.id,e.materialId,e.versionId,v.versionNumber,e.body,e.createdAt,u.name AS authorName
+       FROM review_events e JOIN review_materials m ON m.id=e.materialId
+       JOIN review_versions v ON v.id=e.versionId JOIN users u ON u.id=e.actorId
+       WHERE m.projectId=? AND m.stageId IS ? AND e.type='changes_requested'
+       AND length(trim(e.body))>0 ORDER BY e.id DESC`,
+      pid, scope || null,
+    );
+    const comments = Map.groupBy(returns, (r) => r.materialId);
     return all(
       "SELECT id FROM review_materials WHERE projectId=? AND stageId IS ? ORDER BY id",
       pid,
@@ -129,13 +138,19 @@ export function initApprovalCenter({
           ),
         };
       });
+      const markers = notes(id);
+      // The composer can reuse the same sentence for the return and its pin.
+      const returnComments = (comments.get(id) || []).filter((c) =>
+        !markers.some((n) => n.versionId === c.versionId && n.body.trim() === c.body.trim()),
+      );
       return {
         ...m,
         versions,
         room: meta?.room || "",
         required: meta?.required !== 0,
         metadataRevision: meta?.revision || 0,
-        notes: notes(id),
+        notes: markers,
+        returnComments,
       };
     });
   }

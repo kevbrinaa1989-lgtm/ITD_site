@@ -81,9 +81,8 @@ try {
     await notes(designer);
     await button(designer, "Загрузить исправленную версию").click();
     const report = designer.getByRole("dialog");
-    await report.getByLabel("Что изменено").fill("Светильник смещён");
-    await report.getByLabel(/Исправлено замечание/).check();
-    await report.getByLabel("Результат или причина, почему не исправлено").fill("По маркеру клиента");
+    await report.getByRole("radio", { name: "Исправлено", exact: true }).check();
+    await report.getByLabel("Что исправлено", { exact: true }).fill("Светильник смещён по отметке клиента");
     await report.locator("input[type=file]").setInputFiles({ name: "План-v2.png", mimeType, buffer: bytes });
     await button(report, "Отправить новую версию").click();
     await report.waitFor({ state: "hidden" });
@@ -100,7 +99,7 @@ try {
     await confirmation.getByLabel("Пояснение").fill("Исправление проверено");
     await button(confirmation, "Сохранить в истории").click();
     await notes(client);
-    await client.locator(".ac-note button").filter({ hasText: "Подтверждено клиентом" }).waitFor();
+    await client.locator(".ac-note-state").filter({ hasText: "Подтверждено клиентом" }).waitFor();
     assert.equal((await state()).materials.find((m) => m.id === id).versions.at(-1).confirmedView, false);
     await closeNotes(client);
     await button(client, "Согласовать и далее").click();

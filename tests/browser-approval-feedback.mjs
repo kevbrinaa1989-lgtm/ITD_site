@@ -1,0 +1,145 @@
+import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import { ownershipFixture } from "./ownership-fixture.mjs";
+import { drawing, seedApprovalDemo } from "./approval-demo.mjs";
+import { openProject } from "./browser-navigation.mjs";
+import { action, button, markForRevision, queue, summary } from "./approval-navigation.mjs";
+
+const { chromium } = await import(process.env.ITD_PLAYWRIGHT_MODULE || "playwright");
+const f = await ownershipFixture();
+const folder = process.env.ITD_SCREENSHOT_DIR || "test-results/approval-feedback";
+let browser;
+try {
+  const { project, full } = await seedApprovalDemo(f);
+  const client = f.clients[0];
+  const path = `/api/approval-center/projects/${project.id}/stages/${full.id}`;
+  const state = () => f.api(path, null, client.cookie);
+  const original = await state();
+  const [general, marked] = original.materials.slice(3, 5);
+  const plain = "Укажите ширину прохода между кухней и обеденным столом.";
+  const remark = "Сместите дверной проём на 15 см в сторону гостиной.";
+  browser = await chromium.launch({ executablePath: process.env.ITD_CHROMIUM || "/usr/bin/chromium", args: ["--no-sandbox"] });
+  await mkdir(folder, { recursive: true });
+  const errors = [];
+  async function enter(studio, mobile = false) {
+    const ctx = await browser.newContext({ viewport: mobile ? { width: 390, height: 844 } : { width: 1568, height: 1000 },
+      isMobile: mobile, hasTouch: mobile, deviceScaleFactor: 1 });
+    const page = await ctx.newPage();
+    page.on("pageerror", e => errors.push(e.message));
+    await page.goto(f.base + "/cabinet");
+    await page.locator("#login-email").fill(studio ? "admin@example.test" : client.email);
+    await page.locator("#login-password").fill(f.password);
+    await page.locator("#login-form .primary").click();
+    await openProject(page, project.id, { client: !studio });
+    await page.locator("#tab-review").click();
+    await page.locator(".ac-sheet canvas").waitFor();
+    return page;
+  }
+  async function openMaterial(page, m) {
+    await queue(page);
+    await page.locator(`.ac-material[data-material-id="${m.id}"] .ac-material-open`).click();
+    await page.locator(".ac-view-heading h3").getByText(m.title, { exact: true }).waitFor();
+    await page.locator(".ac-sheet canvas").waitFor();
+  }
+  async function shot(page, name) {
+    await page.evaluate(() => document.fonts.ready);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await page.screenshot({ path: join(folder, name + ".png"), animations: "disabled" });
+  }
+  const author = await enter(false);
+  await openMaterial(author, general);
+  await button(author, "Нужны правки").click();
+  await author.getByRole("dialog").getByLabel("Текст замечания").fill(plain);
+  await button(author.getByRole("dialog"), "Подготовить и далее").click();
+  await author.locator(".ac-view-heading h3").getByText(marked.title, {exact:true}).waitFor();
+  await author.getByText("Просмотрено 1 из 2", {exact:true}).waitFor();
+  await author.getByLabel("Перейти на страницу").selectOption("2");
+  await author.getByText("Все страницы просмотрены", {exact:true}).waitFor();
+  await markForRevision(author, remark, {x:475, y:352});
+  await summary(author);
+  await button(author.getByRole("dialog"), "Подтверждаю отправку").click();
+  await author.getByText(/Пакет принят/).waitFor();
+  const designer = await enter(true);
+  await designer.getByLabel("Показывать").selectOption("notes");
+  assert.equal(await designer.locator(".ac-material").count(), 2);
+  await openMaterial(designer, general);
+  await button(designer, "Открыть замечания").click();
+  await designer.locator(".ac-notes .ac-note-body").getByText(plain, { exact: true }).waitFor();
+  await button(designer, "Загрузить исправленную версию").click();
+  const versionForm = designer.getByRole("dialog");
+  await versionForm.locator(".ac-note-body").getByText(plain).waitFor();
+  assert.equal(await versionForm.getByRole("radio").count(), 0);
+  assert.equal(await versionForm.getByLabel("Что изменено", {exact: true}).evaluate(e => e.required), true);
+  await button(versionForm, "Закрыть").click();
+  await button(designer, "Закрыть панель").click();
+  await action(designer, "Очередь замечаний");
+  const queued = designer.getByRole("dialog").getByRole("article").filter({ hasText: plain });
+  await button(queued, "Открыть замечание").click();
+  await designer.locator(".ac-notes .ac-note-body").getByText(plain).waitFor();
+  await button(designer, "Закрыть панель").click();
+  await designer.getByLabel("Показывать").selectOption("all");
+  await openMaterial(designer, marked);
+  await button(designer, "Открыть замечания").click();
+  assert.equal(await designer.locator(".ac-notes .ac-note-body").count(), 1);
+  await button(designer, "Показать на листе 2 · v1").click();
+  await designer.locator(".ac-sheet .ac-pin.is-located").click();
+  await designer.locator(".ac-notes .is-focused .ac-note-body").getByText(remark).waitFor();
+  assert.equal(await designer.getByLabel("Помещение", {exact:true}).isVisible(), false);
+  await shot(designer, "feedback-designer-desktop");
+  await button(designer, "Загрузить исправленную версию").click();
+  await versionForm.getByRole("heading", { name: marked.title, exact: true }).waitFor();
+  const group = versionForm.getByRole("group", { name: "Отметка 1 · лист 2 · v1" });
+  assert.equal(await versionForm.locator("input:checked").count(), 0);
+  const newFile = { name: "План перегородок-v2.pdf", mimeType: "application/pdf",
+    buffer: Buffer.from(await drawing(marked.title, 2, true), "base64") };
+  await versionForm.getByLabel("Файл новой версии").setInputFiles(newFile);
+  await button(versionForm, "Отправить новую версию").click();
+  assert.equal(await versionForm.locator("form").evaluate(form => form.checkValidity()), false);
+  await group.getByRole("radio", { name: "Исправлено", exact:true }).check();
+  await group.getByLabel("Что исправлено", { exact:true }).fill("Проём перенесён. Размер указан на листе 2.");
+  await shot(designer, "feedback-version-desktop");
+  await button(versionForm, "Закрыть").click();
+
+  const customer = await enter(false, true);
+  await openMaterial(customer, general);
+  await button(customer, "Открыть замечания").click();
+  await customer.locator(".ac-notes .ac-note-body").getByText(plain).waitFor();
+  assert.equal(await button(customer, "Загрузить исправленную версию").count(), 0);
+  await shot(customer, "feedback-client-mobile");
+  const phone = await enter(true, true);
+  await openMaterial(phone, marked);
+  await button(phone, "Открыть замечания").click();
+  await button(phone, "Показать на листе 2 · v1").click();
+  await phone.locator(".ac-sheet .ac-pin.is-located").click();
+  await phone.locator(".ac-notes .is-focused .ac-note-body").getByText(remark).waitFor();
+  await button(phone, "Загрузить исправленную версию").click();
+  const mobileForm = phone.getByRole("dialog");
+  await mobileForm.getByLabel("Файл новой версии").setInputFiles(newFile);
+  await mobileForm.getByRole("radio", { name: "Осталось исправить", exact:true }).check();
+  const explanation = "Нужно согласовать размер с конструктором. Остальные размеры добавлены.";
+  await mobileForm.getByLabel("Почему замечание остаётся открытым").fill(explanation);
+  await shot(phone, "feedback-version-mobile");
+  await phone.setViewportSize({ width:390, height:480 });
+  const send = button(mobileForm, "Отправить новую версию");
+  const bounds = await send.boundingBox();
+  assert.ok(bounds.y >= 0 && bounds.y + bounds.height <= 480);
+  assert.ok(await mobileForm.locator(".ac-version-fields").evaluate(e => e.scrollHeight > e.clientHeight));
+  await send.click();
+  await mobileForm.waitFor({state:"hidden"});
+  await phone.getByText("Исправленная версия отправлена клиенту.", {exact:true}).waitFor();
+  const latest = (await state()).materials.find(m => m.id === marked.id);
+  assert.equal(latest.currentVersion.versionNumber, 2);
+  assert.equal(latest.stageId, full.id);
+  const changed = latest.versions.find(v => v.id === latest.currentVersion.id);
+  const report = JSON.parse(changed.correction);
+  assert.equal(report.description, explanation);
+  assert.deepEqual(report.resolutions, [{noteId:latest.notes[0].id, fixed:false, explanation}]);
+  assert.equal(latest.notes[0].status, "open");
+  assert.equal(latest.notes[0].versionId, marked.currentVersion.id);
+  assert.deepEqual(errors, []);
+  console.log("PASS", browser.version(), "published text without a pin, note queue, page-to-note links, client/studio, explicit correction outcome and narrow mobile form");
+} finally {
+  await browser?.close();
+  await f.close();
+}

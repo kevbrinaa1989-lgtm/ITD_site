@@ -131,6 +131,7 @@ try {
       .waitFor();
     assert.equal(await admin.evaluate(() => window.itdXss), undefined);
     assert.equal(await admin.locator(".ac-rail img").count(), 0);
+    await admin.locator(".ac-properties > summary").click();
     await admin
       .getByRole("button", {
         name: "Отменить согласование версии",

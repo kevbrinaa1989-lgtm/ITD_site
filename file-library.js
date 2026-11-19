@@ -51,7 +51,7 @@
   }
   function openReview(file) {
     const position = scrollY;
-    h.openMaterial(file, () => {
+    return h.openMaterial(file, () => {
       h.selectTab("files");
       requestAnimationFrame(() => scrollTo(0, position));
     }).catch((error) => h.message(error.message, true));
@@ -264,7 +264,7 @@
       (stage) => String(stage.id) === s.stage,
     );
     $("library-title").textContent = chosenStage
-      ? "Файлы этапа"
+      ? `${album && imageCount ? "Альбом" : s.category === "result" ? "Материалы" : s.category === "document" ? "Документы" : "Файлы"} этапа «${chosenStage.title}»`
       : "Файлы проекта";
     $("library-back").hidden = !chosenStage;
     $("library-count").textContent =
@@ -311,7 +311,7 @@
       $("project-gallery").hidden = false;
       return;
     }
-    album = false;
+    if (scopeFiles !== null) album = false;
     list.hidden = false;
     window.ITDViewer.releaseWithin($("project-gallery"));
     $("project-gallery").replaceChildren();
@@ -321,7 +321,7 @@
       section.append(
         node(
           "h3",
-          "Материалы проекта",
+          chosenStage ? "Материалы этапа" : "Материалы проекта",
           `library-section-title${s.category === "result" ? " sr-only" : ""}`,
         ),
       );
@@ -360,6 +360,7 @@
       if (project)
         Object.assign(state(), {
           stage: "unassigned",
+          sort: "newest",
           category: "all",
           query: "",
           type: "",
@@ -422,18 +423,18 @@
   }
   // Navigate to a precise library scope, discarding any previous manual
   // search/filter selections so that another stage cannot leak into the view.
-  function showScope(categoryValue, stageValue) {
+  function showScope(categoryValue, stageValue, openAlbum = false) {
     if (!project) return;
-    Object.assign(state(), {
+    const stage = stageValue == null ? "unassigned" : String(stageValue);
+    const s = state();
+    if (s.stage !== stage) s.sort = stage === "unassigned" ? "newest" : "oldest";
+    Object.assign(s, {
       category: categoryValue,
-      stage:
-        stageValue == null || stageValue === "unassigned"
-          ? "unassigned"
-          : String(stageValue),
+      stage,
       query: "",
       type: "",
     });
-    album = false;
+    album = !!openAlbum;
     closeDocument();
     loadScope();
   }
@@ -536,7 +537,7 @@
     ])
       $(id).addEventListener(event, () => {
         state()[key] = $(id).value;
-        album = false;
+        if (key !== "sort") album = false;
         render();
       });
     $("library-upload").addEventListener("click", () =>
@@ -555,7 +556,7 @@
       Object.assign(state(), { query: "", type: "" });
       render();
     });
-    $("library-back").addEventListener("click", () => h.selectTab("overview"));
+    $("library-back").addEventListener("click", () => h.backToStage(Number(state().stage)));
     $("library-edit-close").addEventListener("click", () =>
       $("library-edit-dialog").close(),
     );
@@ -568,8 +569,10 @@
   window.ITDLibrary = {
     init,
     setProject,
+    openReview,
     category,
     showScope,
+    stageId: () => project && state().stage !== "unassigned" ? Number(state().stage) : undefined,
     filterStage: (id) => showScope("all", id),
     onTab: (tab) => {
       if (tab === "files") return loadScope(true);

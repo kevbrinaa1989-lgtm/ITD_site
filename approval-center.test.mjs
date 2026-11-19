@@ -141,6 +141,36 @@ for (const count of [1, 10, 30, 50, 100])
       statement,
     );
   });
+test("submitted return text stays with its project, stage and version and appears once alongside its pins", async (t) => {
+  const f = await setup(t, 3);
+  const [general, pinned, both] = (await f.state()).materials;
+  const mark = { page: 1, x: 0.5, y: 0.5, body: "Перенести розетку" };
+  const draft = await f.save([
+    f.entry(general, "changes_requested", "Уточнить размер прохода"),
+    f.entry(pinned, "changes_requested", mark.body, [mark]),
+    f.entry(both, "changes_requested", "Уточнить размещение мебели", [mark]),
+  ]);
+  const asStudio = () => f.api(f.route, null, f.admin);
+  assert.ok((await asStudio()).materials.every(m => !m.notes.length && !m.returnComments.length));
+  await f.submit(draft.revision);
+  for (const state of [await asStudio(), await f.state()]) {
+    const [a, b, c] = state.materials;
+    assert.deepEqual(a.returnComments.map(x => [x.body, x.versionId, x.versionNumber, x.authorName]),
+      [["Уточнить размер прохода", general.currentVersion.id, 1, f.clients[0].name]]);
+    assert.deepEqual(a.notes, []);
+    assert.deepEqual(b.returnComments, []);
+    assert.equal(b.notes[0].body, mark.body);
+    assert.deepEqual(c.returnComments.map(x => x.body), ["Уточнить размещение мебели"]);
+    assert.equal(c.notes[0].body, mark.body);
+  }
+  const next = await f.upload({ materialId: general.id, expectedVersionId: general.currentVersion.id,
+    correctionReport: { description: "Добавлен размер", resolutions: [] } });
+  const updated = (await asStudio()).materials[0];
+  assert.equal(updated.currentVersion.id, next.review.versionId);
+  assert.equal(updated.returnComments[0].versionId, general.currentVersion.id);
+  assert.equal((await f.api(`/api/approval-center/projects/${f.p.id}/stages/${f.p.stages[1].id}`, null, f.admin)).materials.length, 0);
+  await f.api(f.route, null, f.clients[1].cookie, "GET", 403);
+});
 test("full 40 → 35 + 5 → corrections → confirmation → new versions → separate stage acceptance", async (t) => {
   const f = await setup(t, 40),
     state = await f.state();

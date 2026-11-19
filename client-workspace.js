@@ -211,7 +211,7 @@
             viewedStages.set(project.id, id);
             renderHome();
           },
-          openTab: (tab) => hooks.openProject(project.id, { tab }),
+          openTab: (tab, options) => hooks.openProject(project.id, { ...options, tab }),
           openMaterial: (file) =>
             hooks.openMaterial(
               project.id,
@@ -220,10 +220,10 @@
             ),
         }, viewedStages.get(project.id) ?? null),
       );
-      const currentStage = window.ITDProjectState.currentStage(project.stages);
+      const selectedStage = viewedStages.get(project.id) ?? window.ITDProjectState.currentStage(project.stages)?.id;
       const featured = waiting.find(
         (w) =>
-          w.project.id === project.id && w.file.stageId === currentStage?.id,
+          w.project.id === project.id && w.file.stageId === selectedStage,
       );
       const other = waiting.filter((item) => item !== featured);
       if (other.length) {

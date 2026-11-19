@@ -494,7 +494,7 @@
     description.querySelector("h2").title = materialTitle(material);
     summary.append(fileTile(v.file), description);
     const back = button(
-      returnToLibrary ? "← Файлы проекта" : "← Материалы проекта",
+      returnToLibrary ? (window.ITDLibrary?.stageId() ? "← Файлы этапа" : "← Файлы проекта") : "← Материалы проекта",
       () => {
         const back = returnToLibrary;
         returnToLibrary = null;
@@ -770,11 +770,11 @@
     history.append(list);
     rail.append(history);
   }
-  function reviewControl(file) {
+  function reviewControl(file, openFile = (f) => open(f.review.materialId, f.review.versionId)) {
     return file.review
       ? button(
           `Версия ${file.review.versionNumber} · ${labels[file.review.status] || file.review.status} · Обсудить`,
-          () => open(file.review.materialId, file.review.versionId),
+          async () => { if (await openFile(file)) openDiscussion(); },
         )
       : document.createDocumentFragment();
   }
@@ -907,8 +907,8 @@
       if (!document.hidden && h.getUser()) loadNotifications();
     });
   }
-  function onTab(tab) {
-    window.ITDApprovalCenter?.onTab(tab).catch((e) => notice(e.message));
+  function onTab(tab, stageId) {
+    window.ITDApprovalCenter?.onTab(tab, stageId).catch((e) => notice(e.message));
     if (tab !== "review") {
       returnToLibrary = null;
       document.body.classList.remove("review-from-library");

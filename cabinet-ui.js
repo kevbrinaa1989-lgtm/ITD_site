@@ -90,11 +90,6 @@
         s.status,
       ),
     );
-    const waiting = active(project)
-      ? files.filter(
-          (f) => f.review?.isCurrent && f.review.status === "pending_approval",
-        )
-      : [];
     // Selecting a card is a view-only action, not a workflow state change.
     const currentStage = window.ITDProjectState.currentStage(stages);
     const stage = stages.find((item) => item.id === selectedStageId) || currentStage;
@@ -102,10 +97,10 @@
     const stageFiles = files.filter(
       (f) =>
         f.category === "result" &&
-        stage &&
-        f.stageId === stage.id &&
+        (f.stageId ?? null) === (stage?.id ?? null) &&
         (!f.review || f.review.isCurrent),
     );
+    const waiting = active(project) ? stageFiles.filter((f) => f.review?.status === "pending_approval") : [];
     const chosen =
       stageFiles.find((f) => f.review?.status === "pending_approval") ||
       stageFiles.at(-1);
@@ -165,7 +160,7 @@
       node(
         "span",
         waiting.length
-          ? `Решений от вас: ${waiting.length}`
+          ? `${actions.admin ? "Ожидают решения клиента" : "Ждут вашего решения"} · ${waiting.length}`
           : active(project)
             ? "Решений не требуется"
             : project.status,
@@ -212,7 +207,7 @@
       node(
         "p",
         needsDecision
-          ? "Посмотрите текущую версию и сообщите, всё ли вам подходит."
+          ? (actions.admin ? "Текущая версия ожидает решения клиента." : "Посмотрите текущую версию и сообщите, всё ли вам подходит.")
           : (!stage && state.approved
               ? "Согласование зафиксировано. Студия отметит завершение этапов после выполнения всех работ."
               : stage?.description) ||
@@ -231,7 +226,7 @@
     if (chosen?.review)
       copy.append(
         button(
-          needsDecision ? "Посмотреть и решить →" : "Открыть материал →",
+          needsDecision && !actions.admin ? "Посмотреть и решить →" : "Открыть материал →",
           () => actions.openMaterial(chosen),
           "primary",
         ),
@@ -244,7 +239,7 @@
     else
       copy.append(
         button(
-          chosen ? "Смотреть материалы →" : "Смотреть файлы проекта →",
+          stage ? "Материалы этапа →" : "Материалы без этапа →",
           () => actions.openTab("results", { stageId: stage?.id ?? null }),
           "primary",
         ),
@@ -256,16 +251,16 @@
     // Keep the image and the two shortcuts in one responsive composition.
     // Detailed stage actions remain available, but do not crowd empty stages.
     const links = node("div", undefined, "route-links");
-    for (const [title, description, tab] of [
-      ["Альбом проекта", "Визуализации, ракурсы и детали интерьера", "results"],
-      ["Документы", "Договоры и файлы вашего проекта", "documents"],
+    const hasAlbum = stageFiles.some((f) => window.ITDViewer.image(f));
+    const place = stage ? `Этап «${stage.title}»` : "Файлы без привязки к этапу";
+    for (const [title, tab, album] of [
+      [hasAlbum ? (stage ? "Альбом этапа" : "Альбом проекта") : (stage ? "Материалы этапа" : "Материалы проекта"), "results", hasAlbum],
+      [stage ? "Документы этапа" : "Документы проекта", "documents", false],
     ]) {
       const item = node("section", undefined, "panel");
-      item.append(
-        node("h2", title),
-        node("p", description, "muted"),
-        button("Открыть →", () => actions.openTab(tab, { stageId: stage?.id ?? null })),
-      );
+      const open = button("Открыть →", () => actions.openTab(tab, { stageId: stage?.id ?? null, album }));
+      open.setAttribute("aria-label", `Открыть: ${title}`);
+      item.append(node("h2", title), node("p", place, "muted"), open);
       links.append(item);
     }
     body.append(links);

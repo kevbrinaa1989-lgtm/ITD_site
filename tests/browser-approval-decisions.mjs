@@ -250,7 +250,7 @@ try {
   await client.locator(".ac-pin").waitFor();
   await saved(client);
   await shot(client, "approval-returned-client");
-  await button(admin, "← Файлы проекта").click();
+  await button(admin, "← Файлы этапа").click();
   await card.getByText("На доработку", { exact: true }).waitFor();
   assert.equal(await admin.locator("#library-search").inputValue(), returned.title);
   await center(admin);
@@ -261,9 +261,11 @@ try {
   await admin.locator(".ac-rail").getByText(note, { exact: false }).first().waitFor();
   await shot(admin, "approval-returned-admin");
   // Exercise the browser window's return event in addition to the real cabinet tab transitions above.
+  await admin.locator(".ac-note-filter > summary").click();
   await admin.locator(".ac-notes select").selectOption("open");
   await admin.locator(".ac-discussion summary").click();
   await admin.getByLabel("Комментарий к версии").fill("Текст ответа до отправки");
+  await admin.locator(".ac-properties > summary").click();
   await admin.getByLabel("Помещение", { exact: true }).fill("Кухня");
   await Promise.all([admin.waitForResponse(r => r.url().endsWith(path) && r.request().method() === "GET"),
     admin.evaluate(() => { window.dispatchEvent(new Event("blur")); window.dispatchEvent(new Event("focus")); })]);
