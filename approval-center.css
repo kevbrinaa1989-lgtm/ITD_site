@@ -219,6 +219,9 @@ body:has(> .approval-center:not([hidden])) #app-view {
 .ac-notice:empty {
   display: none;
 }
+.approval-center[data-opening-stage] :is(.ac-work, .ac-stage-approved, .ac-package) {
+  visibility: hidden;
+}
 .ac-work {
   grid-row: 3;
   display: grid;

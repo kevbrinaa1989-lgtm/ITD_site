@@ -47,8 +47,25 @@ export async function checkFirstUse(browser) {
     await leaveApproval(page);
     await page.locator("#tab-files").click();
     assert.equal(await page.locator("#library-stage").inputValue(), "unassigned");
-    await page.locator("#tab-review").click();
+    const endpoint = `**/api/approval-center/projects/${project.id}/stages/0`;
+    const release = Promise.withResolvers();
+    await page.route(endpoint, async route => {
+      await release.promise;
+      await route.continue();
+    }, { times: 1 });
+    const started = page.waitForRequest(endpoint);
+    const loaded = page.waitForResponse(endpoint);
+    try {
+      await page.locator("#tab-review").click();
+      await started;
+      assert.equal(await page.locator(".ac-stage-name").innerText(), "Без этапа");
+      assert.equal(await message.isVisible(), false, "Hide the previous stage while loading the new scope");
+    } finally {
+      release.resolve();
+    }
+    assert.equal((await loaded).status(), 200);
     await message.waitFor();
+    assert.equal(await page.locator(".ac-stage-name").innerText(), "Без этапа");
     assert.equal(await page.locator(".ac-stage select").inputValue(), "0");
     await leaveApproval(page);
     await page.locator("#tab-overview").click();

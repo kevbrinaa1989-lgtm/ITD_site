@@ -370,15 +370,7 @@
       "Этап",
       [[0, "Без этапа"], ...project.stages.map((s) => [s.id, s.title])],
       scope,
-      async (s) => {
-        try {
-          await flush();
-          await loadScope(+s);
-        } catch (e) {
-          say(e.message);
-          stagePicker.querySelector("select").value = scope;
-        }
-      },
+      (s) => changeScope(+s),
     );
     stagePicker.className = "ac-stage";
     stagePicker.append(el("span", "", "ac-stage-name"));
@@ -552,11 +544,49 @@
       }
     });
   }
+  function showStageName(id) {
+    const picker = stagePicker.querySelector("select");
+    picker.value = String(id);
+    stagePicker.querySelector(".ac-stage-name").textContent = picker.selectedOptions[0]?.textContent || "";
+  }
+  function beginScope(s) {
+    if ((data && s === scope) || root.dataset.openingStage === String(s)) return;
+    root.dataset.openingStage = String(s);
+    showStageName(s);
+    say("Открываем материалы выбранного раздела…");
+  }
+  function finishScope(s, displayed) {
+    if (root?.dataset.openingStage !== String(s)) return;
+    delete root.dataset.openingStage;
+    showStageName(displayed);
+    say("");
+  }
+  async function changeScope(s) {
+    build();
+    const center = root;
+    if (data && s === scope) {
+      if (center.hasAttribute("data-opening-stage")) finishScope(center.dataset.openingStage, scope);
+      return;
+    }
+    beginScope(s);
+    try {
+      await flush();
+      if (active && !pendingOpen && root === center && center.dataset.openingStage === String(s))
+        await loadScope(s);
+    } catch (error) {
+      if (root !== center || !active) return;
+      if (center.dataset.openingStage === String(s)) finishScope(s, data ? scope : s);
+      else if (scope !== s || center.hasAttribute("data-opening-stage")) return;
+      say(error.message);
+    }
+  }
   async function loadScope(s, target) {
     const pid = project.id,
       generation = ++epoch;
     const context = target?.context;
+    const changing = !data || s !== scope;
     build();
+    beginScope(s);
     const work = root.querySelector(".ac-work");
     work.inert = true;
     packageButton.disabled = true;
@@ -564,8 +594,8 @@
     try {
       result = await hooks.api(route(s));
     } catch (error) {
-      if (generation === epoch) {
-        stagePicker.querySelector("select").value = scope;
+      if (generation === epoch && (!changing || root?.dataset.openingStage === String(s))) {
+        finishScope(s, data ? scope : s);
         if (data) await showMaterial(mid, vid);
         else
           viewHost.replaceChildren(
@@ -580,7 +610,8 @@
         packageButton.disabled = !data;
       }
     }
-    if (generation !== epoch || project?.id !== pid || !active) return;
+    if (generation !== epoch || project?.id !== pid || !active ||
+        (changing && root.dataset.openingStage !== String(s))) return;
     scope = s;
     dirty = saved = 0;
     saveError = null;
@@ -593,9 +624,7 @@
     busy = false;
     advanceAfterSave = pinRequest = null;
     stopPreview();
-    stagePicker.querySelector("select").value = scope;
-    stagePicker.querySelector(".ac-stage-name").textContent =
-      stagePicker.querySelector("select").selectedOptions[0]?.textContent;
+    finishScope(s, scope);
     saveStatus.textContent = admin() ? "Режим студии" : "Загрузка черновика…";
     data = result;
     packageButton.disabled = false;
@@ -2508,7 +2537,7 @@
   async function refreshView() {
     const target = captureView() || { mid };
     await flush();
-    if (active && !pendingOpen) await loadScope(scope, target);
+    if (active && !pendingOpen && !root?.hasAttribute("data-opening-stage")) await loadScope(scope, target);
   }
   async function onTab(tab, requestedStage) {
     if (pendingOpen) return;
@@ -2517,6 +2546,8 @@
     if (root) root.hidden = !active;
     document.getElementById("app-view").inert = active && !!root;
     if (!active) {
+      if (root?.hasAttribute("data-opening-stage"))
+        finishScope(root.dataset.openingStage, data ? scope : root.dataset.openingStage);
       const leaving = viewer;
       await flush();
       if (!active && viewer === leaving) stopPreview();
@@ -2524,9 +2555,7 @@
     }
     if (!project) return;
     if (requestedStage != null && (!data || requestedStage !== scope)) {
-      const pid = project.id;
-      await flush();
-      if (active && !pendingOpen && project?.id === pid) await loadScope(requestedStage);
+      await changeScope(requestedStage);
       return;
     }
     if (root && data) {
