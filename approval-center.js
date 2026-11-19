@@ -50,6 +50,13 @@
     returnToLibrary = null;
   const historyByMaterial = new Map();
   const admin = () => hooks?.getUser()?.role === "admin";
+  function newOperationId() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    // Local Wi-Fi previews have getRandomValues even on an HTTP origin.
+    return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+      byte.toString(16).padStart(2, "0"),
+    ).join("");
+  }
   const route = () =>
     `/api/approval-center/projects/${project.id}/stages/${scope}`;
   const displayTitle = (m) =>
@@ -1374,7 +1381,7 @@
               operation.expectedRevision !== data.draft.revision
             )
               operation = {
-                operationId: crypto.randomUUID(),
+                operationId: newOperationId(),
                 expectedRevision: data.draft.revision,
                 confirm: true,
               };
@@ -1416,7 +1423,7 @@
             "Подтверждаю согласование этапа",
             async () => {
               await hooks.api(route() + "/approve-stage", "POST", {
-                operationId: crypto.randomUUID(),
+                operationId: newOperationId(),
                 token: state.token,
                 confirm: true,
               });
@@ -1540,7 +1547,7 @@
       onPosition: (p) => syncPos(comparison, p),
       onPage: (p) => {
         if (!admin())
-          hooks
+          return hooks
             .api(`/api/approval-center/versions/${v.id}/view`, "POST", {
               page: p,
             })
@@ -1597,7 +1604,7 @@
     );
     const files = result.files.filter((f) => !f.review),
       chosen = new Set(),
-      operationId = crypto.randomUUID();
+      operationId = newOperationId();
     modal("Направить материалы на согласование", (d) => {
       d.append(
         el(

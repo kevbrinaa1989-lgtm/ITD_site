@@ -49,6 +49,7 @@
       task,
       pdf,
       renderTask,
+      pendingRender,
       blobUrl,
       media,
       page = position.page || 1,
@@ -115,6 +116,7 @@
       });
     function drawMarkers() {
       sheet.querySelectorAll(".ac-pin").forEach((n) => n.remove());
+      if (!media) return;
       for (const [i, n] of markers.entries())
         if (n.page === page) {
           const b = btn(String(n.number || i + 1), (e) => {
@@ -154,6 +156,8 @@
     async function render() {
       const seq = ++serial;
       renderTask?.cancel();
+      media = null;
+      sheet.replaceChildren();
       status.textContent = "Подготовка страницы…";
       try {
         const p = await pdf.getPage(page);
@@ -198,7 +202,7 @@
       );
       if (next === page) return;
       page = next;
-      if (pdf) render();
+      if (pdf) pendingRender = render();
     }
     pageInput.onchange = () => go(Number(pageInput.value));
     sheet.addEventListener("click", (e) => {
@@ -217,7 +221,7 @@
       "Материал. В режиме замечания Enter добавляет маркер в центре.",
     );
     sheet.addEventListener("keydown", (e) => {
-      if (addMode && e.key === "Enter") {
+      if (addMode && media && e.key === "Enter") {
         e.preventDefault();
         onMarker({ page, x: 0.5, y: 0.5, body: "" });
       }
@@ -364,6 +368,7 @@
       ready,
       async confirmReady() {
         await ready;
+        await pendingRender;
         await pageSave;
       },
       get zoom() {

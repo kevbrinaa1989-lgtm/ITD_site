@@ -6,7 +6,7 @@ import { randomBytes } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { createApp } from "../server.mjs";
 import { prepareFixtureUpload } from "./upload-fixture.mjs";
-export async function ownershipFixture() {
+export async function ownershipFixture({ host = "127.0.0.1", port = 0 } = {}) {
   const root = await mkdtemp(join(tmpdir(), "itd-ownership-")),
     dataDir = join(root, "data"),
     password = randomBytes(24).toString("hex");
@@ -17,10 +17,15 @@ export async function ownershipFixture() {
       adminEmail: "admin@example.test",
       adminPassword: password,
     });
-    await new Promise((r) => app.server.listen(0, "127.0.0.1", r));
-    base = `http://127.0.0.1:${app.server.address().port}`;
+    await new Promise((resolve, reject) => {
+      app.server.once("error", reject);
+      app.server.listen(port, host, () => {
+        app.server.off("error", reject);
+        resolve();
+      });
+    });
+    base = `http://${host}:${app.server.address().port}`;
   }
-  await start();
   async function request(path, body, cookie, method = body ? "POST" : "GET") {
     body = await prepareFixtureUpload(base, path, body, cookie, method);
     return fetch(base + path, {
@@ -50,6 +55,7 @@ export async function ownershipFixture() {
     return r.headers.get("set-cookie").split(";")[0];
   }
   try {
+    await start();
     const admin = await login("admin@example.test"),
       clients = [];
     for (const [i, name] of ["Анна", "Борис"].entries()) {
@@ -130,7 +136,7 @@ export async function ownershipFixture() {
       },
     };
   } catch (error) {
-    await app.close();
+    await app?.close();
     await rm(root, { recursive: true, force: true });
     throw error;
   }

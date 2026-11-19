@@ -10,9 +10,12 @@ let browser;
 try {
   browser = await chromium.launch({
     executablePath: process.env.ITD_CHROMIUM || "/usr/bin/chromium",
-    args: ["--no-sandbox"],
+    args: ["--no-sandbox", "--host-resolver-rules=MAP approval.test 127.0.0.1", "--no-proxy-server"],
   });
   for (const width of [1440, 768, 430, 375]) {
+    const url = new URL(f.base);
+    // A phone opening the demo via Wi-Fi also uses a non-loopback HTTP origin.
+    if (width === 375) url.hostname = "approval.test";
     const p = f.projects[0],
       stage = p.stages[0],
       [name, contentType, bytes] = fixtures[0];
@@ -40,7 +43,7 @@ try {
       const page = await context.newPage();
       page.on("pageerror", (e) => errors.push(e.message));
       page.on("dialog", (d) => d.accept());
-      await page.goto(f.base + "/cabinet");
+      await page.goto(url.origin + "/cabinet");
       await page.locator("#login-email").fill(email);
       await page.locator("#login-password").fill(f.password);
       await page.locator("#login-form .primary").click();
@@ -66,6 +69,7 @@ try {
       await panel(page, "Замечания и решение");
     };
     const client = await login("client0@example.test");
+    if (width === 375) assert.equal(await client.evaluate(() => isSecureContext), false);
     await open(client, true);
     const malicious = '<img src=x onerror="window.itdXss=true">';
     await client
@@ -93,11 +97,29 @@ try {
     await client
       .getByRole("button", { name: "Проверить и отправить", exact: true })
       .click();
-    await client
-      .getByRole("dialog")
-      .getByRole("button", { name: "Подтверждаю отправку", exact: true })
-      .click();
+    const send = client.getByRole("dialog")
+      .getByRole("button", { name: "Подтверждаю отправку", exact: true });
+    const counts = () => f.rows(`SELECT (SELECT count(*) FROM approval_packages) AS packages,
+      (SELECT count(*) FROM review_notifications) AS notifications,
+      (SELECT count(*) FROM review_events WHERE type='approved') AS decisions`)[0];
+    const before = counts();
+    if (width === 430) {
+      await client.route("**/stages/*/submit", async (route) => {
+        const response = await route.fetch();
+        assert.equal(response.status(), 200);
+        await route.abort("connectionreset");
+      }, { times: 1 });
+      await send.click();
+      await client.getByRole("dialog").getByRole("alert").waitFor();
+      assert.equal(counts().packages, before.packages + 1);
+    }
+    await send.click();
     await client.getByText(/Пакет принят. Ведомость/).waitFor();
+    assert.deepEqual(counts(), {
+      packages: before.packages + 1,
+      notifications: before.notifications + 1,
+      decisions: before.decisions + 1,
+    });
     const admin = await login("admin@example.test");
     await openGlobal(admin, "notifications");
     await admin
@@ -162,12 +184,8 @@ try {
       .waitFor();
     assert.equal(await client.evaluate(() => window.itdXss), undefined);
     await client.locator("#logout-button").click();
-    assert.equal(
-      (
-        await client.request.get(f.base + `/api/files/${file.id}/preview`)
-      ).status(),
-      401,
-    );
+    assert.equal(await client.evaluate(async (id) =>
+      (await fetch(`/api/files/${id}/preview`)).status, file.id), 401);
     assert.equal(
       (
         await f.request(

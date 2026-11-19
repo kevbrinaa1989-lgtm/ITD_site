@@ -64,13 +64,16 @@ try {
     .getByRole("button", { name: "Я проверил(а) все страницы", exact: true })
     .click();
   await page.getByText("Просмотрены 1 из 2 страниц", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Добавить замечание", exact: true }).click();
+  // Between selecting a new page and painting it, the old sheet must not accept pins.
   await page
     .getByRole("button", { name: "Следующая страница", exact: true })
-    .click();
+    .evaluate((next) => {
+      next.click();
+      document.querySelector(".ac-sheet").click();
+    });
+  assert.equal(await page.getByRole("dialog").count(), 0);
   await page.getByText("Страница 2 из 2", { exact: true }).waitFor();
-  await page
-    .getByRole("button", { name: "Добавить замечание", exact: true })
-    .click();
   const box = await page.locator(".ac-sheet").boundingBox();
   await page
     .locator(".ac-sheet")

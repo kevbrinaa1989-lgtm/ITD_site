@@ -1,0 +1,2 @@
+# PDF.js ships with a manifest of upstream byte hashes.
+vendor/pdfjs/** -text

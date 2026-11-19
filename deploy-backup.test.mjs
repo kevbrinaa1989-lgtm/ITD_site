@@ -5,7 +5,9 @@ import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 for (const scenario of ['success','copy-failure','offsite-failure','stop-failure','restart-failure']) {
-  test(`backup orchestration ${scenario}: restart and conditional retention`, () => {
+  test(`backup orchestration ${scenario}: restart and conditional retention`, {
+    skip: process.platform === 'win32' && 'The Linux backup script requires /bin/bash',
+  }, () => {
     const root=mkdtempSync(join(tmpdir(),'itd-backup-shell-'));
     try {
       const bin=join(root,'bin'),folder=join(root,'verified'),log=join(root,'commands'),marker=join(root,'restart');

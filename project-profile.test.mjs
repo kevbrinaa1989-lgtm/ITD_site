@@ -265,9 +265,11 @@ function oldSchema(db) {
 }
 test("nullable migration snapshots and preserves old rows IDs foreign keys indexes triggers and is idempotent", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "itd-migration-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
   const db = new DatabaseSync(join(root, "itd.sqlite"));
-  t.after(() => db.close());
+  t.after(async () => {
+    db.close();
+    await rm(root, { recursive: true, force: true });
+  });
   oldSchema(db);
   const oldRows = db.prepare("SELECT * FROM projects").all(),
     oldStages = db.prepare("SELECT * FROM stages").all(),
@@ -315,9 +317,11 @@ test("nullable migration snapshots and preserves old rows IDs foreign keys index
 });
 test("migration failure rolls back schema rows and foreign-key mode, while unknown schemas abort without changes", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "itd-migration-fail-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
   const db = new DatabaseSync(join(root, "itd.sqlite"));
-  t.after(() => db.close());
+  t.after(async () => {
+    db.close();
+    await rm(root, { recursive: true, force: true });
+  });
   oldSchema(db);
   const before = db
     .prepare("SELECT type,name,sql FROM sqlite_schema ORDER BY type,name")

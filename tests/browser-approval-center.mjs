@@ -103,6 +103,17 @@ try {
   await page
     .getByRole("button", { name: "Я проверил(а) все страницы", exact: true })
     .click();
+  const checks = page.locator(".ac-material input[type=checkbox]");
+  await checks.nth(0).check();
+  await checks.nth(1).check();
+  const group = page.getByRole("button", { name: "Согласовать выбранные", exact: true });
+  await group.click();
+  await page.getByText(/^Проверьте все выбранные материалы/).waitFor();
+  assert.equal(await page.getByRole("dialog").count(), 0);
+  await checks.nth(1).uncheck();
+  await group.click();
+  await page.getByRole("dialog").getByRole("button", { name: "Подготовить решения" }).click();
+  await page.locator(".ac-material").first().getByText("Черновик: Согласовано").waitFor();
   await page
     .locator(".ac-decisions")
     .getByRole("button", { name: "Согласовать", exact: true })
