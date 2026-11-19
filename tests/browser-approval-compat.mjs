@@ -1,3 +1,4 @@
+import { notes, closeNotes, queue, button, summary } from "./approval-navigation.mjs";
 import assert from "node:assert/strict";
 import { ownershipFixture } from "./ownership-fixture.mjs";
 import { fixtures } from "./preview-fixtures.mjs";
@@ -49,29 +50,23 @@ try {
       await page.locator("#login-form .primary").click();
       return page;
     };
-    const panel = async (page, name) => {
-      if (width < 768)
-        await page
-          .locator(".ac-mobile-tools")
-          .getByRole("button", { name, exact: true })
-          .click();
-    };
     const open = async (page, client = false) => {
       await openProject(page, p.id, { client });
       await page.locator("#tab-review").click();
-      await panel(page, "Материалы");
+      await queue(page);
       await page
         .locator(
           `.ac-material[data-material-id="${file.review.materialId}"] .ac-material-open`,
         )
         .click();
-      await page.getByText("Изображение загружено", { exact: true }).waitFor();
-      await panel(page, "Замечания и решение");
+      await page.locator(".ac-sheet img").waitFor();
+      await notes(page);
     };
     const client = await login("client0@example.test");
     if (width === 375) assert.equal(await client.evaluate(() => isSecureContext), false);
     await open(client, true);
     const malicious = '<img src=x onerror="window.itdXss=true">';
+    await client.locator(".ac-discussion summary").click();
     await client
       .getByLabel("Комментарий к версии", { exact: true })
       .fill(malicious);
@@ -84,19 +79,10 @@ try {
     await client
       .getByText("Комментарий отправлен и сохранён в истории", { exact: true })
       .waitFor();
-    await client
-      .getByRole("button", { name: "Я проверил(а) все страницы", exact: true })
-      .click();
-    await client
-      .getByText("Комментарии и история решений", { exact: true })
-      .waitFor();
-    await client
-      .locator(".ac-decisions")
-      .getByRole("button", { name: "Согласовать", exact: true })
-      .click();
-    await client
-      .getByRole("button", { name: "Проверить и отправить", exact: true })
-      .click();
+    await closeNotes(client);
+    await button(client, "Согласовать и далее").click();
+    await client.getByRole("button", { name: "К отправке · 1", exact: true }).waitFor();
+    await summary(client);
     const send = client.getByRole("dialog")
       .getByRole("button", { name: "Подтверждаю отправку", exact: true });
     const counts = () => f.rows(`SELECT (SELECT count(*) FROM approval_packages) AS packages,
@@ -135,7 +121,7 @@ try {
       .getByRole("dialog")
       .getByRole("button", { name: "Закрыть", exact: true })
       .click();
-    await panel(admin, "Замечания и решение");
+    await notes(admin);
     await admin
       .getByText("Комментарии и история решений", { exact: true })
       .click();
@@ -183,6 +169,7 @@ try {
       .getByText(malicious, { exact: false })
       .waitFor();
     assert.equal(await client.evaluate(() => window.itdXss), undefined);
+    await button(client, "Личный кабинет").click();
     await client.locator("#logout-button").click();
     assert.equal(await client.evaluate(async (id) =>
       (await fetch(`/api/files/${id}/preview`)).status, file.id), 401);

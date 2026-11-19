@@ -1,4 +1,5 @@
 import { confirmFixtureReview } from "./approval-fixture.mjs";
+import { queue } from "./approval-navigation.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -422,15 +423,11 @@ try {
       );
     }
     await page.locator("#tab-review").click();
-    if (width < 768)
-      await page
-        .locator(".ac-mobile-tools")
-        .getByRole("button", { name: "Материалы", exact: true })
-        .click();
+    await queue(page);
     await page.locator(".ac-material-open").click();
     await page
       .locator('.ac-view-heading select[aria-label="Версия"]')
-      .waitFor();
+      .waitFor({ state: "attached" });
     if (!before) {
       assert.doesNotMatch(
         await page.locator(".ac-view-heading h3").textContent(),
@@ -441,7 +438,7 @@ try {
         /Обмеры/,
       );
       assert.ok(
-        (await page.locator(".ac-view-heading p").textContent()).includes(
+        (await page.locator(".ac-view-heading p").getAttribute("title")).includes(
           filename,
         ),
       );
@@ -453,6 +450,7 @@ try {
       );
     }
     await shot("material");
+    await page.locator(".ac-brand").click();
     await page.locator("#logout-button").click();
     await signIn("studio@example.test");
     await page.locator("#workspace-metrics button").first().waitFor();

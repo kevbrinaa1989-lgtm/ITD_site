@@ -1,3 +1,4 @@
+import { action, button, notes, saved, summary } from "./approval-navigation.mjs";
 import assert from "node:assert/strict";
 import { PDFDocument, rgb } from "pdf-lib";
 import { ownershipFixture } from "./ownership-fixture.mjs";
@@ -61,10 +62,11 @@ try {
   await page.locator("#tab-review").click();
   await page.locator(".ac-sheet canvas").waitFor();
   await page
-    .getByRole("button", { name: "Я проверил(а) все страницы", exact: true })
+    .getByRole("button", { name: "Согласовать и далее", exact: true })
     .click();
   await page.getByText("Просмотрены 1 из 2 страниц", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Добавить замечание", exact: true }).click();
+  await button(page, "Нужны правки").click();
+  await button(page.getByRole("dialog"), "Поставить отметку на документе").click();
   // Between selecting a new page and painting it, the old sheet must not accept pins.
   await page
     .getByRole("button", { name: "Следующая страница", exact: true })
@@ -82,17 +84,8 @@ try {
     .getByRole("dialog")
     .getByLabel("Текст замечания", { exact: true })
     .fill("Сместить стену на второй странице");
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Сохранить черновик", exact: true })
-    .click();
-  await page
-    .getByLabel("Пояснение дизайнеру", { exact: true })
-    .fill("Исправить план");
-  await page.getByRole("button", { name: "На доработку", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Сохранить сейчас", exact: true })
-    .click();
+  await button(page.getByRole("dialog"), "Подготовить и далее").click();
+  await saved(page);
   let state = await f.api(scope, null, f.clients[0].cookie),
     marker = state.draft.entries[0].markers[0];
   assert.equal(marker.page, 2);
@@ -100,16 +93,14 @@ try {
   assert.ok(Math.abs(marker.y - 0.7) < 0.02);
   await page
     .locator(".ac-view-tools")
-    .getByRole("button", { name: "+", exact: true })
+    .getByRole("button", { name: "Увеличить масштаб", exact: true })
     .click();
   const rect = await page.locator(".ac-sheet").boundingBox(),
     pin = await page.locator(".ac-pin").boundingBox();
   assert.ok(
     Math.abs((pin.x + pin.width / 2 - rect.x) / rect.width - marker.x) < 0.01,
   );
-  await page
-    .getByRole("button", { name: "Проверить и отправить", exact: true })
-    .click();
+  await summary(page);
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Подтверждаю отправку", exact: true })
@@ -142,11 +133,9 @@ try {
     "POST",
     201,
   );
-  await page
-    .getByRole("button", { name: "Обновить данные", exact: true })
-    .click();
+  await action(page, "Обновить данные");
   await page.locator(".ac-material-open").click();
-  await page.getByRole("button", { name: "Было / Стало", exact: true }).click();
+  await action(page, "Было / Стало");
   await page.getByText(/Количество страниц различается/).waitFor();
   assert.equal(
     await page
@@ -162,6 +151,7 @@ try {
   await left.getByText("Страница 2 из 2", { exact: true }).waitFor();
   assert.equal(await left.locator(".ac-pin").count(), 1);
   assert.equal(await right.locator(".ac-pin").count(), 0);
+  await notes(page);
   await page
     .getByRole("button", { name: "Подтвердить исправление", exact: true })
     .click();

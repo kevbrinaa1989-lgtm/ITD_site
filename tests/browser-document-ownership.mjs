@@ -1,3 +1,4 @@
+import { notes } from "./approval-navigation.mjs";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -334,7 +335,8 @@ try {
         await row(reviewFile.id).locator(".library-history").click();
         await page
           .locator('.ac-view-heading select[aria-label="Версия"]')
-          .waitFor();
+          .waitFor({ state: "attached" });
+        await notes(page);
         assert.equal(
           await page
             .locator('.ac-head-tools select[aria-label="Этап"]')

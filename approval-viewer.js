@@ -41,7 +41,8 @@
       onMarker = () => {},
       onPosition = () => {},
       position = {},
-      editable = true,
+      showProgress = false,
+      onDisplay = () => {},
     } = {},
   ) {
     let alive = true,
@@ -73,40 +74,139 @@
       "Область просмотра: масштаб и перемещение",
     );
     viewport.append(sheet);
-    const pageInput = el("input");
-    pageInput.type = "number";
-    pageInput.min = "1";
-    pageInput.value = page;
-    pageInput.setAttribute("aria-label", "Страница PDF");
-    pageInput.hidden = true;
-    const download = el("a", "Скачать оригинал");
-    download.href = `/api/files/${version.file.id}/download`;
-    download.download = version.file.name;
-    const pin = btn("Добавить замечание", () => {
-      addMode = !addMode;
-      pin.setAttribute("aria-pressed", String(addMode));
-      sheet.classList.toggle("ac-pin-mode", addMode);
+    const toolButton = (label, glyph, action) => {
+      const b = btn(glyph, action);
+      b.title = label;
+      b.setAttribute("aria-label", label);
+      return b;
+    };
+    const previous = toolButton("Предыдущая страница", "‹", () => go(page - 1)),
+      next = toolButton("Следующая страница", "›", () => go(page + 1)),
+      pageLabel = el("span", "Документ", "ac-page-label"),
+      seen = el("span", "", "ac-seen"),
+      zoomButton = btn("", () => setZoom(1)),
+      pages = el("div", undefined, "ac-page-controls"),
+      scale = el("div", undefined, "ac-scale-controls");
+    zoomButton.title = "Вернуть исходный масштаб";
+    zoomButton.className = "ac-zoom";
+    seen.hidden = !showProgress;
+    function controls() {
+      const count = pdf?.numPages || 1;
+      pageLabel.textContent = pdf ? `Страница ${page} из ${count}` : "Документ";
+      previous.disabled = !pdf || page <= 1;
+      next.disabled = !pdf || page >= count;
+      zoomButton.textContent = Math.round(zoom * 100) + "%";
+    }
+    function progress() {
+      const total = version.pageCount || pdf?.numPages;
+      const all =
+        version.confirmedView || (total && version.viewedPages >= total);
+      seen.classList.toggle("is-complete", !!all);
+      seen.textContent = all
+        ? "Все страницы просмотрены"
+        : total
+          ? `Просмотрено ${version.viewedPages || 0} из ${total}`
+          : "";
+    }
+    const full = toolButton("На весь экран", "⛶", async () => {
+      if (document.fullscreenElement === host) await document.exitFullscreen();
+      else if (host.classList.contains("ac-expanded"))
+        host.classList.remove("ac-expanded");
+      else {
+        try {
+          await host.requestFullscreen();
+        } catch {
+          host.classList.add("ac-expanded");
+        }
+      }
+      fullState();
     });
-    pin.setAttribute("aria-pressed", "false");
-    pin.hidden = !editable;
-    tools.append(
-      btn("−", () => setZoom(zoom - 0.25)),
-      btn("100%", () => setZoom(1)),
-      btn("+", () => setZoom(zoom + 0.25)),
-      pageInput,
-      pin,
-      btn("На весь экран", () => {
-        if (host.requestFullscreen) host.requestFullscreen().catch(() => {});
-        else host.classList.toggle("ac-expanded");
-      }),
-      download,
+    function fullState() {
+      const expanded =
+        document.fullscreenElement === host ||
+        host.classList.contains("ac-expanded");
+      full.title = expanded
+        ? "Выйти из полноэкранного режима"
+        : "На весь экран";
+      full.setAttribute("aria-label", full.title);
+      full.setAttribute("aria-pressed", String(expanded));
+    }
+    host.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && host.classList.contains("ac-expanded")) {
+        host.classList.remove("ac-expanded");
+        fullState();
+      }
+    });
+    document.addEventListener("fullscreenchange", fullState);
+    pages.append(previous, pageLabel, next);
+    scale.append(
+      toolButton("Уменьшить масштаб", "−", () => setZoom(zoom - 0.25)),
+      zoomButton,
+      toolButton("Увеличить масштаб", "+", () => setZoom(zoom + 0.25)),
+      full,
     );
-    const closeFull = btn("Свернуть", () => {
-      if (document.fullscreenElement) document.exitFullscreen();
-      host.classList.remove("ac-expanded");
-    });
-    tools.append(closeFull);
-    host.append(tools, viewport, status);
+    tools.append(pages, seen, scale);
+    viewport.append(status);
+    host.append(tools, viewport);
+    controls();
+    progress();
+    let painted = 0,
+      inView = false,
+      reporting = 0;
+    const reported = new Set();
+    function recordPage() {
+      if (
+        !alive ||
+        !painted ||
+        !inView ||
+        document.hidden ||
+        !sheet.getClientRects().length ||
+        reported.has(painted) ||
+        reporting === painted
+      )
+        return pageSave;
+      const sheetRect = sheet.getBoundingClientRect(),
+        area = viewport.getBoundingClientRect();
+      const left = Math.max(sheetRect.left, area.left, 0),
+        right = Math.min(sheetRect.right, area.right, innerWidth),
+        top = Math.max(sheetRect.top, area.top, 0),
+        bottom = Math.min(sheetRect.bottom, area.bottom, innerHeight);
+      if (
+        right <= left ||
+        bottom <= top ||
+        !sheet.contains(
+          document.elementFromPoint((left + right) / 2, (top + bottom) / 2),
+        )
+      )
+        return pageSave;
+      const n = painted;
+      reporting = n;
+      pageSave = Promise.resolve(onPage(n))
+        .then(() => {
+          reported.add(n);
+          if (alive) progress();
+        })
+        .catch((error) => {
+          if (alive) {
+            status.hidden = false;
+            status.textContent = error.message;
+          }
+        })
+        .finally(() => {
+          if (reporting === n) reporting = 0;
+        });
+      return pageSave;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        inView = entry.isIntersecting;
+        if (inView) recordPage();
+      },
+      { root: viewport },
+    );
+    observer.observe(sheet);
+    document.addEventListener("visibilitychange", recordPage);
+    document.addEventListener("close", recordPage, true);
     const positionChanged = () =>
       onPosition({
         page,
@@ -137,11 +237,22 @@
       if (!media) return;
       const w = media.naturalWidth || media.width,
         h = media.naturalHeight || media.height;
+      const style = getComputedStyle(viewport);
       const ratio =
         Math.min(
-          Math.max(200, viewport.clientWidth - 32) / w,
-          Math.max(240, viewport.clientHeight - 24) / h,
-          1,
+          Math.max(
+            1,
+            viewport.clientWidth -
+              parseFloat(style.paddingLeft) -
+              parseFloat(style.paddingRight),
+          ) / w,
+          Math.max(
+            1,
+            viewport.clientHeight -
+              parseFloat(style.paddingTop) -
+              parseFloat(style.paddingBottom),
+          ) / h,
+          media.tagName === "IMG" ? 1 : Infinity,
         ) * zoom;
       sheet.style.width = `${w * ratio}px`;
       sheet.style.height = `${h * ratio}px`;
@@ -151,13 +262,19 @@
     function setZoom(n) {
       zoom = Math.max(0.5, Math.min(4, n));
       fit();
+      controls();
       positionChanged();
     }
     async function render() {
       const seq = ++serial;
       renderTask?.cancel();
       media = null;
+      painted = 0;
+      controls();
+      pageLabel.textContent = "Загрузка…";
+      onDisplay();
       sheet.replaceChildren();
+      status.hidden = false;
       status.textContent = "Подготовка страницы…";
       try {
         const p = await pdf.getPage(page);
@@ -184,14 +301,15 @@
         sheet.replaceChildren(canvas);
         fit();
         drawMarkers();
-        status.textContent = `Страница ${page} из ${pdf.numPages}`;
-        pageInput.value = page;
-        pageSave = Promise.resolve(onPage(page, pdf.numPages));
-        await pageSave;
+        status.hidden = true;
+        painted = page;
+        controls();
+        onDisplay();
+        await recordPage();
         positionChanged();
         p.cleanup();
       } catch (e) {
-        if (alive && e.name !== "RenderingCancelledException")
+        if (alive && seq === serial && e.name !== "RenderingCancelledException")
           status.textContent = e.message;
       }
     }
@@ -204,7 +322,6 @@
       page = next;
       if (pdf) pendingRender = render();
     }
-    pageInput.onchange = () => go(Number(pageInput.value));
     sheet.addEventListener("click", (e) => {
       if (!addMode || !media || e.target.closest("button")) return;
       const r = sheet.getBoundingClientRect();
@@ -228,7 +345,12 @@
     });
     let drag = null;
     viewport.addEventListener("pointerdown", (e) => {
-      if (zoom > 1 && !addMode && !e.target.closest("button")) {
+      if (
+        e.pointerType === "mouse" &&
+        zoom > 1 &&
+        !addMode &&
+        !e.target.closest("button")
+      ) {
         drag = {
           x: e.clientX,
           y: e.clientY,
@@ -297,7 +419,6 @@
     const ready = (async () => {
       try {
         if (!window.ITDViewer.supported(version.file)) {
-          pin.hidden = true;
           status.textContent =
             "Встроенный просмотр недоступен. Скачайте оригинал и проверьте его перед подтверждением.";
           return;
@@ -338,10 +459,8 @@
           pdf = await task.promise;
           if (!alive) return;
           page = Math.min(page, pdf.numPages);
-          pageInput.hidden = false;
-          pageInput.max = pdf.numPages;
-          tools.prepend(btn("Следующая страница", () => go(page + 1)));
-          tools.prepend(btn("Предыдущая страница", () => go(page - 1)));
+          controls();
+          progress();
           await render();
         } else {
           blobUrl = URL.createObjectURL(
@@ -355,9 +474,10 @@
           sheet.replaceChildren(media);
           fit();
           drawMarkers();
-          status.textContent = "Изображение загружено";
-          pageSave = Promise.resolve(onPage(1, 1));
-          await pageSave;
+          painted = 1;
+          onDisplay();
+          status.hidden = true;
+          await recordPage();
         }
         viewport.scrollTo(position.scrollX || 0, position.scrollY || 0);
       } catch (e) {
@@ -369,7 +489,22 @@
       async confirmReady() {
         await ready;
         await pendingRender;
+        if (media && !inView) {
+          const rect = sheet.getBoundingClientRect(),
+            area = viewport.getBoundingClientRect();
+          inView =
+            area.width > 0 &&
+            area.height > 0 &&
+            rect.bottom > area.top &&
+            rect.top < area.bottom;
+        }
+        await recordPage();
         await pageSave;
+      },
+      setPinMode(enabled) {
+        addMode = enabled;
+        sheet.classList.toggle("ac-pin-mode", enabled);
+        if (enabled) sheet.focus({ preventScroll: true });
       },
       get zoom() {
         return zoom;
@@ -397,15 +532,18 @@
         markers = next;
         drawMarkers();
       },
-      focusMarker(n) {
+      async focusMarker(n) {
+        await ready;
+        if (!alive) return;
         go(n.page);
-        setTimeout(() => {
-          const r = sheet.getBoundingClientRect();
-          viewport.scrollTo({
-            left: r.width * n.x - viewport.clientWidth / 2,
-            top: r.height * n.y - viewport.clientHeight / 2,
-          });
-        }, 100);
+        await pendingRender;
+        if (!alive || !media) return;
+        const r = sheet.getBoundingClientRect(),
+          area = viewport.getBoundingClientRect();
+        viewport.scrollBy({
+          left: r.left - area.left + r.width * n.x - area.width / 2,
+          top: r.top - area.top + r.height * n.y - area.height / 2,
+        });
       },
       dispose() {
         alive = false;
@@ -413,6 +551,10 @@
         clearTimeout(scrollTimer);
         abort.abort();
         resize.disconnect();
+        observer.disconnect();
+        document.removeEventListener("fullscreenchange", fullState);
+        document.removeEventListener("visibilitychange", recordPage);
+        document.removeEventListener("close", recordPage, true);
         renderTask?.cancel();
         task?.destroy().catch(() => {});
         if (blobUrl) URL.revokeObjectURL(blobUrl);

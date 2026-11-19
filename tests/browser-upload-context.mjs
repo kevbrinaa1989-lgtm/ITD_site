@@ -4,6 +4,7 @@ import {
   openFiles,
   closeUpload,
 } from "./browser-navigation.mjs";
+import { notes, queue } from "./approval-navigation.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -510,27 +511,19 @@ try {
     await fileBytes(retry, b, 403);
     async function versionForm() {
       await closeUpload(page);
-      await page.locator("#tab-review").click();
+      if (await page.locator("#tab-review").getAttribute("aria-selected") !== "true") await page.locator("#tab-review").click();
       await page.locator("#approval-center").waitFor();
       await page
         .locator("#approval-center")
         .getByLabel("Этап", { exact: true })
         .selectOption(String(sa.id));
-      if (viewport.width < 768)
-        await page
-          .locator(".ac-mobile-tools")
-          .getByRole("button", { name: "Материалы", exact: true })
-          .click();
+      await queue(page);
       await page
         .locator(
           `.ac-material[data-material-id="${seed.review.materialId}"] .ac-material-open`,
         )
         .click();
-      if (viewport.width < 768)
-        await page
-          .locator(".ac-mobile-tools")
-          .getByRole("button", { name: "Замечания и решение", exact: true })
-          .click();
+      await notes(page);
       await page
         .getByRole("button", {
           name: "Загрузить исправленную версию",
@@ -636,6 +629,7 @@ try {
       .getByRole("dialog")
       .getByRole("button", { name: "Закрыть", exact: true })
       .click();
+    await page.locator(".ac-brand").click();
     await page.locator("#refresh-button").click();
     await select(pa);
     version = await versionForm();

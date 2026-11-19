@@ -1,3 +1,4 @@
+import { action, button, markForRevision, notes, saved, summary } from "./approval-navigation.mjs";
 import assert from "node:assert/strict";
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -87,22 +88,15 @@ try {
   await openProject(page, p.id, { client: true });
   await page.locator("#tab-review").click();
   await page.locator("#approval-center .ac-material").first().waitFor();
-  await page.getByText("Изображение загружено", { exact: true }).waitFor();
+  await page.locator(".ac-sheet img").waitFor();
   if (materialCount === 100)
     assert.ok(
       initialPreviews.size < 15,
       `loaded ${initialPreviews.size} previews upfront`,
     );
-  assert.equal(
-    await page
-      .locator(".ac-decisions")
-      .getByRole("button", { name: "Согласовать", exact: true })
-      .isDisabled(),
-    true,
-  );
-  await page
-    .getByRole("button", { name: "Я проверил(а) все страницы", exact: true })
-    .click();
+  await page.getByText("Все страницы просмотрены", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: /Я проверил/ }).count(), 0);
+  await button(page, "Выбрать").click();
   const checks = page.locator(".ac-material input[type=checkbox]");
   await checks.nth(0).check();
   await checks.nth(1).check();
@@ -113,42 +107,18 @@ try {
   await checks.nth(1).uncheck();
   await group.click();
   await page.getByRole("dialog").getByRole("button", { name: "Подготовить решения" }).click();
-  await page.locator(".ac-material").first().getByText("Черновик: Согласовано").waitFor();
-  await page
-    .locator(".ac-decisions")
-    .getByRole("button", { name: "Согласовать", exact: true })
-    .click();
-  await page.waitForTimeout(650);
-  await page
-    .getByRole("button", { name: "Сохранить сейчас", exact: true })
-    .click();
+  await page.locator(".ac-material").first().getByText("К отправке").waitFor();
+  await button(page, "Согласовать и далее").click();
+  await page.locator(".ac-material").nth(1).locator('[aria-current="true"]').waitFor();
+  await saved(page);
   let state = await f.api(
     `/api/approval-center/projects/${p.id}/stages/${s.id}`,
     null,
     f.clients[0].cookie,
   );
   assert.equal(state.draft.entries[0].decision, "approved");
-  // Marker creation and editing at normalized coordinates.
-  await page.getByText("Изображение загружено", { exact: true }).waitFor();
-  await page
-    .getByRole("button", { name: "Добавить замечание", exact: true })
-    .click();
-  await page.locator(".ac-sheet").click({ position: { x: 1, y: 1 } });
-  await page
-    .getByRole("dialog")
-    .getByLabel("Текст замечания", { exact: true })
-    .fill("Заменить светильник");
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Сохранить черновик", exact: true })
-    .click();
-  await page
-    .getByLabel("Пояснение дизайнеру", { exact: true })
-    .fill("Проверить свет");
-  await page.getByRole("button", { name: "На доработку", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Сохранить сейчас", exact: true })
-    .click();
+  await page.locator(".ac-sheet img").waitFor();
+  await markForRevision(page, "Заменить светильник");
   // Reload resumes position and server drafts.
   page.on("dialog", (d) => d.accept());
   await page.reload();
@@ -178,9 +148,7 @@ try {
         caret: "initial",
       });
   }
-  await page
-    .getByRole("button", { name: "Проверить и отправить", exact: true })
-    .click();
+  await summary(page);
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Подтверждаю отправку", exact: true })
@@ -197,9 +165,7 @@ try {
       .length,
     1,
   );
-  await page
-    .getByRole("button", { name: "История и ведомости", exact: true })
-    .click();
+  await action(page, "История и ведомости");
   await page
     .getByRole("dialog")
     .getByRole("button", { name: /Ведомость №/ })
@@ -233,9 +199,7 @@ try {
       fullPage: true,
       caret: "initial",
     });
-  await a
-    .getByRole("button", { name: "Очередь замечаний", exact: true })
-    .click();
+  await action(a, "Очередь замечаний");
   const queue = a.getByRole("dialog");
   await queue.getByText("Заменить светильник", { exact: true }).waitFor();
   await queue
@@ -256,6 +220,7 @@ try {
       `.ac-material[data-material-id="${revisionMaterial.id}"] .ac-material-open`,
     )
     .click();
+  await notes(a);
   await a
     .getByRole("button", { name: "Загрузить исправленную версию", exact: true })
     .click();
@@ -292,7 +257,7 @@ try {
   ).materials.find((m) => m.id === revisionMaterial.id);
   assert.equal(corrected.currentVersion.versionNumber, 2);
   assert.equal(corrected.notes[0].status, "fixed");
-  await a.getByRole("button", { name: "Было / Стало", exact: true }).click();
+  await action(a, "Было / Стало");
   await a.getByLabel("Разделитель «Было / Стало»", { exact: true }).waitFor();
   await a.getByLabel("Разделитель «Было / Стало»", { exact: true }).fill("60");
   if (!process.env.ITD_NO_SCREENSHOTS)

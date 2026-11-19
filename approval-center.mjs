@@ -113,6 +113,15 @@ export function initApprovalCenter({
             "SELECT report FROM approval_corrections WHERE versionId=?",
             v.id,
           )?.report,
+          viewedPages: get(
+            "SELECT COUNT(*) AS n FROM approval_view_pages WHERE versionId=? AND userId=?",
+            v.id,
+            p.clientId,
+          ).n,
+          pageCount: get(
+            "SELECT pageCount FROM approval_preview_metadata WHERE versionId=?",
+            v.id,
+          )?.pageCount,
           confirmedView: !!get(
             "SELECT 1 FROM approval_view_confirmations WHERE versionId=? AND userId=?",
             v.id,
@@ -603,6 +612,12 @@ export function initApprovalCenter({
         const payload = validateDraft(b, pid, scope, user);
         const result = review.transaction(() => {
           const old = draft(pid, scope, user);
+          if (
+            old.revision === b.expectedRevision + 1 &&
+            JSON.stringify(payload) ===
+              JSON.stringify({ entries: old.entries, position: old.position })
+          )
+            return old;
           if (old.revision !== b.expectedRevision)
             fail(
               409,
@@ -623,7 +638,14 @@ export function initApprovalCenter({
         return true;
       }
       if (action === "submit" && method === "POST") {
-        strict(b, ["operationId", "expectedRevision", "confirm"]);
+        strict(b, [
+          "operationId",
+          "expectedRevision",
+          "confirm",
+          "decisionsOnly",
+        ]);
+        if (b.decisionsOnly !== undefined && b.decisionsOnly !== true)
+          fail(400, "Некорректный состав пакета");
         if (
           !text(b.operationId, 100) ||
           !Number.isSafeInteger(b.expectedRevision) ||
@@ -650,7 +672,9 @@ export function initApprovalCenter({
           if (d.revision !== b.expectedRevision)
             fail(409, "Черновик изменился. Проверьте сводку заново");
           const entries = d.entries.filter(
-            (e) => e.decision || e.markers.length || e.comment.trim(),
+            (e) =>
+              e.decision ||
+              (!b.decisionsOnly && (e.markers.length || e.comment.trim())),
           );
           if (!entries.length)
             fail(400, "Нет подготовленных решений или замечаний");
@@ -779,7 +803,10 @@ export function initApprovalCenter({
           review.deriveStage(scope || null);
           run(
             "UPDATE approval_drafts SET revision=revision+1,payload=?,updatedAt=? WHERE userId=? AND projectId=? AND scope=?",
-            JSON.stringify({ entries: [], position: d.position }),
+            JSON.stringify({
+              entries: d.entries.filter((e) => !entries.includes(e)),
+              position: d.position,
+            }),
             now(),
             user.id,
             pid,

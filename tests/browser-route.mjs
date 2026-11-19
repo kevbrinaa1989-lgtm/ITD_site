@@ -1,3 +1,4 @@
+import { button, closeNotes, menu, notes, queue, saved } from "./approval-navigation.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -257,38 +258,24 @@ try {
     await page.locator(".album-prev").click();
     await capture("gallery");
     await page.locator("#tab-review").click();
-    if (width < 768)
-      await page
-        .locator(".ac-mobile-tools")
-        .getByRole("button", { name: "Материалы", exact: true })
-        .click();
+    await queue(page);
     await page
       .locator(
         `.ac-material[data-material-id="${old.review.materialId}"] .ac-material-open`,
       )
       .click();
-    await page.getByText("Изображение загружено", { exact: true }).waitFor();
+    await page.locator(".ac-sheet img").waitFor();
     assert.ok(
-      (await page.locator(".ac-view-heading p").textContent()).includes(
+      (await page.locator(".ac-view-heading p").getAttribute("title")).includes(
         photo[0],
       ),
     );
     await capture("approval");
-    const notes = async () => {
-      if (width < 768)
-        await page
-          .locator(".ac-mobile-tools")
-          .getByRole("button", { name: "Замечания и решение", exact: true })
-          .click();
+    const currentRemark = async () => {
+      await closeNotes(page);
+      await button(page, "Нужны правки").click();
+      return page.getByRole("dialog").getByLabel("Текст замечания");
     };
-    const view = async () => {
-      if (width < 768)
-        await page
-          .locator(".ac-mobile-tools")
-          .getByRole("button", { name: "Просмотр", exact: true })
-          .click();
-    };
-    await notes();
     const draftText = "Черновик: уточнить оттенок " + width;
     const failDraft = "**/api/approval-center/projects/*/stages/*/draft";
     await page.route(failDraft, (r) =>
@@ -298,34 +285,20 @@ try {
         body: JSON.stringify({ error: "Временно недоступно" }),
       }),
     );
-    await page
-      .getByLabel("Пояснение дизайнеру", { exact: true })
-      .fill(draftText);
-    await page
-      .getByRole("button", { name: "Сохранить сейчас", exact: true })
-      .click();
-    await page
-      .getByText("Не сохранено — повторите сохранение", { exact: true })
-      .waitFor();
-    assert.equal(
-      await page
-        .getByLabel("Пояснение дизайнеру", { exact: true })
-        .inputValue(),
-      draftText,
-    );
+    await (await currentRemark()).fill(draftText);
+    await button(page.getByRole("dialog"), "Закрыть").click();
+    await page.getByText("Не удалось сохранить", { exact: true }).waitFor();
+    assert.equal(await (await currentRemark()).inputValue(), draftText);
+    await button(page.getByRole("dialog"), "Закрыть").click();
     await page.unroute(failDraft);
-    await page
-      .getByRole("button", { name: "Сохранить сейчас", exact: true })
-      .click();
-    await page
-      .getByText("Черновик сохранён на сервере", { exact: true })
-      .waitFor();
-    await view();
+    await button(page, "Повторить сохранение").click();
+    await saved(page);
+    await menu(page);
     await page
       .getByLabel("Версия", { exact: true })
       .selectOption(String(old.review.versionId));
     await page.locator(".ac-sheet canvas").waitFor();
-    await notes();
+    await notes(page);
     await page
       .getByText(
         "Историческая версия — только просмотр. Решение по ней сохранено.",
@@ -337,13 +310,10 @@ try {
     await page
       .getByRole("button", { name: "К текущей версии", exact: true })
       .click();
-    await notes();
-    assert.equal(
-      await page
-        .getByLabel("Пояснение дизайнеру", { exact: true })
-        .inputValue(),
-      draftText,
-    );
+    assert.equal(await (await currentRemark()).inputValue(), draftText);
+    await button(page.getByRole("dialog"), "Закрыть").click();
+    await notes(page);
+    await page.locator(".ac-discussion summary").click();
     const failRoute = `**/api/material-versions/${current.review.versionId}/comments`;
     await page
       .getByLabel("Комментарий к версии", { exact: true })
@@ -397,13 +367,9 @@ try {
     await openProject(page, project.id, { client: true });
     await page.locator("#tab-review").click();
     await page.locator(".ac-view-heading").waitFor();
-    await notes();
-    assert.equal(
-      await page
-        .getByLabel("Пояснение дизайнеру", { exact: true })
-        .inputValue(),
-      draftText,
-    );
+    assert.equal(await (await currentRemark()).inputValue(), draftText);
+    await button(page.getByRole("dialog"), "Закрыть").click();
+    await notes(page);
     await page
       .getByText("Комментарии и история решений", { exact: true })
       .click();

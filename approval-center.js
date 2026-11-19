@@ -29,6 +29,15 @@
     footer,
     stagePicker,
     summaryHost,
+    packageButton,
+    bulk,
+    bulkToggle,
+    queueProgress,
+    queueCount,
+    selectionMode = false,
+    busy = false,
+    advanceAfterSave = null,
+    pinRequest = null,
     filter = "all",
     query = "",
     selected = new Set(),
@@ -57,8 +66,8 @@
       byte.toString(16).padStart(2, "0"),
     ).join("");
   }
-  const route = () =>
-    `/api/approval-center/projects/${project.id}/stages/${scope}`;
+  const route = (stage = scope) =>
+    `/api/approval-center/projects/${project.id}/stages/${stage}`;
   const displayTitle = (m) =>
     window.ITDUI.materialLabel({
       title: m.title,
@@ -162,7 +171,7 @@
         }),
       );
     } catch {}
-    saveStatus.textContent = "Сохраняем черновик…";
+    saveStatus.textContent = "Сохраняем";
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => flush().catch((e) => say(e.message)), 500);
     updateFooter();
@@ -192,13 +201,13 @@
               localStorage.removeItem(localKey);
             } catch {}
           }
-          saveStatus.textContent =
-            dirty === saved
-              ? "Черновик сохранён на сервере"
-              : "Есть несохранённые изменения";
+          saveStatus.textContent = dirty === saved ? "Сохранено" : "Сохраняем";
+          updateFooter();
         } catch (e) {
+          if (generation !== epoch) return;
           saveError = e;
-          saveStatus.textContent = "Не сохранено — повторите сохранение";
+          saveStatus.textContent = "Не удалось сохранить";
+          updateFooter();
           throw e;
         }
       });
@@ -267,9 +276,14 @@
     clearTimeout(saveTimer);
     stopPreview();
     window.ITDViewer.releaseWithin(root || document.createElement("div"));
+    document.getElementById("app-view").inert = false;
     root?.remove();
     root = null;
     project = null;
+    busy = selectionMode = false;
+    advanceAfterSave = pinRequest = null;
+    filter = "all";
+    query = "";
     data = null;
     active = false;
     pendingOpen = null;
@@ -286,25 +300,48 @@
       project = p;
     } else project = p;
   }
+  function iconButton(label, glyph, action) {
+    const b = button(glyph, action, "ac-icon");
+    b.title = label;
+    b.setAttribute("aria-label", label);
+    return b;
+  }
+  function panel(name) {
+    root.dataset.mobile = name;
+    root.querySelector(".ac-menu")?.removeAttribute("open");
+    if (name === "notes")
+      rail.querySelector("button")?.focus({ preventScroll: true });
+    if (name === "list")
+      listHost
+        .querySelector(".is-selected button")
+        ?.focus({ preventScroll: true });
+  }
+  async function leave() {
+    await flush();
+    if (returnToLibrary) {
+      const back = returnToLibrary;
+      returnToLibrary = null;
+      back();
+    } else hooks.selectTab("overview");
+  }
   function build() {
     if (root) return;
     root = el("section", undefined, "approval-center");
     root.id = "approval-center";
     root.setAttribute("aria-label", "Центр согласования");
-    const panel = document.getElementById("panel-review");
-    panel.classList.add("ac-enabled");
-    panel.append(root);
+    const parent = document.getElementById("panel-review");
+    parent.classList.add("ac-enabled");
+    document.body.append(root);
+    document.getElementById("app-view").inert = true;
     const head = el("header", undefined, "ac-head"),
-      intro = el("div");
-    intro.append(
-      el("p", "ITD STUDIO / РЕШЕНИЯ ПО ПРОЕКТУ", "eyebrow"),
-      el("h2", "Центр согласования"),
-      el(
-        "p",
-        "Просмотрите материалы, подготовьте решения и отправьте один пакет.",
-      ),
-    );
-    const tools = el("div", undefined, "ac-head-tools");
+      brand = button("", leave, "ac-brand"),
+      logo = el("img"),
+      intro = el("div", undefined, "ac-intro"),
+      context = el("div", undefined, "ac-head-tools");
+    logo.src = "/assets/brand/itd-logo.svg";
+    logo.alt = "ITD Studio";
+    brand.setAttribute("aria-label", "Личный кабинет");
+    brand.append(logo, el("span", "Личный кабинет"));
     stagePicker = select(
       "Этап",
       [[0, "Без этапа"], ...project.stages.map((s) => [s.id, s.title])],
@@ -319,63 +356,69 @@
         }
       },
     );
-    tools.append(
-      stagePicker,
-      button("История и ведомости", showPackages),
-      button("Обновить данные", async () => {
-        if (saveError?.status === 409) {
-          recoverDraft();
-          return;
-        }
-        await flush();
-        await loadScope(scope);
-      }),
-      button("Восстановление черновиков", recoverDraft),
+    stagePicker.className = "ac-stage";
+    stagePicker.append(el("span", "", "ac-stage-name"));
+    context.append(el("span", project.title), el("span", "·"), stagePicker);
+    intro.append(el("h2", "Центр согласования"), context);
+    packageButton = button(
+      admin() ? "Ведомости" : "К отправке · 0",
+      admin() ? showPackages : submit,
+      "ac-package",
     );
-    if (admin())
-      tools.append(
-        button("Очередь замечаний", showNoteQueue),
-        button("Направить материалы на согласование", publishFiles),
-      );
-    head.append(intro, tools);
+    head.append(brand, intro, packageButton);
     notice = el("p", "", "ac-notice");
     notice.setAttribute("role", "status");
-    saveStatus = el(
-      "span",
-      admin() ? "Режим студии" : "Черновик сохранён на сервере",
-    );
+    saveStatus = el("strong", admin() ? "Режим студии" : "Сохранено");
+    saveStatus.setAttribute("role", "status");
     const work = el("div", undefined, "ac-work"),
-      left = el("aside", undefined, "ac-list-pane");
-    const search = input("Поиск материала", "search");
+      left = el("aside", undefined, "ac-list-pane"),
+      top = el("div", undefined, "ac-list-top"),
+      title = el("h3", "Материалы");
+    queueCount = el("span");
+    title.append(queueCount);
+    top.append(
+      title,
+      iconButton("Закрыть очередь", "×", () => panel("viewer")),
+    );
+    summaryHost = el("span");
+    queueProgress = el("progress");
+    const search = input("Найти материал", "search");
+    search.field.placeholder = "Найти материал";
+    search.wrap.className = "ac-search";
     search.field.oninput = () => {
-      query = search.field.value.toLocaleLowerCase("ru-RU");
+      query = search.field.value.trim().toLocaleLowerCase("ru-RU");
       renderList();
     };
-    left.append(
-      search.wrap,
+    const filters = el("div", undefined, "ac-filters");
+    filters.append(
       select(
         "Показывать",
         [
           ["all", "Все материалы"],
           ["pending_approval", "Ожидают решения"],
+          ["draft", "К отправке"],
           ["approved", "Согласованы"],
           ["changes_requested", "На доработке"],
           ["new", "Проверить исправления"],
           ["notes", "С замечаниями"],
-          ["draft", "Подготовленные решения"],
           ["fixed", "Исправлено дизайнером"],
           ["open", "Открытые замечания"],
         ],
         filter,
-        (v) => {
-          filter = v;
+        (value) => {
+          filter = value;
           renderList();
         },
       ),
-      button("Сетка / список", () => listHost.classList.toggle("ac-grid")),
     );
-    const bulk = el("div", undefined, "ac-bulk");
-    if (!admin())
+    bulk = el("div", undefined, "ac-bulk");
+    bulkToggle = button("Выбрать", () => {
+      selectionMode = !selectionMode;
+      selected.clear();
+      renderList();
+    });
+    if (!admin()) {
+      filters.append(bulkToggle);
       bulk.append(
         button("Выбрать показанные", () => {
           visible().forEach((m) => selected.add(m.id));
@@ -387,85 +430,127 @@
         }),
         button("Согласовать выбранные", bulkApprove),
       );
-    left.append(bulk);
+    }
     listHost = el("div", undefined, "ac-list");
-    left.append(listHost);
+    left.append(
+      top,
+      summaryHost,
+      queueProgress,
+      search.wrap,
+      filters,
+      bulk,
+      listHost,
+    );
     viewHost = el("section", undefined, "ac-view-pane");
-    let swipe;
+    let touch;
     viewHost.addEventListener(
       "touchstart",
-      (e) => {
-        swipe =
-          e.touches.length === 1 &&
-          !e.target.closest("button,input,select,.ac-pin-mode")
-            ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+      (event) => {
+        touch =
+          event.touches.length === 1 &&
+          !pinRequest &&
+          event.target.closest(".ac-viewport")
+            ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
             : null;
       },
       { passive: true },
     );
     viewHost.addEventListener(
       "touchend",
-      (e) => {
-        if (swipe && viewer?.zoom === 1 && !comparison) {
-          const dx = e.changedTouches[0].clientX - swipe.x,
-            dy = e.changedTouches[0].clientY - swipe.y;
-          if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 2)
+      (event) => {
+        if (
+          touch &&
+          !event.touches.length &&
+          viewer?.zoom === 1 &&
+          !comparison &&
+          !pinRequest
+        ) {
+          const dx = event.changedTouches[0].clientX - touch.x,
+            dy = event.changedTouches[0].clientY - touch.y;
+          if (Math.abs(dx) > 80 && Math.abs(dx) > 2 * Math.abs(dy))
             navigate(dx < 0 ? 1 : -1);
         }
-        swipe = null;
+        touch = null;
+      },
+      { passive: true },
+    );
+    viewHost.addEventListener(
+      "touchcancel",
+      () => {
+        touch = null;
       },
       { passive: true },
     );
     rail = el("aside", undefined, "ac-rail");
-    work.append(left, viewHost, rail);
-    const mobile = el("div", undefined, "ac-mobile-tools");
-    mobile.append(
-      button("Материалы", () => {
-        root.dataset.mobile = "list";
-      }),
-      button("Просмотр", () => {
-        root.dataset.mobile = "viewer";
-      }),
-      button("Замечания и решение", () => {
-        root.dataset.mobile = "notes";
-      }),
-    );
+    rail.setAttribute("aria-label", "Замечания и история");
     footer = el("footer", undefined, "ac-footer");
-    summaryHost = el("div", undefined, "ac-summary");
-    root.append(head, notice, summaryHost, mobile, work, footer);
+    work.append(left, viewHost, rail, footer);
+    root.append(head, notice, work);
     root.dataset.mobile = "viewer";
-    root.addEventListener("keydown", (e) => {
+    root.addEventListener("click", (event) => {
       if (
-        e.target.closest("input,textarea,select,dialog") ||
+        !event.target.closest(".ac-menu") ||
+        event.target.closest(".ac-menu button,.ac-menu a")
+      )
+        root.querySelector(".ac-menu")?.removeAttribute("open");
+    });
+    root.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if (root.querySelector(".ac-menu[open]"))
+          root.querySelector(".ac-menu").open = false;
+        else if (pinRequest) cancelPin();
+        else panel("viewer");
+        return;
+      }
+      if (
+        e.target.closest("input,textarea,select,dialog,button,summary") ||
         e.ctrlKey ||
         e.metaKey ||
         e.altKey
       )
         return;
-      if (e.key === "ArrowRight") {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
         e.preventDefault();
-        navigate(1);
-      }
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        navigate(-1);
+        navigate(e.key === "ArrowRight" ? 1 : -1);
       }
     });
   }
   async function loadScope(s, target) {
     const pid = project.id,
       generation = ++epoch;
+    build();
+    const work = root.querySelector(".ac-work");
+    work.inert = true;
+    let result;
+    try {
+      result = await hooks.api(route(s));
+    } catch (error) {
+      if (generation === epoch) {
+        stagePicker.querySelector("select").value = scope;
+        if (data) await showMaterial(mid, vid);
+        else
+          viewHost.replaceChildren(
+            button("Повторить загрузку", () => loadScope(s, target)),
+          );
+        say(error.message);
+      }
+      return;
+    } finally {
+      if (generation === epoch) work.inert = false;
+    }
+    if (generation !== epoch || project?.id !== pid || !active) return;
     scope = s;
     dirty = saved = 0;
     saveError = null;
     operation = null;
     selected.clear();
+    selectionMode = busy = false;
+    advanceAfterSave = pinRequest = null;
     stopPreview();
-    build();
     stagePicker.querySelector("select").value = scope;
+    stagePicker.querySelector(".ac-stage-name").textContent =
+      stagePicker.querySelector("select").selectedOptions[0]?.textContent;
     saveStatus.textContent = admin() ? "Режим студии" : "Загрузка черновика…";
-    const result = await hooks.api(route());
-    if (generation !== epoch || project?.id !== pid) return;
     data = result;
     localKey = `itd.approval.draft:${hooks.getUser().id}:${pid}:${scope}`;
     try {
@@ -494,165 +579,124 @@
     }
     saveStatus.textContent = admin()
       ? "Режим студии"
-      : "Черновик сохранён на сервере";
-    say(
-      result.conflicts.length
-        ? "Есть черновики по изменённым версиям. Откройте каждый конфликт и проверьте новую версию."
-        : "",
-    );
+      : dirty === saved
+        ? "Сохранено"
+        : "Сохраняем";
     renderList();
     await showMaterial(mid, vid);
+    if (generation !== epoch) return;
+    if (result.conflicts.length)
+      say(
+        "Есть черновики по изменённым версиям. Откройте замечания и проверьте новую версию.",
+      );
     updateFooter();
   }
   const visible = () =>
     !data
       ? []
-      : data.materials
-          .filter((m) => {
-            const d = data.draft.entries.find((e) => e.materialId === m.id),
-              v = m.currentVersion;
-            return (
-              (!query ||
-                [m.title, m.room, ...m.versions.map((v) => v.file.name)]
-                  .join(" ")
-                  .toLocaleLowerCase("ru-RU")
-                  .includes(query)) &&
-              (filter === "all" ||
-                filter === v.status ||
-                (filter === "draft" && !!d) ||
-                (filter === "new" &&
-                  v.versionNumber > 1 &&
-                  v.status === "pending_approval") ||
-                (filter === "notes" && m.notes.length > 0) ||
-                (filter === "fixed" &&
-                  m.notes.some((n) => n.status === "fixed")) ||
-                (filter === "open" &&
-                  m.notes.some((n) => ["open", "reopened"].includes(n.status))))
-            );
-          })
-          .sort((a, b) => a.room.localeCompare(b.room, "ru") || a.id - b.id);
+      : data.materials.filter((m) => {
+          const d = data.draft.entries.find((e) => e.materialId === m.id),
+            v = m.currentVersion;
+          return (
+            (!query ||
+              [m.title, m.room, ...m.versions.map((v) => v.file.name)]
+                .join(" ")
+                .toLocaleLowerCase("ru-RU")
+                .includes(query)) &&
+            (filter === "all" ||
+              (filter === v.status &&
+                (filter !== "pending_approval" ||
+                  !d?.decision ||
+                  data.conflicts.includes(m.id))) ||
+              (filter === "draft" && !!d?.decision) ||
+              (filter === "new" &&
+                v.versionNumber > 1 &&
+                v.status === "pending_approval") ||
+              (filter === "notes" && m.notes.length > 0) ||
+              (filter === "fixed" &&
+                m.notes.some((n) => n.status === "fixed")) ||
+              (filter === "open" &&
+                m.notes.some((n) => ["open", "reopened"].includes(n.status))))
+          );
+        });
   function renderSummary() {
-    if (!summaryHost || !data) return;
-    summaryHost.replaceChildren();
-    const ms = data.materials;
-    for (const [key, label, count] of [
-      ["all", "Материалов", ms.length],
-      [
-        "approved",
-        "Согласовано",
-        ms.filter((m) => m.currentVersion.status === "approved").length,
-      ],
-      [
-        "changes_requested",
-        "На доработке",
-        ms.filter((m) => m.currentVersion.status === "changes_requested")
-          .length,
-      ],
-      [
-        "new",
-        "Проверить исправления",
-        ms.filter(
-          (m) =>
-            m.currentVersion.versionNumber > 1 &&
-            m.currentVersion.status === "pending_approval",
-        ).length,
-      ],
-      [
-        "fixed",
-        "Замечания исправлены",
-        ms.reduce(
-          (n, m) => n + m.notes.filter((x) => x.status === "fixed").length,
-          0,
-        ),
-      ],
-      [
-        "open",
-        "Замечания открыты",
-        ms.reduce(
-          (n, m) =>
-            n +
-            m.notes.filter((x) => ["open", "reopened"].includes(x.status))
-              .length,
-          0,
-        ),
-      ],
-    ])
-      summaryHost.append(
-        button(`${label}: ${count}`, () => {
-          filter = key;
-          root.querySelector('select[aria-label="Показывать"]').value = key;
-          renderList();
-          root.dataset.mobile = "list";
-        }),
-      );
-    if (data.packages.length)
-      summaryHost.append(
-        el(
-          "p",
-          `Последний отправленный раунд: №${data.packages[0].roundNumber}`,
-        ),
-      );
+    if (!data || !summaryHost) return;
+    const count = data.draft.entries.filter((e) => e.decision).length,
+      total = data.materials.length;
+    queueCount.textContent = total;
+    if (!admin()) packageButton.textContent = `К отправке · ${count}`;
+    const progress = admin()
+      ? data.materials.filter(
+          (m) => m.currentVersion.status !== "pending_approval",
+        ).length
+      : count;
+    summaryHost.textContent = `${admin() ? "Решений получено" : "Подготовлено"} ${progress} из ${total}`;
+    queueProgress.max = total || 1;
+    queueProgress.value = progress;
+    queueProgress.setAttribute("aria-label", summaryHost.textContent);
   }
   function renderList() {
     if (!data || !listHost) return;
     renderSummary();
-    window.ITDApprovalThumbnails.clear(listHost);
-    window.ITDViewer.releaseWithin(listHost);
-    listHost.replaceChildren();
-    let room;
-    for (const m of visible()) {
-      if (room !== m.room) {
-        room = m.room;
-        listHost.append(el("h3", room || "Без помещения", "ac-room"));
-      }
-      const row = el("article", undefined, "ac-material");
-      row.classList.toggle("is-selected", m.id === mid);
-      row.dataset.materialId = m.id;
-      if (!admin()) {
+    bulk.hidden = !selectionMode;
+    bulkToggle.textContent = selectionMode ? "Отмена" : "Выбрать";
+    const materials = visible(),
+      ids = new Set(materials.map((m) => m.id));
+    const rows = new Map();
+    for (const row of Array.from(listHost.children)) {
+      const id = Number(row.dataset.materialId);
+      if (!ids.has(id)) {
+        window.ITDApprovalThumbnails.clear(row);
+        row.remove();
+      } else rows.set(id, row);
+    }
+    for (const [i, m] of materials.entries()) {
+      const v = m.currentVersion,
+        draft = data.draft.entries.find((e) => e.materialId === m.id);
+      let row = rows.get(m.id);
+      if (!row || row.dataset.version !== String(v.id)) {
+        if (row) {
+          window.ITDApprovalThumbnails.clear(row);
+          row.remove();
+        }
+        row = el("article", undefined, "ac-material");
+        row.dataset.materialId = m.id;
+        row.dataset.version = v.id;
         const check = el("input");
         check.type = "checkbox";
-        check.checked = selected.has(m.id);
-        check.setAttribute("aria-label", `Выбрать ${m.title}`);
+        check.setAttribute("aria-label", `Выбрать ${displayTitle(m)}`);
         check.onchange = () =>
           check.checked ? selected.add(m.id) : selected.delete(m.id);
-        row.append(check);
+        const open = button("", () => showMaterial(m.id), "ac-material-open"),
+          copy = el("span", undefined, "ac-row-copy");
+        copy.append(el("strong"), el("span", "", "ac-row-status"));
+        open.append(window.ITDApprovalThumbnails.mount(v.file), copy);
+        row.append(check, open);
       }
-      const v = m.currentVersion,
-        open = button("", () => showMaterial(m.id), "ac-material-open"),
-        d = data.draft.entries.find((e) => e.materialId === m.id);
-      open.append(
-        window.ITDApprovalThumbnails.mount(v.file),
-        el("strong", displayTitle(m)),
-        el(
-          "span",
-          `${v.file.contentType === "application/pdf" ? "PDF" : v.file.name.split(".").pop().toUpperCase()} · v${v.versionNumber} · ${v.confirmedView ? "Просмотр подтверждён" : "Проверьте материал"}`,
-        ),
-        el(
-          "span",
-          d?.decision ? `Черновик: ${labels[d.decision]}` : labels[v.status],
-        ),
+      row.querySelector("input").hidden = !selectionMode;
+      row.querySelector("input").checked = selected.has(m.id);
+      row.classList.toggle("is-selected", m.id === mid);
+      row
+        .querySelector("button")
+        .setAttribute("aria-current", m.id === mid ? "true" : "false");
+      row.querySelector("strong").textContent =
+        `${data.materials.indexOf(m) + 1}. ${displayTitle(m)}`;
+      const status = row.querySelector(".ac-row-status");
+      status.classList.toggle(
+        "is-ready",
+        !!draft?.decision && !data.conflicts.includes(m.id),
       );
-      open.append(
-        el(
-          "span",
-          m.required ? "Обязательный материал" : "Дополнительный материал",
-        ),
-      );
-      if (m.notes.length)
-        open.append(
-          el(
-            "span",
-            `Замечания: ${m.notes.length} · исправлено: ${m.notes.filter((n) => n.status === "fixed").length}`,
-          ),
-        );
-      if (v.versionNumber > 1 && v.status === "pending_approval")
-        open.append(el("span", "Новая версия", "ac-badge"));
-      if (data.conflicts.includes(m.id))
-        open.append(el("span", "Конфликт черновика", "ac-error"));
-      row.append(open);
-      listHost.append(row);
+      status.textContent = data.conflicts.includes(m.id)
+        ? "Проверьте новую версию"
+        : draft?.decision
+          ? "К отправке"
+          : v.status === "pending_approval" && v.versionNumber > 1
+            ? "Проверить исправления"
+            : labels[v.status];
+      if (listHost.children[i] !== row)
+        listHost.insertBefore(row, listHost.children[i] || null);
     }
-    if (!visible().length)
+    if (!materials.length)
       listHost.append(el("p", "Материалов в этой выборке нет."));
   }
   async function showMaterial(id, requested) {
@@ -661,8 +705,19 @@
         el("p", "В этом разделе ещё нет материалов для согласования."),
       );
       rail.replaceChildren();
+      viewHost.append(
+        button("История и ведомости", showPackages),
+        button("Готовность этапа", showStage),
+      );
+      if (admin())
+        viewHost.append(
+          button("Направить материалы на согласование", publishFiles),
+        );
       return;
     }
+    if (busy) return;
+    pinRequest = advanceAfterSave = null;
+    say("");
     mid = id;
     const m = current();
     if (!m) return;
@@ -675,44 +730,80 @@
     renderList();
     root.dataset.mobile = "viewer";
     const v = version(),
-      heading = el("div", undefined, "ac-view-heading");
-    heading.append(
-      el("h3", displayTitle(m)),
-      el("p", `${v.file.name} · v${v.versionNumber} · ${labels[v.status]}`),
+      heading = el("div", undefined, "ac-view-heading"),
+      title = el("div", undefined, "ac-title"),
+      nav = el("div", undefined, "ac-material-nav");
+    const format =
+      v.file.contentType === "application/pdf"
+        ? "PDF"
+        : v.file.name.split(".").pop().toUpperCase();
+    const meta = el(
+      "p",
+      `Материал ${data.materials.indexOf(m) + 1} из ${data.materials.length} · ${format} · v${v.versionNumber}`,
     );
+    meta.title = v.file.name;
+    title.append(el("h3", displayTitle(m)), meta);
+    const mobile = button("Материалы", () => panel("list"), "ac-mobile-queue");
+    mobile.setAttribute("aria-label", "Материалы");
+    title.prepend(mobile);
+    const prev = iconButton("Предыдущий материал", "‹", () => navigate(-1)),
+      next = iconButton("Следующий материал", "›", () => navigate(1)),
+      items = visible(),
+      index = items.findIndex((x) => x.id === mid);
+    prev.disabled = index <= 0;
+    next.disabled = index < 0 || index >= items.length - 1;
+    const menu = el("details", undefined, "ac-menu"),
+      trigger = el("summary", "•••"),
+      tools = el("div", undefined, "ac-menu-items");
+    trigger.setAttribute("aria-label", "Действия с материалом");
+    trigger.title = "Действия с материалом";
     if (returnToLibrary) {
-      heading.append(
-        button(
-          "← Файлы проекта",
-          async () => {
-            await flush();
-            const back = returnToLibrary;
-            returnToLibrary = null;
-            stopPreview();
-            back();
-          },
-          "review-library-back",
-        ),
-      );
-      heading.querySelector(".review-library-back").dataset.libraryReturn =
-        "true";
+      const back = button("← Файлы проекта", leave, "review-library-back");
+      back.dataset.libraryReturn = "true";
+      title.prepend(back);
     }
-    heading.append(
-      button("← Предыдущий", () => navigate(-1)),
-      button("Следующий →", () => navigate(1)),
+    const download = el("a", "Скачать оригинал");
+    download.href = `/api/files/${v.file.id}/download`;
+    download.download = v.file.name;
+    tools.append(
+      button("Замечания и история", () => panel("notes")),
+      download,
       select(
         "Версия",
-        m.versions.map((v) => [
-          v.id,
-          `v${v.versionNumber} · ${date(v.createdAt)}`,
+        m.versions.map((x) => [
+          x.id,
+          `v${x.versionNumber} · ${date(x.createdAt)}`,
         ]),
         vid,
-        (v) => showMaterial(mid, +v),
+        (value) => showMaterial(mid, +value),
       ),
     );
-    if (m.versions.length > 1)
-      heading.append(button("Было / Стало", () => compare()));
+    if (v.versionNumber > 1) tools.append(button("Было / Стало", compare));
+    tools.append(
+      button("Сетка / список очереди", () => {
+        listHost.classList.toggle("ac-grid");
+        if (matchMedia("(max-width: 767px)").matches) panel("list");
+      }),
+      button("История и ведомости", showPackages),
+      button("Готовность этапа", showStage),
+      button("Обновить данные", async () => {
+        if (saveError?.status === 409) return recoverDraft();
+        await flush();
+        await loadScope(scope, { mid });
+      }),
+    );
+    if (admin())
+      tools.append(
+        button("Очередь замечаний", showNoteQueue),
+        button("Направить материалы на согласование", publishFiles),
+      );
+    else tools.append(button("Восстановление черновиков", recoverDraft));
+    menu.append(trigger, tools);
+    nav.append(prev, next, menu);
+    heading.append(title, nav);
     viewHost.append(heading);
+    const selectedRow = listHost.querySelector(".is-selected");
+    if (selectedRow) selectedRow.scrollIntoView({ block: "nearest" });
     const host = el("div", undefined, "ac-media-host");
     viewHost.append(host);
     const ownEntry = entry(),
@@ -731,46 +822,42 @@
     viewer = window.ITDApprovalViewer.mount(host, v, {
       markers,
       position,
-      editable:
-        !admin() &&
-        vid === m.currentVersion.id &&
-        v.status === "pending_approval",
-      onPage: async (page) => {
-        if (admin()) return;
-        try {
-          await hooks.api(
-            `/api/approval-center/versions/${v.id}/view`,
-            "POST",
-            { page },
-          );
-        } catch (e) {
-          if (seq === openSeq) say(e.message);
-        }
-      },
+      showProgress: !admin(),
+      onDisplay: updateFooter,
+      onPage: (page) => recordView(v, page),
       onMarker: (n) => {
         if (n.id) {
-          focusNote(n);
+          focusNote(n, true);
           return;
         }
-        if (
-          admin() ||
-          vid !== m.currentVersion.id ||
-          v.status !== "pending_approval"
-        ) {
-          say(
-            "Новые замечания доступны клиенту для текущей версии, ожидающей решения.",
-          );
+        if (!canDecide()) return;
+        if (n.draft) {
+          compose(n.index);
           return;
         }
-        editMarker(n);
+        if (!pinRequest) return;
+        const request = pinRequest;
+        cancelPin();
+        compose(request.index, n);
       },
       onPosition: (pos) => {
         if (generation !== epoch || seq !== openSeq || admin()) return;
-        data.draft.position = { materialId: mid, versionId: vid, ...pos };
-        change();
+        const updated = { materialId: mid, versionId: vid, ...pos };
+        if (
+          Object.keys(updated).some(
+            (key) => updated[key] !== data.draft.position[key],
+          )
+        ) {
+          data.draft.position = updated;
+          change();
+        }
       },
     });
-    if (!admin()) {
+    if (
+      !admin() &&
+      (data.draft.position.materialId !== mid ||
+        data.draft.position.versionId !== vid)
+    ) {
       data.draft.position = { materialId: mid, versionId: vid, ...position };
       change();
     }
@@ -809,32 +896,53 @@
     if (items[index + delta])
       showMaterial(items[index + delta].id).catch((e) => say(e.message));
   }
-  async function confirmView() {
-    const v = version();
-    await viewer?.confirmReady();
-    if (
-      !window.ITDViewer.supported(v.file) &&
-      !window.confirm("Вы скачали оригинал и проверили его содержание?")
-    )
-      return;
-    if (!window.ITDViewer.supported(v.file))
+  async function recordView(v, page) {
+    if (admin()) return;
+    const res = await hooks.api(
+      `/api/approval-center/versions/${v.id}/view`,
+      "POST",
+      { page },
+    );
+    v.viewedPages = Math.max(v.viewedPages || 0, res.pages.length);
+    v.pageCount = res.pageCount;
+  }
+  function canDecide() {
+    const v = version(),
+      d = entry();
+    return (
+      !admin() &&
+      v &&
+      current().currentVersion.id === vid &&
+      v.status === "pending_approval" &&
+      (!d || (d.versionId === vid && d.expectedRevision === v.revision)) &&
+      !data.conflicts.includes(mid)
+    );
+  }
+  async function confirmView(v) {
+    if (!window.ITDViewer.supported(v.file) && !v.confirmedView) {
+      if (!window.confirm("Вы скачали оригинал и проверили его содержание?"))
+        return false;
       await hooks.api(`/api/approval-center/versions/${v.id}/view`, "POST", {
         page: 1,
         downloaded: true,
       });
+    }
     await hooks.api(`/api/approval-center/versions/${v.id}/view`, "POST", {
       confirm: true,
     });
     v.confirmedView = true;
-    renderRail();
-    renderList();
-    say("Просмотр этой версии подтверждён. Можно подготовить согласование.");
+    return true;
   }
   function renderRail() {
     const m = current(),
       v = version();
     if (!m) return;
-    rail.replaceChildren();
+    const top = el("div", undefined, "ac-rail-top");
+    top.append(
+      el("h3", admin() ? "Работа с материалом" : "Замечания и история"),
+      iconButton("Закрыть панель", "×", () => panel("viewer")),
+    );
+    rail.replaceChildren(top);
     if (v.correction) {
       const r = JSON.parse(v.correction);
       rail.append(el("h3", "Что исправлено"), el("p", r.description));
@@ -887,51 +995,9 @@
             }
           }),
         );
-      } else {
+      } else if (d?.decision) {
         rail.append(
-          el("h3", "Подготовить решение"),
-          button(
-            v.confirmedView
-              ? "Просмотр подтверждён"
-              : "Я проверил(а) все страницы",
-            confirmView,
-          ),
-        );
-        const note = input("Пояснение дизайнеру", "textarea", d?.comment || "");
-        note.field.maxLength = 4000;
-        note.field.oninput = () => {
-          entry(true).comment = note.field.value;
-          change();
-        };
-        rail.append(note.wrap);
-        const actions = el("div", undefined, "ac-decisions");
-        const approve = button(
-          "Согласовать",
-          () => decide("approved"),
-          "primary",
-        );
-        approve.disabled = !v.confirmedView;
-        actions.append(
-          approve,
-          button("На доработку", () => decide("changes_requested")),
-          button("Пропустить", () => navigate(1)),
-          button("Убрать черновое решение", () => {
-            const e = entry();
-            if (e) {
-              e.decision = null;
-              change();
-              renderRail();
-              renderList();
-            }
-          }),
-        );
-        rail.append(
-          actions,
-          el(
-            "p",
-            "Это черновик. Решение станет окончательным после отправки пакета.",
-            "ac-help",
-          ),
+          button("Убрать черновое решение", () => removeDecision(mid)),
         );
       }
     }
@@ -1035,13 +1101,25 @@
       d.markers.forEach((n, i) =>
         rail.append(
           button(`Черновик маркера ${i + 1} · стр. ${n.page}: ${n.body}`, () =>
-            editMarker({ ...n, draft: true, index: i }),
+            compose(i),
           ),
         ),
       );
+    if (canDecide() && d?.markers.length)
+      rail.append(
+        button("Добавить ещё одну отметку", () => {
+          panel("viewer");
+          pinRequest = { index: -1 };
+          viewer.setPinMode(true);
+          say("Выберите место для новой отметки.");
+          updateFooter();
+        }),
+      );
     const comment = input("Комментарий к версии", "textarea");
     comment.field.maxLength = 4000;
-    rail.append(
+    const discussion = el("details", undefined, "ac-discussion");
+    discussion.append(
+      el("summary", "Написать комментарий к версии"),
       comment.wrap,
       button("Отправить комментарий сейчас", async () => {
         if (!comment.field.value.trim()) throw Error("Напишите комментарий");
@@ -1059,113 +1137,252 @@
         }
       }),
     );
+    rail.append(discussion);
     renderHistory();
   }
-  function decide(decision) {
-    const v = version(),
-      e = entry(true);
-    if (e.versionId !== vid) throw Error("Проверьте конфликт черновика");
-    if (decision === "approved" && !v.confirmedView)
-      throw Error("Подтвердите просмотр");
-    if (decision === "changes_requested" && !e.comment.trim())
-      throw Error("Напишите обязательное пояснение");
-    e.decision = decision;
-    change();
-    renderRail();
-    renderList();
-    navigate(1);
+  function removeDecision(id) {
+    const e = data.draft.entries.find((x) => x.materialId === id);
+    if (e) {
+      e.decision = null;
+      change();
+      renderRail();
+      renderList();
+    }
   }
-  function bulkApprove() {
+  async function nextUndecided() {
+    const items = data.materials,
+      start = items.findIndex((m) => m.id === mid);
+    for (let offset = 1; offset < items.length; offset++) {
+      const m = items[(start + offset) % items.length];
+      if (
+        m.currentVersion.status === "pending_approval" &&
+        !data.draft.entries.some(
+          (e) =>
+            e.materialId === m.id &&
+            e.decision &&
+            !data.conflicts.includes(m.id),
+        )
+      ) {
+        if (!visible().some((x) => x.id === m.id)) {
+          query = "";
+          filter = "all";
+          root.querySelector(".ac-search input").value = "";
+          root.querySelector(".ac-filters select").value = "all";
+        }
+        await showMaterial(m.id);
+        return;
+      }
+    }
+    say("Других материалов без решения нет. Проверьте подготовленный пакет.");
+  }
+  async function finishSave() {
+    const target = advanceAfterSave,
+      generation = epoch;
+    await flush();
+    if (generation !== epoch) return;
+    if (
+      target &&
+      advanceAfterSave === target &&
+      mid === target.mid &&
+      vid === target.vid
+    ) {
+      advanceAfterSave = null;
+      busy = false;
+      await nextUndecided();
+    }
+  }
+  async function decide(decision) {
+    if (busy || !canDecide()) return;
+    const v = version(),
+      generation = epoch;
+    busy = true;
+    updateFooter();
+    try {
+      if (decision === "approved") {
+        await viewer.confirmReady();
+        if (generation !== epoch || !(await confirmView(v))) return;
+      }
+      if (generation !== epoch || v.id !== vid) return;
+      const e = entry(true);
+      if (decision === "changes_requested" && !e.comment.trim())
+        throw Error("Напишите замечание");
+      e.decision = decision;
+      advanceAfterSave = { mid, vid };
+      change();
+      renderList();
+      renderRail();
+      await finishSave();
+    } finally {
+      if (generation === epoch) {
+        busy = false;
+        updateFooter();
+      }
+    }
+  }
+  async function bulkApprove() {
     const items = data.materials.filter((m) => selected.has(m.id));
     if (!items.length) throw Error("Выберите материалы");
     if (
-      items.some(
-        (m) =>
-          !m.currentVersion.confirmedView ||
-          m.currentVersion.status !== "pending_approval" ||
-          data.conflicts.includes(m.id),
-      )
+      items.some((m) => {
+        const v = m.currentVersion;
+        return (
+          (!v.confirmedView &&
+            !(v.pageCount && v.viewedPages === v.pageCount)) ||
+          v.status !== "pending_approval" ||
+          data.conflicts.includes(m.id)
+        );
+      })
     )
       throw Error(
-        "Проверьте все выбранные материалы. Нельзя согласовать непросмотренную, конфликтующую или уже решённую версию.",
+        "Проверьте все выбранные материалы. Для группового согласования откройте каждую страницу актуальной версии.",
       );
     modal("Подготовить групповое согласование", (d) => {
       d.append(
         el(
           "p",
-          `Будут подготовлены черновики для ${items.length} просмотренных материалов.`,
+          `Подтвердите просмотр всех страниц выбранных материалов. Решений к подготовке — ${items.length}.`,
         ),
-        button("Подготовить решения", () => {
-          for (const m of items) {
-            let e = data.draft.entries.find((e) => e.materialId === m.id);
-            if (!e) {
-              e = {
-                materialId: m.id,
-                versionId: m.currentVersion.id,
-                expectedRevision: m.currentVersion.revision,
-                decision: null,
-                comment: "",
-                markers: [],
-              };
-              data.draft.entries.push(e);
-            }
-            e.decision = "approved";
-          }
-          change();
-          selected.clear();
-          renderList();
-          renderRail();
-          d.close();
-        }),
       );
+      const apply = button(
+        "Подготовить решения",
+        async () => {
+          apply.disabled = true;
+          try {
+            for (const m of items) await confirmView(m.currentVersion);
+            for (const m of items) {
+              let e = data.draft.entries.find((e) => e.materialId === m.id);
+              if (!e) {
+                e = {
+                  materialId: m.id,
+                  versionId: m.currentVersion.id,
+                  expectedRevision: m.currentVersion.revision,
+                  comment: "",
+                  markers: [],
+                };
+                data.draft.entries.push(e);
+              }
+              e.decision = "approved";
+            }
+            change();
+            await flush();
+            selected.clear();
+            selectionMode = false;
+            renderList();
+            renderRail();
+            d.close();
+          } finally {
+            apply.disabled = false;
+          }
+        },
+        "primary",
+      );
+      d.append(apply);
     });
   }
-  function editMarker(n) {
-    const d = entry(true);
-    if (d.versionId !== vid)
-      throw Error("Сначала разрешите конфликт черновика");
-    modal(n.draft ? "Черновое замечание" : "Новое замечание", (dialog) => {
-      const note = input("Текст замечания", "textarea", n.body);
-      note.field.maxLength = 4000;
-      const x = input(
-          "Положение по горизонтали, %",
-          "number",
-          Math.round(n.x * 100),
-        ),
-        y = input("Положение по вертикали, %", "number", Math.round(n.y * 100));
-      x.field.min = y.field.min = 0;
-      x.field.max = y.field.max = 100;
-      dialog.append(
-        el("p", `Версия ${version().versionNumber}, страница ${n.page}`),
-        note.wrap,
-        x.wrap,
-        y.wrap,
-        button("Сохранить черновик", () => {
-          if (!note.field.value.trim()) throw Error("Напишите замечание");
-          const marker = {
-            page: n.page,
-            x: Math.max(0, Math.min(1, +x.field.value / 100)),
-            y: Math.max(0, Math.min(1, +y.field.value / 100)),
-            body: note.field.value,
-          };
-          if (n.draft) d.markers[n.index] = marker;
-          else d.markers.push(marker);
-          change();
-          dialog.close();
-          refreshMarkers();
-          renderRail();
-        }),
+  function cancelPin() {
+    pinRequest = null;
+    viewer?.setPinMode(false);
+    say("");
+    updateFooter();
+  }
+  function compose(index, point) {
+    if (!canDecide()) return;
+    const e = entry(true);
+    // An existing one-marker return uses the same text field for its note and pin.
+    if (
+      index === undefined &&
+      e.markers.length === 1 &&
+      e.markers[0].body === e.comment
+    )
+      index = 0;
+    let marker = e.markers[index],
+      location = point || marker;
+    modal("Нужны правки", (d) => {
+      const note = input(
+        "Текст замечания",
+        "textarea",
+        index === -1 ? "" : (marker?.body ?? e.comment),
       );
-      if (n.draft)
-        dialog.append(
-          button("Удалить черновой маркер", () => {
-            d.markers.splice(n.index, 1);
-            change();
-            dialog.close();
-            refreshMarkers();
-            renderRail();
-          }),
+      note.field.maxLength = 4000;
+      note.field.placeholder = "Что нужно изменить?";
+      d.append(el("p", displayTitle(current()), "ac-subtitle"), note.wrap);
+      const write = () => {
+        const body = note.field.value;
+        if (
+          (index !== -1 && !marker) ||
+          e.comment === marker?.body ||
+          !e.comment.trim()
+        )
+          e.comment = body;
+        if (location && body.trim()) {
+          const value = {
+            x: location.x,
+            y: location.y,
+            page: location.page,
+            body,
+          };
+          if (!marker) index = e.markers.push(value) - 1;
+          else e.markers[index] = value;
+          marker = value;
+        } else if (marker) {
+          e.markers.splice(index, 1);
+          marker = undefined;
+          index = undefined;
+        }
+        if (e.decision === "approved" || !e.comment.trim()) e.decision = null;
+        change();
+        refreshMarkers();
+        renderList();
+      };
+      if (point && note.field.value.trim()) write();
+      note.field.oninput = write;
+      if (window.ITDViewer.supported(version().file)) {
+        const pin = button(
+          location
+            ? `Переместить отметку · стр. ${location.page}`
+            : "Поставить отметку на документе",
+          () => {
+            d.close();
+            panel("viewer");
+            pinRequest = { index };
+            viewer.setPinMode(true);
+            say(
+              "Выберите место на документе. Клавиша Enter ставит отметку в центре страницы.",
+            );
+            updateFooter();
+          },
         );
+        d.append(pin);
+        if (marker)
+          d.append(
+            button("Убрать отметку", () => {
+              e.markers.splice(index, 1);
+              change();
+              refreshMarkers();
+              d.close();
+              compose();
+            }),
+          );
+      }
+      d.append(
+        button(
+          "Подготовить и далее",
+          async () => {
+            if (!note.field.value.trim()) throw Error("Напишите замечание");
+            if (!e.comment.trim()) e.comment = note.field.value;
+            d.close();
+            await decide("changes_requested");
+          },
+          "primary",
+        ),
+      );
+      d.addEventListener(
+        "close",
+        () => {
+          if (current()) renderRail();
+        },
+        { once: true },
+      );
     });
   }
   function refreshMarkers() {
@@ -1236,6 +1453,7 @@
                 await flush();
                 d.close();
                 await loadScope(scope, { mid, vid });
+                panel("notes");
               }),
             );
           }),
@@ -1319,57 +1537,146 @@
       render();
     });
   }
-  async function focusNote(n) {
+  async function focusNote(n, details = false) {
     if (n.versionId !== vid) {
       await showMaterial(mid, n.versionId);
     }
-    viewer?.focusMarker(n);
-    document
-      .getElementById(`ac-note-${n.id}`)
-      ?.scrollIntoView({ block: "nearest" });
+    panel(details ? "notes" : "viewer");
+    await viewer?.focusMarker(n);
+    if (details)
+      document
+        .getElementById(`ac-note-${n.id}`)
+        ?.scrollIntoView({ block: "nearest" });
   }
   function updateFooter() {
     if (!footer || !data) return;
+    renderSummary();
     footer.replaceChildren();
-    const entries = data.draft.entries,
-      a = entries.filter((e) => e.decision === "approved").length,
-      c = entries.filter((e) => e.decision === "changes_requested").length;
-    const summary = el("div");
-    summary.append(
-      el("strong", `Подготовлено: ${a} согласований · ${c} на доработку`),
-      saveStatus,
-    );
-    footer.append(summary);
+    const state = el("div", undefined, "ac-save");
+    state.dataset.state = saveError
+      ? "error"
+      : dirty === saved
+        ? "saved"
+        : "saving";
+    state.append(saveStatus);
     if (!admin())
-      footer.append(
-        button("Сохранить сейчас", flush),
-        button("Проверить и отправить", submit, "primary"),
+      state.append(
+        el(
+          "small",
+          saveError ? saveError.message : "Решения сохраняются автоматически",
+        ),
       );
-    footer.append(button("Готовность этапа", showStage));
+    footer.append(state);
+    if (saveError)
+      footer.append(
+        button(
+          saveError.status === 409
+            ? "Разобрать конфликт"
+            : "Повторить сохранение",
+          saveError.status === 409
+            ? recoverDraft
+            : async () => {
+                await finishSave();
+                say("");
+              },
+        ),
+      );
+    if (!current()) return;
+    const actions = el("div", undefined, "ac-actions");
+    if (pinRequest) actions.append(button("Отменить отметку", cancelPin));
+    else if (comparison)
+      actions.append(
+        button("К просмотру материала", () => showMaterial(mid, vid)),
+        button("Замечания и история", () => panel("notes")),
+      );
+    else if (canDecide()) {
+      actions.classList.add("ac-decisions");
+      const later = button("Позже", nextUndecided, "ac-later"),
+        revise = button("Нужны правки", () => compose()),
+        approve = button(
+          "Согласовать и далее",
+          () => decide("approved"),
+          "primary ac-approve",
+        );
+      approve.setAttribute("aria-label", "Согласовать и далее");
+      approve.title =
+        "Подтвердить просмотр всех страниц и сохранить черновое решение";
+      later.disabled = revise.disabled = busy;
+      approve.disabled =
+        busy ||
+        (window.ITDViewer.supported(version().file) && !viewer?.dimensions);
+      actions.append(later, revise, approve);
+    } else {
+      const v = version(),
+        m = current();
+      actions.append(
+        el(
+          "span",
+          vid !== m.currentVersion.id ? "Архивная версия" : labels[v.status],
+        ),
+      );
+      actions.append(
+        button(admin() ? "Работа с материалом" : "Замечания и история", () =>
+          panel("notes"),
+        ),
+      );
+    }
+    footer.append(actions);
   }
   async function submit() {
     await flush();
-    if (saveError) throw saveError;
-    const entries = data.draft.entries.filter(
-      (e) => e.decision || e.markers.length || e.comment.trim(),
-    );
-    if (!entries.length) throw Error("Нет подготовленных решений");
+    const entries = data.draft.entries.filter((e) => e.decision);
     const a = entries.filter((e) => e.decision === "approved").length,
-      c = entries.filter((e) => e.decision === "changes_requested").length;
-    modal("Отправить пакет решений?", (d) => {
-      d.append(
-        el(
-          "p",
-          `Согласовать: ${a}. На доработку: ${c}. Без решения в этом пакете: ${data.materials.length - a - c}. Отправленные решения сохранятся в истории.`,
-        ),
-      );
-      for (const e of entries)
-        d.append(
+      c = entries.length - a;
+    modal("К отправке", (d) => {
+      if (!entries.length) {
+        d.append(el("p", "Подготовленных решений пока нет."));
+        return;
+      }
+      d.append(el("p", `Подготовлено: ${a} согласований · ${c} на доработку`));
+      const list = el("div", undefined, "ac-package-list");
+      d.append(list);
+      for (const e of entries) {
+        const m = data.materials.find((x) => x.id === e.materialId);
+        const row = el("article"),
+          copy = el("div");
+        const v = m?.versions.find((v) => v.id === e.versionId);
+        copy.append(
+          el(
+            "strong",
+            m
+              ? `${displayTitle(m)} · v${v?.versionNumber || "?"}`
+              : `Материал №${e.materialId}`,
+          ),
           el(
             "p",
-            `${data.materials.find((m) => m.id === e.materialId)?.title} · ${labels[e.decision] || "Только замечания"} · маркеров ${e.markers.length}`,
+            e.decision === "approved" ? "К согласованию" : "Нужны правки",
           ),
         );
+        if (data.conflicts.includes(e.materialId))
+          copy.append(
+            el("p", "Версия изменилась. Проверьте материал.", "ac-warning"),
+          );
+        if (e.comment) copy.append(el("p", e.comment));
+        for (const [i, n] of e.markers.entries())
+          copy.append(
+            el("small", `Отметка ${i + 1} · стр. ${n.page} · ${n.body}`),
+          );
+        row.append(
+          copy,
+          button("Изменить", async () => {
+            d.close();
+            if (m) await showMaterial(m.id);
+            else recoverDraft();
+          }),
+          button("Убрать из пакета", async () => {
+            removeDecision(e.materialId);
+            d.close();
+            await submit();
+          }),
+        );
+        list.append(row);
+      }
       const send = button(
         "Подтверждаю отправку",
         async () => {
@@ -1384,6 +1691,7 @@
                 operationId: newOperationId(),
                 expectedRevision: data.draft.revision,
                 confirm: true,
+                decisionsOnly: true,
               };
             const result = await hooks.api(
               route() + "/submit",
@@ -1504,6 +1812,7 @@
         .at(-1);
     if (!previous) throw Error("Выберите версию, у которой есть предыдущая");
     stopPreview();
+    panel("viewer");
     viewHost.replaceChildren();
     const tools = el("div", undefined, "ac-compare-tools"),
       pair = el("div", undefined, "ac-compare"),
@@ -1535,24 +1844,17 @@
       }
     };
     comparison = window.ITDApprovalViewer.mount(lh, previous, {
-      editable: false,
       markers: m.notes.filter((n) => n.versionId === previous.id),
-      onMarker: focusNote,
+      onMarker: (n) => focusNote(n, true),
       onPosition: (p) => syncPos(viewer, p),
     });
     viewer = window.ITDApprovalViewer.mount(rh, v, {
-      editable: false,
       markers: m.notes.filter((n) => n.versionId === v.id),
       onMarker: focusNote,
       onPosition: (p) => syncPos(comparison, p),
-      onPage: (p) => {
-        if (!admin())
-          return hooks
-            .api(`/api/approval-center/versions/${v.id}/view`, "POST", {
-              page: p,
-            })
-            .catch((e) => say(e.message));
-      },
+      showProgress: !admin(),
+      onPage: (p) => recordView(v, p),
+      onMarker: (n) => focusNote(n, true),
     });
     tools.append(
       button("К материалу", () => showMaterial(mid, vid)),
@@ -1597,6 +1899,7 @@
         " Количество страниц различается; сопоставляйте страницы вручную.";
     }
     renderRail();
+    updateFooter();
   }
   async function publishFiles() {
     const result = await hooks.api(
@@ -1730,6 +2033,8 @@
       if (pendingOpen !== token || project?.id !== pid) return false;
       returnToLibrary = back || null;
       active = true;
+      if (root) root.hidden = false;
+      document.getElementById("app-view").inert = true;
       hooks.selectTab("review");
       build();
       await loadScope(detail.material.stageId || 0, {
@@ -1744,6 +2049,8 @@
   async function onTab(tab) {
     if (pendingOpen) return;
     active = tab === "review";
+    if (root) root.hidden = !active;
+    document.getElementById("app-view").inert = active && !!root;
     if (!active) {
       await flush();
       stopPreview();
@@ -1765,6 +2072,22 @@
   }
   function init(h) {
     hooks = h;
+    const viewport = window.visualViewport;
+    const resize = () => {
+      const visible = viewport && viewport.scale === 1;
+      const style = document.documentElement.style;
+      style.setProperty(
+        "--ac-visible-height",
+        (visible ? viewport.height : window.innerHeight) + "px",
+      );
+      style.setProperty(
+        "--ac-visible-top",
+        (visible ? viewport.offsetTop : 0) + "px",
+      );
+    };
+    viewport?.addEventListener("resize", resize);
+    viewport?.addEventListener("scroll", resize);
+    resize();
     window.addEventListener("beforeunload", (e) => {
       if (
         dirty !== saved ||
@@ -1785,8 +2108,7 @@
     onTab,
     showPackage,
     openDiscussion: () => {
-      if (root) root.dataset.mobile = "notes";
-      rail?.scrollIntoView({ block: "nearest" });
+      if (root && active) panel("notes");
     },
   };
 })();

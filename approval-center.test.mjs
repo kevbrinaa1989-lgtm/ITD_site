@@ -289,6 +289,8 @@ test("drafts restore after restart, CAS prevents two-tab overwrite, stale versio
     s = await f.state();
   for (const m of s.materials) await f.confirm(m.currentVersion);
   const d = await f.save(s.materials.map((m) => f.entry(m)));
+  // A response lost after the commit can be retried without losing the draft or increasing its revision.
+  assert.deepEqual(await f.save(d.entries, 0), d);
   await f.save([], 0).then(
     () => assert.fail("must conflict"),
     () => {},
