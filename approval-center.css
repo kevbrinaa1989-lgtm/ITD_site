@@ -932,6 +932,10 @@ body:has(> .approval-center:not([hidden])) #app-view {
   border-radius: 5px;
 }
 .ac-note-reply strong { font-size: 13px; }
+.ac-history-event, .ac-draft-feedback { display: grid; gap: 5px; }
+.ac-history-event { padding: 9px 0; border-top: 1px solid var(--ac-line); }
+.ac-history-event p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ac-history-event small, .ac-draft-feedback small { color: var(--ac-muted); }
 .ac-properties[open], .ac-view-history[open], .ac-correction-report[open] {
   display: grid;
   gap: 9px;

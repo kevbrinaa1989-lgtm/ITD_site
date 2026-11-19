@@ -373,10 +373,10 @@ try {
     await page
       .getByText("Комментарии и история решений", { exact: true })
       .click();
-    await page
-      .locator(".ac-rail")
-      .getByText(draftText, { exact: false })
-      .waitFor();
+    await page.locator(".ac-draft-feedback").getByText(draftText, { exact: true }).waitFor();
+    const sentComment = page.locator(".ac-history[open] .ac-history-event").filter({ hasText: draftText });
+    await sentComment.getByText("Комментарий клиента", { exact: true }).waitFor();
+    await sentComment.getByText(draftText, { exact: true }).waitFor();
     assert.deepEqual(errors, []);
     assert.deepEqual(external, []);
     results.push({

@@ -985,11 +985,11 @@
     const history = el("details", undefined, "ac-history");
     history.append(el("summary", "Комментарии и история решений"));
     for (const e of events) {
-      const p = el(
-        "p",
-        `${date(e.createdAt)} · ${e.actorName} · v${e.versionNumber}: ${labels[e.type] || e.type}\n${e.body}`,
-      );
-      history.append(p);
+      const item = el("article", undefined, "ac-history-event");
+      item.append(el("strong", window.ITDReview.eventName(e.type)),
+        el("small", `${e.actorName} · ${date(e.createdAt)} · v${e.versionNumber}`));
+      if (e.body) item.append(el("p", e.body));
+      history.append(item);
     }
     rail.insertBefore(history, rail.querySelector(".ac-properties"));
   }
@@ -1154,6 +1154,7 @@
         const draft = el("section", undefined, "ac-draft-feedback");
         draft.append(el("strong", d.decision ? draftLabels[d.decision] : "Черновик замечания"));
         if (d.comment) draft.append(el("p", d.comment, "ac-note-body"));
+        draft.append(el("small", "До отправки пакета этот черновик видите только вы."));
         if (d.comment || d.markers.length)
           draft.append(button("Изменить замечание", () => compose()));
         rail.append(draft);
@@ -1608,7 +1609,7 @@
       history.append(
         el(
           "p",
-          `${date(e.createdAt)} · ${e.actorName}: ${labels[e.type] || e.type} — ${e.body}`,
+          `${date(e.createdAt)} · ${e.actorName} · ${window.ITDReview.eventName("annotation_" + e.type)}\n${e.body}`,
         ),
       );
     const controls = el("div", undefined, "ac-note-actions");

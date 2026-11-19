@@ -37,6 +37,7 @@
     metadata_changed: "Свойства материала изменены",
     stage_approved: "Клиент отдельно согласовал этап",
   };
+  const eventName = (type, fallback = "Событие материала") => eventsNames[type] || fallback;
   const date = (value) =>
     value ? new Date(value).toLocaleString("ru-RU") : "Не указана";
   let h,
@@ -757,7 +758,7 @@
       item.append(
         el(
           "strong",
-          `Версия ${event.versionNumber} · ${eventsNames[event.type] || "Событие материала"}`,
+          `Версия ${event.versionNumber} · ${eventName(event.type)}`,
         ),
         el(
           "span",
@@ -822,7 +823,7 @@
       );
       card.append(
         el("p", `${n.projectTitle} · ${date(n.createdAt)}`, "file-meta"),
-        el("h3", eventsNames[n.type] || "Обновление материала"),
+        el("h3", eventName(n.type, "Обновление материала")),
         el(
           "p",
           `${window.ITDUI.materialTitle(n.materialTitle)} · Версия ${n.versionNumber} · ${n.actorName || "Студия"}`,
@@ -923,6 +924,7 @@
   }
   window.ITDReview = {
     init,
+    eventName,
     reset,
     start,
     setProject,
