@@ -1,5 +1,16 @@
 # Точка продолжения · 19 ноября 2026
 
+## Приёмка экрана по согласованному макету
+
+Продолжено из `cb86155e628f94fb046f2b6525d137d89585e709`. Текущий коммит приложения и проверок — `44629fd5548d8c29eed820e21334e0bc758e2c40`, ветка `feature/approval-center`, база `feature/project-file-library`. [Изменения в Draft PR №5](https://github.com/kevbrinaa1989-lgtm/ITD_site/pull/5)
+
+- Реализованы компактная очередь, большой лист PDF, одна панель масштаба и страниц, нижние действия и сводка пакета. Возврат с отметкой оформляется в одном поле. Сохранение черновика предшествует переходу к следующему файлу.
+- В браузере проверены два раунда на 40 материалах, работа с актуальной версией PDF, восстановление с предыдущей страницы на другом экране, повтор сохранения и повтор отправки пакета. Сохранены реальные снимки окна 1568 × 1000 и мобильной эмуляции 390 × 844. [Протокол](TESTING.md#приёмка-экрана-по-макету) · [Снимки](SCREENSHOTS.md)
+- На Ubuntu прошли все 226 тестов и 12 браузерных заданий. На Windows прошёл 221 тест, пять сценариев Linux Bash пропущены. [Проверки приложения](https://github.com/kevbrinaa1989-lgtm/ITD_site/actions/runs/44539374831)
+- Следующий шаг владельца — открыть демостенд по Wi-Fi на физических устройствах и пройти пять шагов. В этой среде отсутствовали подключённые Android и iOS. [Сценарий для телефона](TESTING.md#проверка-на-телефоне)
+
+## Предыдущая точка восстановления
+
 Работа возобновлена из `5c2e98c6cb5466f62e32684e3afc132669ad977b` в `feature/approval-center`. База — `feature/project-file-library` на `adf83c1`. Коммит приложения, демостенда и проверок — `6cbd37fa041df0d36ceefbd605868ed596d21d4a`. [Draft PR №5](https://github.com/kevbrinaa1989-lgtm/ITD_site/pull/5)
 
 - Исправлены отправка пакета по Wi-Fi и постановка маркера в момент смены страницы PDF. Восстановлена установка зависимостей в проверках GitHub. Для приёмки подготовлены временный проект на 40 материалов, три отдельных этапа с парой PDF и образец v2.
@@ -14,10 +25,10 @@
 npm.cmd ci
 ipconfig
 $wifiAddress = Read-Host 'IPv4 компьютера в сети Wi-Fi'
-node tests/preview-approval-center.mjs $wifiAddress
+node tests/preview-approval-center.mjs $wifiAddress 4176
 ```
 
-Стенд выведет адрес кабинета на порту 4175, данные демопользователей и ссылку для скачивания образца v2 после входа. Держите окно открытым. Ctrl+C завершает этот запуск. При новом запуске создаются чистая временная база и новый пароль. Для уже запущенного из чата экземпляра данные входа находятся на компьютере в `test-results/approval-acceptance/demo-access.txt`. Git игнорирует эту папку.
+Стенд выведет адрес кабинета на порту 4176, данные демопользователей и ссылку для скачивания образца v2 после входа. Держите окно открытым. Ctrl+C завершает этот запуск. При новом запуске создаются чистая временная база и новый пароль. Для уже запущенного из чата экземпляра данные входа находятся на компьютере в `test-results/approval-acceptance/layout-demo-access.txt`. Git игнорирует эту папку.
 
 ## Проверки в этой среде
 
@@ -31,7 +42,6 @@ $env:ITD_PLAYWRIGHT_MODULE = ([uri](Get-Item (Join-Path $pw 'index.mjs')).FullNa
 $env:ITD_CHROMIUM = Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe'
 $env:ITD_SCREENSHOT_DIR = Join-Path (Get-Location) 'test-results\approval-acceptance\chrome'
 node tests/browser-review.mjs
-$env:ITD_SCREENSHOT_DIR = $null
 foreach ($suite in 'document-ownership','file-library','route-fixes','preview','route','workspace','upload-context') {
   node "tests/browser-$suite.mjs"
   if ($LASTEXITCODE -ne 0) { throw "Ошибка в browser-$suite" }
@@ -39,4 +49,4 @@ foreach ($suite in 'document-ownership','file-library','route-fixes','preview','
 git diff --check
 ```
 
-Входная команда `browser-review.mjs` включает PDF, повтор после потери ответа, мобильный HTTP-адрес и сквозной тест на 40 материалах. Для запуска только последнего используйте `node tests/browser-approval-round.mjs`. [Другие движки и профили](TESTING.md#другие-браузеры-на-windows)
+Входная команда `browser-review.mjs` включает PDF, повтор после потери ответа, мобильный HTTP-адрес, полный цикл с двумя раундами и сценарий сравнения с макетом. Последний можно отдельно воспроизвести через `node tests/browser-approval-layout.mjs`. Снимки сохраняются в `ITD_SCREENSHOT_DIR` или `test-results/approval-layout`. Два раунда с приёмкой этапа отдельно запускаются командой `node tests/browser-approval-round.mjs`. [Другие движки и профили](TESTING.md#другие-браузеры-на-windows)
