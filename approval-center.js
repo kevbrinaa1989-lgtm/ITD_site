@@ -361,10 +361,11 @@
     context.append(el("span", project.title), el("span", "·"), stagePicker);
     intro.append(el("h2", "Центр согласования"), context);
     packageButton = button(
-      admin() ? "Ведомости" : "К отправке · 0",
+      admin() ? "Ведомости" : "К отправке",
       admin() ? showPackages : submit,
       "ac-package",
     );
+    packageButton.disabled = true;
     head.append(brand, intro, packageButton);
     notice = el("p", "", "ac-notice");
     notice.setAttribute("role", "status");
@@ -521,6 +522,7 @@
     build();
     const work = root.querySelector(".ac-work");
     work.inert = true;
+    packageButton.disabled = true;
     let result;
     try {
       result = await hooks.api(route(s));
@@ -536,7 +538,10 @@
       }
       return;
     } finally {
-      if (generation === epoch) work.inert = false;
+      if (generation === epoch) {
+        work.inert = false;
+        packageButton.disabled = !data;
+      }
     }
     if (generation !== epoch || project?.id !== pid || !active) return;
     scope = s;
@@ -552,6 +557,7 @@
       stagePicker.querySelector("select").selectedOptions[0]?.textContent;
     saveStatus.textContent = admin() ? "Режим студии" : "Загрузка черновика…";
     data = result;
+    packageButton.disabled = false;
     localKey = `itd.approval.draft:${hooks.getUser().id}:${pid}:${scope}`;
     try {
       const local = JSON.parse(localStorage.getItem(localKey) || "null");

@@ -76,6 +76,12 @@ try {
       Math.round(view.height),
     );
   };
+  await page.route("**/api/approval-center/projects/*/stages/*", async (request) => {
+    const summaryButton = page.locator(".ac-package");
+    assert.equal(await summaryButton.isDisabled(), true);
+    assert.equal(await summaryButton.textContent(), "К отправке");
+    await request.continue();
+  }, { times: 1 });
   await enter(page, true);
   await page.getByText("Все страницы просмотрены", { exact: true }).waitFor();
   assert.equal(
