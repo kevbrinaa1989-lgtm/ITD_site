@@ -167,9 +167,12 @@ try {
   await dialog
     .getByLabel("Текст замечания")
     .fill("Уточнить ширину дверного проёма");
-  assert.ok(
-    (await button(dialog, "Подготовить и далее").boundingBox()).y < 475,
-  );
+  await mobile.waitForFunction(() => {
+    const action = document.querySelector("dialog[open] .primary");
+    const rect = action.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= 475 &&
+      action.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+  });
   await mobile.setViewportSize({ width: 390, height: 844 });
   await button(dialog, "Поставить отметку на документе").click();
   const sheet = mobile.locator(".ac-sheet");

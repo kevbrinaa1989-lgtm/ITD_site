@@ -1058,13 +1058,13 @@ body:has(> .approval-center:not([hidden])) #app-view {
     position: fixed;
     inset: auto 0 auto;
     top: calc(
-      var(--ac-visible-top, 0px) + var(--ac-visible-height, 100dvh) / 2
+      var(--ac-visible-top, 0px) + min(100dvh, var(--ac-visible-height, 100dvh)) / 2
     );
     transform: translateY(-50%);
     margin: 0 auto;
     padding: 15px;
     max-height: calc(
-      var(--ac-visible-height, 100dvh) - 18px - env(safe-area-inset-bottom)
+      min(100dvh, var(--ac-visible-height, 100dvh)) - 18px - env(safe-area-inset-bottom)
     );
   }
   .ac-compare {
