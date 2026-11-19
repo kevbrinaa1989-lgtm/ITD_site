@@ -91,6 +91,8 @@ try {
     });
   assert.equal(await page.getByRole("dialog").count(), 0);
   await page.getByText("Страница 2 из 2", { exact: true }).waitFor();
+  // The page number changes immediately. Measure the new sheet after it has painted and registered.
+  await page.getByText("Все страницы просмотрены", { exact: true }).waitFor();
   const box = await page.locator(".ac-sheet").boundingBox();
   await page
     .locator(".ac-sheet")
@@ -229,6 +231,7 @@ try {
     .getByRole("button", { name: "Следующая страница", exact: true })
     .click();
   await left.getByText("Страница 2 из 2", { exact: true }).waitFor();
+  await left.locator(".ac-pin").first().waitFor();
   assert.equal(await left.locator(".ac-pin").count(), 1);
   assert.equal(await right.locator(".ac-pin").count(), 0);
   await notes(page);
