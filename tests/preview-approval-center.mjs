@@ -14,7 +14,7 @@ if (host !== "127.0.0.1" &&
 }
 
 async function drawing(pages, revised = false) {
-  const pdf = new PDFDocument({ size: [640, 420], autoFirstPage: false });
+  const pdf = new PDFDocument({ size: [640, 420], margin: 32, autoFirstPage: false });
   const bytes = buffer(pdf);
   const font = fileURLToPath(new URL("../assets/fonts/itd-font-1.ttf", import.meta.url));
   for (let page = 1; page <= pages; page++) {
