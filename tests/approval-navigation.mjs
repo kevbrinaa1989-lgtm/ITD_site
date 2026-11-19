@@ -22,9 +22,13 @@ export async function closeNotes(page) {
     await button(page, "Закрыть панель").click();
 }
 export async function queue(page) {
-  await page.locator(".ac-view-heading").waitFor();
-  const toggle = button(page, "Материалы");
-  if (await toggle.isVisible()) await toggle.click();
+  const center = page.locator("#approval-center:not([data-opening-stage])");
+  await center.locator(".ac-work:not([inert])").waitFor();
+  const list = center.locator(".ac-list-pane");
+  if (await list.isVisible()) return;
+  await closeNotes(page);
+  if (!(await list.isVisible())) await button(center, "Материалы").click();
+  await list.waitFor();
 }
 export async function saved(page) {
   await page

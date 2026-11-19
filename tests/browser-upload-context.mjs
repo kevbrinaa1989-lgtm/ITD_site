@@ -632,6 +632,30 @@ try {
     await page.locator(".ac-brand").click();
     await page.locator("#refresh-button").click();
     await select(pa);
+    if (viewport.width === 430) {
+      const comment = "Проверено после смены ответственного клиента";
+      await api(`/api/material-versions/${uploadedVersion.review.versionId}/comments`, {
+        cookie: adminCookie, body: { text: comment },
+      });
+      await closeUpload(page);
+      const detail = `**/api/materials/${seed.review.materialId}`;
+      const release = Promise.withResolvers();
+      await page.route(detail, async route => {
+        await release.promise;
+        await route.continue();
+      }, { times: 1 });
+      const started = page.waitForRequest(detail);
+      try {
+        await page.locator("#tab-review").click();
+        await started;
+        await queue(page);
+      } finally {
+        release.resolve();
+      }
+      await page.locator(".ac-history").getByText(comment, { exact: true }).waitFor({ state: "attached" });
+      assert.equal(await page.locator(".ac-list-pane").isVisible(), true,
+        "Loading history must preserve the queue opened by the user");
+    }
     version = await versionForm();
     await choose(
       { name: "После-переназначения.pdf", mimeType: pdfType, buffer: pdf },

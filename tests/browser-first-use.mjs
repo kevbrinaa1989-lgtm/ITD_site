@@ -37,8 +37,19 @@ export async function checkFirstUse(browser) {
     await openProject(page, project.id, { client: !admin });
     const selected = page.locator('#project-route .route-step[aria-pressed="true"]');
     assert.ok((await selected.innerText()).includes(current.title));
+    const loaded = page.waitForResponse(response =>
+      response.request().method() === "GET" && response.url() === f.base + scope);
     await page.locator("#tab-review").click();
-    await page.waitForFunction(id => document.querySelector(".ac-stage select")?.value === String(id), current.id);
+    const response = await loaded;
+    assert.equal(response.status(), 200);
+    const snapshot = await response.json();
+    // Reopening the same stage keeps its previous rows visible until the new response is rendered.
+    await page.waitForFunction(id => {
+      const center = document.querySelector("#approval-center");
+      return center && !center.hidden && !center.hasAttribute("data-opening-stage") &&
+        center.querySelector(".ac-work")?.inert === false && center.querySelector(".ac-stage select")?.value === String(id);
+    }, current.id);
+    return snapshot;
   }
   async function checkEmptyScopes(page, admin) {
     await openCurrent(page, admin);
@@ -72,7 +83,9 @@ export async function checkFirstUse(browser) {
     await page.locator("#project-route .route-step").filter({ hasText: current.title }).click();
   }
   async function checkOrder(page, admin, ids, titles, files) {
-    await openCurrent(page, admin);
+    const fresh = await openCurrent(page, admin);
+    assert.deepEqual(fresh.materials.map(material => material.currentVersion.file.id), files.map(file => file.id));
+    assert.equal(fresh.materials.find(material => material.id === ids[2]).title, titles[2]);
     const rows = page.locator(".ac-material");
     await rows.nth(2).waitFor();
     assert.deepEqual(await rows.evaluateAll(items => items.map(item => Number(item.dataset.materialId))), ids);
@@ -126,6 +139,7 @@ export async function checkFirstUse(browser) {
       await dialog.getByRole("checkbox").nth(available.findIndex(file => file.id === files[index].id)).check();
     await dialog.getByRole("button", { name: "Подтверждаю отправку выбранных", exact: true }).click();
     await dialog.waitFor({ state: "hidden" });
+    await staff.getByText("Пакет отправлен клиенту одним уведомлением.", { exact: true }).waitFor();
     const initial = await state();
     const materials = files.map(file => initial.materials.find(m => m.currentVersion.file.id === file.id));
     const ids = materials.map(material => material.id);

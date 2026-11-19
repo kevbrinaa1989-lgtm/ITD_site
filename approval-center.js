@@ -659,7 +659,10 @@
         ? "Сохранено"
         : "Сохраняем";
     renderList();
-    await showMaterial(mid, vid, context);
+    const viewContext = target?.panel === "notes" && target.mid === mid
+      ? { ...context, panel: "notes" }
+      : context;
+    await showMaterial(mid, vid, viewContext);
     if (generation !== epoch) return;
     if (context && active) {
       if (context.versionId === vid) {
@@ -690,12 +693,10 @@
           room.dataset.revision = context.properties.revision;
         }
       }
-      panel(context.panel);
       listHost.scrollTop = context.scroll;
       const body = rail.querySelector(".ac-rail-body");
       if (body) body.scrollTop = context.railScroll;
     }
-    if (target?.panel === "notes" && target.mid === mid && active) panel("notes");
     if (result.conflicts.length)
       say(
         "Есть черновики по изменённым версиям. Откройте замечания и проверьте новую версию.",
@@ -1008,6 +1009,7 @@
     }
     renderRail();
     updateFooter();
+    if (context?.panel) panel(context.panel);
     viewer.ready.then(() => {
       if (seq === openSeq) {
         const items = visible(),
