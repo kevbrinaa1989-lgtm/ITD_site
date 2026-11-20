@@ -1,8 +1,11 @@
-import { action, notes, closeNotes, saved, summary, markForRevision } from "./approval-navigation.mjs";
+import { action, notes, queue, saved, summary, markForRevision } from "./approval-navigation.mjs";
 import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import { PDFDocument } from "pdf-lib";
 import { ownershipFixture } from "./ownership-fixture.mjs";
 import { fixtures } from "./preview-fixtures.mjs";
+import { drawing } from "./approval-demo.mjs";
 import { openProject } from "./browser-navigation.mjs";
 
 const { chromium } = await import(process.env.ITD_PLAYWRIGHT_MODULE || "playwright");
@@ -16,9 +19,11 @@ try {
   const [, mimeType, bytes] = fixtures[0];
   const ids = [];
   for (let i = 1; i <= 40; i++) {
+    const document = i === 40
+      ? { name: "План освещения.pdf", contentType: "application/pdf", data: await drawing("План освещения", 1) }
+      : { name: `План-${i}.png`, contentType: mimeType, data: bytes.toString("base64") };
     const file = await f.api(`/api/projects/${project.id}/files`, {
-      name: `План-${i}.png`, contentType: mimeType, data: bytes.toString("base64"),
-      category: "result", stageId: stage.id, review: true,
+      ...document, category: "result", stageId: stage.id, review: true,
     }, f.admin, "POST", 201);
     ids.push(file.review.materialId);
   }
@@ -29,10 +34,11 @@ try {
   async function openCenter(page, client) {
     await openProject(page, project.id, { client });
     await page.locator("#tab-review").click();
-    await page.locator(".ac-material-open").first().waitFor();
+    await page.locator(".ac-work:not([inert])").waitFor();
   }
-  async function login(client) {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
+  async function login(client, mobile = false) {
+    const context = await browser.newContext({ viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 960 },
+      isMobile: mobile, hasTouch: mobile });
     const page = await context.newPage();
     page.on("dialog", (dialog) => dialog.accept());
     await page.goto(f.base + "/cabinet");
@@ -44,8 +50,9 @@ try {
   }
   const row = (page, id) => page.locator(`.ac-material[data-material-id="${id}"]`);
   async function view(page, id) {
+    await queue(page);
     await row(page, id).locator(".ac-material-open").click();
-    await page.locator(".ac-sheet img").waitFor();
+    await page.locator(".ac-sheet :is(img, canvas)").waitFor();
   }
   const client = await login(true);
   await button(client, "Выбрать").click();
@@ -64,13 +71,13 @@ try {
   await saved(client);
   await client.reload();
   await openCenter(client, true);
-  async function submit(approved, changes, round) {
-    await summary(client);
-    await client.getByText(`Подготовлено: ${approved} согласований · ${changes} на доработку`, { exact: true }).waitFor();
-    await button(client.getByRole("dialog"), "Подтверждаю отправку").click();
-    await client.getByText(new RegExp(`Пакет принят.*раунд ${round}\\.`)).waitFor();
+  async function submit(page, approved, changes, round) {
+    await summary(page);
+    await page.getByText(`Подготовлено: ${approved} согласований · ${changes} на доработку`, { exact: true }).waitFor();
+    await button(page.getByRole("dialog"), "Подтверждаю отправку").click();
+    await page.getByText(new RegExp(`Пакет принят.*раунд ${round}\\.`)).waitFor();
   }
-  await submit(35, 5, 1);
+  await submit(client, 35, 5, 1);
   const first = await state();
   assert.equal(first.materials.filter(m => m.currentVersion.status === "approved").length, 35);
   assert.equal(first.materials.filter(m => m.currentVersion.status === "changes_requested").length, 5);
@@ -83,36 +90,52 @@ try {
     const report = designer.getByRole("dialog");
     await report.getByRole("radio", { name: "Исправлено", exact: true }).check();
     await report.getByLabel("Что исправлено", { exact: true }).fill("Светильник смещён по отметке клиента");
-    await report.locator("input[type=file]").setInputFiles({ name: "План-v2.png", mimeType, buffer: bytes });
+    const replacement = id === ids.at(-1)
+      ? { name: "План освещения-v2.pdf", mimeType: "application/pdf", buffer: Buffer.from(await drawing("План освещения", 1, true, 1), "base64") }
+      : { name: "План-v2.png", mimeType, buffer: bytes };
+    await report.locator("input[type=file]").setInputFiles(replacement);
     await button(report, "Отправить новую версию").click();
     await report.waitFor({ state: "hidden" });
     await designer.getByText("Исправленная версия отправлена клиенту.", { exact: true }).waitFor();
   }
   const revised = (await state()).materials.filter(m => returned.includes(m.id));
   assert.ok(revised.every(m => m.currentVersion.versionNumber === 2 && m.notes[0].status === "fixed"));
-  await action(client, "Обновить данные");
+  const phone = await login(true, true);
   for (const id of returned) {
-    await view(client, id);
-    await client.getByText("Все страницы просмотрены", { exact: true }).waitFor();
-    await notes(client);
-    await button(client, "Проверить исправление · версия 2").waitFor();
-    await button(client, "Исходное замечание · версия 1").waitFor();
-    await button(client, "Подтвердить исправление").click();
-    const confirmation = client.getByRole("dialog");
-    await confirmation.getByLabel("Пояснение").fill("Исправление проверено");
+    await view(phone, id);
+    await phone.getByText("Все страницы просмотрены", { exact: true }).waitFor();
+    await notes(phone);
+    await button(phone, "Проверить исправление · версия 2").waitFor();
+    await button(phone, "Исходное замечание · версия 1").waitFor();
+    await button(phone, "Подтвердить исправление").click();
+    const confirmation = phone.getByRole("dialog");
+    if (id !== ids.at(-1)) await confirmation.getByLabel("Пояснение").fill("Исправление проверено");
     await button(confirmation, "Сохранить в истории").click();
-    await notes(client);
-    await client.locator(".ac-note-state").filter({ hasText: "Подтверждено клиентом" }).waitFor();
-    assert.equal((await state()).materials.find((m) => m.id === id).versions.at(-1).confirmedView, false);
-    await closeNotes(client);
-    await button(client, "Согласовать и далее").click();
-    await saved(client);
+    await confirmation.waitFor({ state: "hidden" });
+    await phone.locator(".ac-rail").waitFor({ state: "hidden" });
+    const current = (await state()).materials.find(m => m.id === id);
+    assert.equal(current.notes[0].status, "confirmed");
+    assert.equal(current.versions.at(-1).confirmedView, false);
+    assert.equal(current.currentVersion.status, "pending_approval");
+    const approve = phone.locator(".ac-footer .ac-approve:enabled");
+    await approve.waitFor();
+    if (id === ids.at(-1) && process.env.ITD_SCREENSHOT_DIR && !process.env.ITD_NO_SCREENSHOTS) {
+      await mkdir(process.env.ITD_SCREENSHOT_DIR, { recursive: true });
+      await phone.locator(".ac-sheet canvas").waitFor();
+      await phone.evaluate(() => document.fonts.ready);
+      await saved(phone);
+      await phone.screenshot({ path: join(process.env.ITD_SCREENSHOT_DIR, "replacement-ready-mobile.png"), animations: "disabled" });
+    }
+    await approve.click();
+    await saved(phone);
   }
-  await submit(5, 0, 2);
+  await submit(phone, 5, 0, 2);
+  await phone.context().close();
   const second = await state();
   assert.deepEqual(second.packages.map(p => p.roundNumber), [2, 1]);
   assert.ok(second.materials.every(m => m.currentVersion.status === "approved"));
   assert.equal(second.stage.approved, false);
+  await action(client, "Обновить данные");
   await action(client, "История и ведомости");
   const history = client.getByRole("dialog");
   await history.getByRole("button", { name: new RegExp(`Ведомость №${second.packages[0].id}\\b`) }).click();

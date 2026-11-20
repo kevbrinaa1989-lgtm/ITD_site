@@ -161,6 +161,8 @@ export function initApprovalCenter({
       return {
         ...m,
         versions,
+        canApproveAfterCorrection: !!m.currentVersion.file.review.canApproveAfterCorrection,
+        correctionApprovalRevision: m.currentVersion.file.review.correctionApprovalRevision ?? null,
         room: meta?.room || "",
         required: meta?.required !== 0,
         metadataRevision: meta?.revision || 0,
@@ -233,7 +235,9 @@ export function initApprovalCenter({
         "versionId",
         "expectedRevision",
         "decision",
+        "afterCorrection",
         "comment",
+        "separateComment",
         "markers",
       ]);
       if (
@@ -254,10 +258,13 @@ export function initApprovalCenter({
         fail(400, "Материал относится к другому проекту или этапу");
       if (
         ![null, "approved", "changes_requested"].includes(e.decision) ||
+        (e.separateComment !== undefined && e.separateComment !== true) ||
         typeof e.comment !== "string" ||
         e.comment.length > 4000
       )
         fail(400, "Некорректное решение или комментарий");
+      if (e.afterCorrection !== undefined && (!int(e.afterCorrection) || e.decision !== "approved"))
+        fail(400, "Повторное согласование должно относиться к принятому исправлению.");
       if (!Array.isArray(e.markers) || e.markers.length > 100)
         fail(400, "Не более 100 замечаний к материалу");
       const count =
@@ -561,7 +568,8 @@ export function initApprovalCenter({
                 (m) =>
                   m.id === e.materialId &&
                   m.currentVersion.id === e.versionId &&
-                  m.currentVersion.revision === e.expectedRevision,
+                  m.currentVersion.revision === e.expectedRevision &&
+                  (e.afterCorrection === undefined || e.afterCorrection === m.correctionApprovalRevision),
               ),
           )
           .map((e) => e.materialId);
@@ -744,13 +752,19 @@ export function initApprovalCenter({
             if (
               !v ||
               v.id !== e.versionId ||
-              v.revision !== e.expectedRevision ||
-              v.status !== "pending_approval"
+              v.revision !== e.expectedRevision
             )
               fail(
                 409,
                 `Материал №${e.materialId}: версия или решение изменились. Пакет целиком не отправлен`,
               );
+            if (e.afterCorrection !== undefined) {
+              if (v.status !== "changes_requested" || !m.canApproveAfterCorrection ||
+                  e.afterCorrection !== m.correctionApprovalRevision)
+                fail(409, `«${m.title}»: замечания или исправление изменились. Откройте материал и заново проверьте решение.`);
+            } else if (v.status !== "pending_approval") {
+              fail(409, `Материал №${e.materialId}: решение уже отправлено. Проверьте текущую версию.`);
+            }
             if (
               e.decision === "approved" &&
               !get(
@@ -763,7 +777,7 @@ export function initApprovalCenter({
                 409,
                 `Материал №${e.materialId}: подтвердите просмотр всех страниц`,
               );
-            if (e.decision === "changes_requested" && !text(e.comment))
+            if (e.decision === "changes_requested" && !text(e.comment) && !e.markers.length)
               fail(400, `Материал №${e.materialId}: требуется пояснение`);
           }
           const previous = get(
@@ -810,7 +824,9 @@ export function initApprovalCenter({
                 user.id,
                 v.id,
               );
-              review.addEvent(m, v, user, e.decision, e.comment);
+              const reason = e.decision === "changes_requested" && !e.comment.trim()
+                ? e.markers[0].body : e.comment;
+              review.addEvent(m, v, user, e.decision, reason);
             } else if (e.comment.trim())
               review.addEvent(m, v, user, "comment", e.comment);
             for (const n of e.markers) {

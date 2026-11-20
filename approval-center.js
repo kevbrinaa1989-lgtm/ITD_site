@@ -20,6 +20,7 @@
     changes_requested: "К отправке: правки",
   };
   const revisionSaved = "Правки сохранены в черновик. Дизайнер увидит их после отправки пакета";
+  const maxMarkers = 100;
   const date = (n) => new Date(n).toLocaleString("ru-RU");
   let hooks,
     project,
@@ -726,7 +727,7 @@
                 .toLocaleLowerCase("ru-RU")
                 .includes(query)) &&
             (filter === "all" ||
-              (filter === v.status &&
+              ((filter === v.status || (filter === "pending_approval" && m.canApproveAfterCorrection)) &&
                 (filter !== "pending_approval" ||
                   !d?.decision ||
                   data.conflicts.includes(m.id))) ||
@@ -838,7 +839,9 @@
         ? "Проверьте новую версию"
         : draft?.decision
           ? draftLabels[draft.decision]
-          : v.status === "pending_approval" && v.versionNumber > 1
+          : m.canApproveAfterCorrection
+            ? "Можно согласовать"
+            : v.status === "pending_approval" && v.versionNumber > 1
             ? "Проверить исправления"
             : labels[v.status];
       if (listHost.children[i] !== row)
@@ -950,7 +953,7 @@
     }
     else tools.append(button("Восстановление черновиков", recoverDraft));
     menu.append(trigger, tools);
-    if (canDecide() && (m.notes.length || m.returnComments?.length))
+    if (canDecide("approved") && (m.notes.length || m.returnComments?.length))
       nav.append(notesButton("Замечания", "ac-remarks-link"));
     nav.append(prev, next, menu);
     heading.append(title, nav);
@@ -960,14 +963,7 @@
     const host = el("div", undefined, "ac-media-host");
     viewHost.append(host);
     lastViewContext = null;
-    const ownEntry = entry(),
-      markers = m.notes
-        .filter((n) => n.versionId === vid)
-        .concat(
-          ownEntry?.versionId === vid
-            ? ownEntry.markers.map((n, i) => ({ ...n, draft: true, index: i }))
-            : [],
-        );
+    const markers = markersForViewer(m, vid, entry());
     const position = context?.versionId === vid ? context.position :
       data.draft.position.materialId === mid &&
       data.draft.position.versionId === vid
@@ -1067,14 +1063,14 @@
     v.viewedPages = v.viewedPageNumbers.length;
     v.pageCount = res.pageCount;
   }
-  function canDecide() {
-    const v = version(),
+  function canDecide(decision) {
+    const m = current(), v = version(),
       d = entry();
     return (
       !admin() &&
       v &&
-      current().currentVersion.id === vid &&
-      v.status === "pending_approval" &&
+      m.currentVersion.id === vid &&
+      (v.status === "pending_approval" || (decision === "approved" && m.canApproveAfterCorrection)) &&
       (!d || (d.versionId === vid && d.expectedRevision === v.revision)) &&
       !data.conflicts.includes(mid)
     );
@@ -1130,6 +1126,11 @@
     if (admin() && !archived)
       top.append(button("Загрузить исправленную версию", uploadVersion,
         v.status === "changes_requested" ? "primary ac-upload-version" : "ac-upload-version"));
+    if (canDecide("approved") && m.notes.some(n => n.status === "confirmed" && n.correctionVersionId === vid))
+      top.append(button("К решению по материалу", () => {
+        panel("viewer");
+        footer.querySelector(".ac-approve")?.focus({ preventScroll: true });
+      }));
     rail.replaceChildren(top, body);
     if (archived)
       body.append(
@@ -1190,16 +1191,17 @@
     if (
       !admin() &&
       vid === m.currentVersion.id &&
-      v.status === "pending_approval"
+      (v.status === "pending_approval" || m.canApproveAfterCorrection || data.conflicts.includes(mid))
     ) {
       const d = entry(),
-        conflict =
-          d && (d.versionId !== vid || d.expectedRevision !== v.revision);
+        conflict = d && (d.versionId !== vid || d.expectedRevision !== v.revision || data.conflicts.includes(mid));
       if (conflict) {
         body.append(
           el(
             "p",
-            "Черновик относится к прежней версии. Его текст сохранён. Проверьте новую версию; старые маркеры не переносятся.",
+            d.afterCorrection
+              ? "После подготовки решения исправления изменились. Проверьте их и согласуйте материал заново."
+              : "Черновик относится к прежней версии. Его текст сохранён. Проверьте новую версию; старые маркеры не переносятся.",
             "ac-warning",
           ),
           el("p", d.comment),
@@ -1216,6 +1218,7 @@
               change();
               renderRail();
               renderList();
+              updateFooter();
             }
           }),
         );
@@ -1224,7 +1227,7 @@
         draft.append(el("strong", d.decision ? draftLabels[d.decision] : "Черновик замечания"));
         if (d.comment) draft.append(el("p", d.comment, "ac-note-body"));
         draft.append(el("small", "До отправки пакета этот черновик видите только вы."));
-        if (d.comment || d.markers.length)
+        if (canDecide() && (d.comment || d.markers.length))
           draft.append(button("Изменить замечание", () => compose()));
         body.append(draft);
         if (d.decision) draft.append(
@@ -1311,24 +1314,21 @@
       return;
     }
     const d = entry();
-    if (d?.versionId === vid)
+    if (d?.versionId === vid) {
+      const firstNumber = firstDraftMarkerNumber(m, vid);
       d.markers.forEach((n, i) =>
         body.append(
-          button(`Черновик маркера ${i + 1} · стр. ${n.page}: ${n.body}`, () =>
+          button(`Черновик маркера ${firstNumber + i} · стр. ${n.page}: ${n.body}`, () =>
             compose(i),
           ),
         ),
       );
-    if (canDecide() && d?.markers.length)
-      body.append(
-        button("Добавить ещё одну отметку", () => {
-          panel("viewer");
-          pinRequest = { index: -1 };
-          viewer.setPinMode(true);
-          say("Выберите место для новой отметки.");
-          updateFooter();
-        }),
-      );
+    }
+    if (canDecide() && d?.markers.length) {
+      const add = button("Добавить ещё одну отметку", () => pickPin(-1));
+      showMarkerLimit(add, d.markers.length);
+      body.append(add);
+    }
     const comment = input("Комментарий к версии", "textarea");
     comment.field.maxLength = 4000;
     const discussion = el("details", undefined, "ac-discussion");
@@ -1358,7 +1358,12 @@
   function removeDecision(id) {
     const e = data.draft.entries.find((x) => x.materialId === id);
     if (e) {
+      if (e.afterCorrection && !e.comment.trim() && !e.markers.length) {
+        data.draft.entries = data.draft.entries.filter(item => item !== e);
+        data.conflicts = data.conflicts.filter(materialId => materialId !== id);
+      }
       e.decision = null;
+      delete e.afterCorrection;
       change();
       renderRail();
       renderList();
@@ -1370,7 +1375,7 @@
     for (let offset = 1; offset < items.length; offset++) {
       const m = items[(start + offset) % items.length];
       if (
-        m.currentVersion.status === "pending_approval" &&
+        (m.currentVersion.status === "pending_approval" || m.canApproveAfterCorrection) &&
         !data.draft.entries.some(
           (e) =>
             e.materialId === m.id &&
@@ -1409,7 +1414,7 @@
     }
   }
   async function decide(decision) {
-    if (busy || !canDecide()) return;
+    if (busy || !canDecide(decision)) return;
     const v = version(),
       generation = epoch;
     busy = true;
@@ -1439,11 +1444,14 @@
           return;
         }
       }
-      if (!active || generation !== epoch || v.id !== vid) return;
+      if (!active || generation !== epoch || v.id !== vid || !canDecide(decision)) return;
       const e = entry(true);
-      if (decision === "changes_requested" && !e.comment.trim())
+      if (decision === "changes_requested" && !e.comment.trim() && !e.markers.length)
         throw Error("Напишите замечание");
       e.decision = decision;
+      if (decision === "approved" && current().canApproveAfterCorrection)
+        e.afterCorrection = current().correctionApprovalRevision;
+      else delete e.afterCorrection;
       advanceAfterSave = { mid, vid, decision };
       change();
       renderList();
@@ -1547,118 +1555,137 @@
     say("");
     updateFooter();
   }
+  function showMarkerLimit(control, count) {
+    control.disabled = count >= maxMarkers;
+    control.title = control.disabled ? `На одном материале можно поставить до ${maxMarkers} отметок` : "";
+  }
+  function pickPin(index) {
+    panel("viewer");
+    pinRequest = { index };
+    viewer.setPinMode(true);
+    say("Выберите место на листе. Можно перейти на другую страницу. Клавиша Enter ставит отметку в центре.");
+    updateFooter();
+  }
   function compose(index, point) {
     if (!canDecide()) return;
     const e = entry(true);
-    // An existing one-marker return uses the same text field for its note and pin.
-    if (
-      index === undefined &&
-      e.markers.length === 1 &&
-      e.markers[0].body === e.comment
-    )
-      index = 0;
-    let marker = e.markers[index],
-      location = point || marker;
-    modal("Нужны правки", (d) => {
-      const note = input(
-        "Текст замечания",
-        "textarea",
-        index === -1 ? "" : (marker?.body ?? e.comment),
-      );
+    let marker = e.markers[index];
+    const location = point || marker;
+    const slot = marker ? index : e.markers.length;
+    const firstNumber = firstDraftMarkerNumber(current(), vid);
+    // Previous versions copied the first pin's text into the general remark.
+    const clearMirroredComment = () => {
+      if (!e.separateComment && marker && marker === e.markers[0] && e.comment === marker.body)
+        e.comment = "";
+    };
+    const dialog = modal("Нужны правки", (d) => {
+      let addMarker;
+      const note = input("Текст замечания", "textarea",
+        marker?.body ?? (index === -1 ? "" : e.comment));
       note.field.maxLength = 4000;
       note.field.placeholder = "Что нужно изменить?";
-      d.append(el("p", displayTitle(current()), "ac-subtitle"), note.wrap);
+      d.append(el("p", displayTitle(current()), "ac-subtitle"));
+      if (location) d.append(el("strong", `Отметка ${firstNumber + slot} · стр. ${location.page}`));
+      else if (e.markers.length) d.append(el("strong", "Общее замечание к материалу"));
+      d.append(note.wrap);
+
       const write = () => {
         const body = note.field.value;
-        if (
-          (index !== -1 && !marker) ||
-          e.comment === marker?.body ||
-          !e.comment.trim()
-        )
+        if (location) clearMirroredComment();
+        if (!location) {
           e.comment = body;
-        if (location && body.trim()) {
-          const value = {
-            x: location.x,
-            y: location.y,
-            page: location.page,
-            body,
-          };
-          if (!marker) index = e.markers.push(value) - 1;
-          else e.markers[index] = value;
-          marker = value;
+          if (body.trim()) e.separateComment = true;
+          else delete e.separateComment;
+        } else if (body.trim()) {
+          if (!marker) {
+            marker = { x: location.x, y: location.y, page: location.page, body };
+            e.markers.splice(slot, 0, marker);
+          } else Object.assign(marker, { x: location.x, y: location.y, page: location.page, body });
         } else if (marker) {
-          e.markers.splice(index, 1);
+          e.markers.splice(slot, 1);
           marker = undefined;
-          index = undefined;
         }
-        if (e.decision === "approved" || !e.comment.trim()) e.decision = null;
+        if (e.decision === "approved" || (!e.comment.trim() && !e.markers.length)) {
+          e.decision = null;
+          delete e.afterCorrection;
+        }
+        if (addMarker) showMarkerLimit(addMarker, e.markers.length);
         change();
         refreshMarkers();
         renderList();
       };
-      if (point && note.field.value.trim()) write();
-      note.field.oninput = write;
-      if (window.ITDViewer.supported(version().file)) {
-        const pin = button(
-          location
-            ? `Переместить отметку · стр. ${location.page}`
-            : "Поставить отметку на документе",
-          () => {
-            d.close();
-            panel("viewer");
-            pinRequest = { index };
-            viewer.setPinMode(true);
-            say(
-              "Выберите место на документе. Клавиша Enter ставит отметку в центре страницы.",
-            );
-            updateFooter();
-          },
-        );
-        d.append(pin);
-        if (marker)
-          d.append(
-            button("Убрать отметку", () => {
-              e.markers.splice(index, 1);
-              change();
-              refreshMarkers();
-              d.close();
-              compose();
-            }),
-          );
+      if (point && note.field.value.trim()) {
+        // Attaching the first typed remark moves its text onto the drawing.
+        if (index === undefined && !marker) {
+          e.comment = "";
+          delete e.separateComment;
+        }
+        write();
       }
-      d.append(
-        button(
-          "Подготовить и далее",
-          async () => {
-            if (!note.field.value.trim()) throw Error("Напишите замечание");
-            if (!e.comment.trim()) e.comment = note.field.value;
-            d.close();
-            await decide("changes_requested");
-          },
-          "primary",
-        ),
-      );
-      d.addEventListener(
-        "close",
-        () => {
-          if (current()) renderRail();
-        },
-        { once: true },
-      );
+      note.field.oninput = write;
+      const selectPoint = (nextIndex) => {
+        d.close();
+        pickPin(nextIndex);
+      };
+      if (window.ITDViewer.supported(version().file)) {
+        if (location) d.append(button(`Переместить отметку · стр. ${location.page}`, () => {
+          if (!marker) throw Error("Сначала напишите текст отметки.");
+          selectPoint(slot);
+        }));
+        if (location || e.markers.length) {
+          addMarker = button("Добавить ещё одну отметку", () => {
+            if (location && !marker) throw Error("Сначала напишите текст этой отметки.");
+            selectPoint(-1);
+          });
+          showMarkerLimit(addMarker, e.markers.length);
+          d.append(addMarker);
+        }
+        else d.append(button("Поставить отметку на документе", () => selectPoint()));
+      }
+      if (location || e.markers.length) {
+        const list = disclosure("Изменить замечания и отметки", "ac-composer-marks");
+        const openField = (otherIndex) => { d.close(); compose(otherIndex); };
+        if (location) list.append(button("Общее замечание к материалу", () => openField()));
+        e.markers.forEach((other, i) => {
+          if (other !== marker) list.append(button(`Отметка ${firstNumber + i} · стр. ${other.page}: ${other.body}`,
+            () => openField(e.markers.indexOf(other))));
+        });
+        if (location) list.append(button("Убрать отметку", () => {
+          if (marker) {
+            clearMirroredComment();
+            e.markers.splice(slot, 1);
+            if (!e.markers.length && !e.comment.trim()) e.decision = null;
+            change();
+            refreshMarkers();
+            renderList();
+          }
+          openField();
+        }));
+        d.append(list);
+      }
+      d.append(button("Подготовить и далее", async () => {
+        if (location && !note.field.value.trim()) throw Error("Напишите текст отметки.");
+        if (!e.comment.trim() && !e.markers.length) throw Error("Напишите замечание.");
+        d.close();
+        await decide("changes_requested");
+      }, "primary"));
+      d.addEventListener("close", () => { if (current()) renderRail(); }, { once: true });
     });
+    if (point) dialog.querySelector("textarea").focus({ preventScroll: true });
+  }
+  function firstDraftMarkerNumber(material, versionId) {
+    const last = (material?.notes || []).reduce((max, n) =>
+      n.versionId === versionId ? Math.max(max, n.number) : max, 0);
+    return last + 1;
+  }
+  function markersForViewer(material, versionId, draft) {
+    const published = material.notes.filter(n => n.versionId === versionId);
+    if (draft?.versionId !== versionId) return published;
+    const firstNumber = firstDraftMarkerNumber(material, versionId);
+    return published.concat(draft.markers.map((n, i) => ({ ...n, draft: true, index: i, number: firstNumber + i })));
   }
   function refreshMarkers() {
-    const m = current(),
-      d = entry();
-    viewer?.setMarkers(
-      m.notes
-        .filter((n) => n.versionId === vid)
-        .concat(
-          d?.versionId === vid
-            ? d.markers.map((n, i) => ({ ...n, draft: true, index: i }))
-            : [],
-        ),
-    );
+    viewer?.setMarkers(markersForViewer(current(), vid, entry()));
   }
   async function checkCorrection(m, fixedVersion) {
     // A pin locates a point only on the original drawing. Pages in a replacement
@@ -1726,6 +1753,7 @@
         el("p", "Вы подтверждаете исправление этого замечания. Решение по материалу принимается отдельно."),
       );
       const text = input("Пояснение", "textarea");
+      if (confirm) text.field.placeholder = "Необязательно";
       const errorMessage = el("p", "", "ac-dialog-error");
       errorMessage.setAttribute("role", "alert");
       errorMessage.hidden = true;
@@ -1753,13 +1781,23 @@
             reload.hidden = false;
             return;
           }
+          const body = text.field.value.trim() || (confirm ? "Клиент подтвердил исправление." : "");
           await hooks.api(`/api/approval-center/notes/${noteId}/events`, "POST",
-            { type, body: text.field.value, expectedRevision, versionId });
-          dialog.close();
+            { type, body, expectedRevision, versionId });
           if (active && project?.id === pid && scope === stageId && mid === materialId) {
             await flush();
             await loadScope(stageId, { mid: materialId, vid: versionId, panel: "notes" });
+            if (confirm && mid === materialId && vid === versionId &&
+                current()?.notes.some(item => item.id === noteId && item.status === "confirmed")) {
+              const remaining = current().notes.filter(item => item.status === "fixed" && item.correctionVersionId === versionId).length;
+              if (remaining) say(`Исправление подтверждено. Осталось проверить замечаний: ${remaining}.`);
+              else if (canDecide("approved")) {
+                if (matchMedia("(max-width: 767px)").matches) panel("viewer");
+                say("Исправление подтверждено. Нажмите «Согласовать и далее», чтобы подготовить решение по материалу.");
+              } else say("Исправление подтверждено.");
+            }
           }
+          dialog.close();
         } catch (error) {
           errorMessage.textContent = error.message;
           errorMessage.hidden = false;
@@ -2022,16 +2060,19 @@
       );
     if (!current()) return;
     const actions = el("div", undefined, "ac-actions");
-    if (pinRequest) actions.append(button("Отменить отметку", cancelPin));
+    if (pinRequest) actions.append(button("Отменить отметку", () => {
+      const { index } = pinRequest;
+      cancelPin();
+      compose(index === -1 ? undefined : index);
+    }));
     else if (comparison)
       actions.append(
         button("К просмотру материала", () => showMaterial(mid, vid)),
         button("Замечания и история", () => panel("notes")),
       );
-    else if (canDecide()) {
+    else if (canDecide("approved")) {
       actions.classList.add("ac-decisions");
       const later = button("Позже", nextUndecided, "ac-later"),
-        revise = button("Нужны правки", () => compose()),
         approve = button(
           "Согласовать и далее",
           () => decide("approved"),
@@ -2040,11 +2081,21 @@
       approve.setAttribute("aria-label", "Согласовать и далее");
       approve.title =
         "Подтвердить просмотр всех страниц и сохранить черновое решение";
-      later.disabled = revise.disabled = busy;
+      later.disabled = busy;
       approve.disabled =
         busy ||
         (window.ITDViewer.supported(version().file) && !viewer?.dimensions);
-      actions.append(later, revise, approve);
+      actions.append(later);
+      if (canDecide()) {
+        const revise = button("Нужны правки", () => {
+          const draft = entry();
+          const first = draft?.markers[0];
+          compose(first && (!draft.comment.trim() || (!draft.separateComment && draft.comment === first.body)) ? 0 : undefined);
+        });
+        revise.disabled = busy;
+        actions.append(revise);
+      }
+      actions.append(approve);
     } else {
       const v = version(),
         m = current();
@@ -2067,6 +2118,7 @@
     const a = entries.filter((e) => e.decision === "approved").length,
       c = entries.length - a;
     modal("К отправке", (d) => {
+      let needsReview = false;
       if (!entries.length) {
         d.append(el("p", "Подготовленных решений пока нет."));
         return;
@@ -2076,6 +2128,7 @@
       d.append(list);
       for (const e of entries) {
         const m = data.materials.find((x) => x.id === e.materialId);
+        const firstNumber = firstDraftMarkerNumber(m, e.versionId);
         const row = el("article"),
           copy = el("div");
         const v = m?.versions.find((v) => v.id === e.versionId);
@@ -2098,13 +2151,14 @@
         if (e.comment) copy.append(el("p", e.comment));
         for (const [i, n] of e.markers.entries())
           copy.append(
-            el("small", `Отметка ${i + 1} · стр. ${n.page} · ${n.body}`),
+            el("small", `Отметка ${firstNumber + i} · стр. ${n.page} · ${n.body}`),
           );
         row.append(
           copy,
           button("Изменить", async () => {
             d.close();
-            if (m) await showMaterial(m.id);
+            if (needsReview) await loadScope(scope, { mid: e.materialId, panel: "notes" });
+            else if (m) await showMaterial(m.id, undefined, data.conflicts.includes(m.id) ? { panel: "notes" } : undefined);
             else recoverDraft();
           }),
           button("Убрать из пакета", async () => {
@@ -2142,8 +2196,14 @@
             say(
               `Пакет принят. Ведомость №${result.packageId}, раунд ${result.roundNumber}.`,
             );
+          } catch (error) {
+            if (error.status === 409 && !saveError) {
+              needsReview = true;
+              throw Error(error.message + " Нажмите «Изменить», чтобы открыть актуальные замечания.");
+            }
+            throw error;
           } finally {
-            send.disabled = false;
+            send.disabled = needsReview;
           }
         },
         "primary",

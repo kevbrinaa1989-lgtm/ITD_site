@@ -14,12 +14,13 @@
     box-sizing: border-box;
     --bg: #1d1a17;
     --ink: #f6f1ea;
-    --muted: #cfc6ba;
+    --muted: #e0d7cc;
     --accent: #d9a066;
     --accent-ink: #1d1a17;
     --card: #faf6f0;
     --card-ink: #26211c;
-    --card-muted: #6f665c;
+    --card-muted: #564d43;
+    --card-accent: #805024;
     --line: #ddd3c6;
     --field: #fff;
     padding-top: env(safe-area-inset-top,0px);
@@ -30,7 +31,8 @@
     :root:not([data-theme="light"]){
       --card: #2a2520;
       --card-ink: #f3ede4;
-      --card-muted: #b3a89a;
+      --card-muted: #cec3b4;
+      --card-accent: var(--accent);
       --line: #453d34;
       --field: #1d1a17;
     }
@@ -39,7 +41,8 @@
   :root[data-theme="dark"]{
     --card: #2a2520;
     --card-ink: #f3ede4;
-    --card-muted: #b3a89a;
+    --card-muted: #cec3b4;
+    --card-accent: var(--accent);
     --line: #453d34;
     --field: #1d1a17;
   }
@@ -72,6 +75,7 @@
     background: transparent;
     color: var(--ink);
     font-family: "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    font-size: 1.0625rem;
     line-height: 1.5;
   }
 
@@ -123,7 +127,7 @@
   #itd nav{
     display: flex;
     gap: 22px;
-    font-size: 15px;
+    font-size: 1rem;
   }
 
   #itd nav a{
@@ -139,7 +143,7 @@
     display: flex;
     gap: 14px;
     align-items: center;
-    font-size: 15px;
+    font-size: 1rem;
   }
 
   #itd .contacts a{
@@ -246,7 +250,7 @@
     position: absolute;
     right: 16px;
     bottom: 12px;
-    font-size: 12px;
+    font-size: 0.875rem;
     color: var(--muted);
     opacity: .7;
   }
@@ -262,7 +266,7 @@
 
   #itd .eyebrow{
     color: var(--accent);
-    font-size: 13px;
+    font-size: 0.875rem;
     letter-spacing: .16em;
     text-transform: uppercase;
     font-weight: 700;
@@ -304,7 +308,7 @@
   #itd .facts li{
     border-left: 2px solid var(--accent);
     padding-left: 12px;
-    font-size: 14px;
+    font-size: 0.9375rem;
     color: var(--muted);
   }
 
@@ -424,12 +428,12 @@
   #itd .card p.lead{
     margin: 0 0 18px;
     color: var(--card-muted);
-    font-size: 14px;
+    font-size: 0.9375rem;
   }
 
   #itd label{
     display: block;
-    font-size: 13px;
+    font-size: 0.875rem;
     font-weight: 600;
     margin: 0 0 6px;
   }
@@ -474,7 +478,7 @@
     display: flex;
     gap: 8px;
     align-items: flex-start;
-    font-size: 12px;
+    font-size: 0.875rem;
     color: var(--card-muted);
     font-weight: 400;
     margin: 4px 0 16px;
@@ -494,7 +498,7 @@
   }
 
   #itd .reply{
-    font-size: 13px;
+    font-size: 0.875rem;
     color: var(--card-muted);
     text-align: center;
     margin: 10px 0 0;
@@ -531,7 +535,7 @@
 
   #itd .calc-sec .lbl{
     display: block;
-    font-size: 14px;
+    font-size: 0.9375rem;
     font-weight: 600;
     color: var(--muted);
     margin: 0 0 8px;
@@ -621,7 +625,7 @@
     background: var(--accent-ink);
     color: var(--accent);
     font-weight: 800;
-    font-size: 14px;
+    font-size: 0.9375rem;
     line-height: 24px;
     text-align: center;
   }
@@ -638,14 +642,14 @@
   #itd .pkc i{
     display: block;
     font-style: normal;
-    color: var(--accent);
+    color: var(--card-accent);
     font-weight: 700;
     margin: 2px 0 4px;
   }
 
   #itd .pkc small{
     color: var(--card-muted);
-    font-size: 13px;
+    font-size: 0.875rem;
     line-height: 1.35;
     display: block;
   }
@@ -670,7 +674,7 @@
     align-items: center;
     margin-top: 12px;
     color: var(--muted);
-    font-size: 14px;
+    font-size: 0.9375rem;
   }
 
   #itd .mrow[hidden]{
@@ -701,7 +705,7 @@
     gap: 12px;
     padding: 8px 0;
     border-bottom: 1px solid var(--line);
-    font-size: 15px;
+    font-size: 1rem;
   }
 
   #itd .res .row span:first-child{
@@ -724,12 +728,12 @@
   #itd .res ul{
     margin: 14px 0;
     padding-left: 18px;
-    font-size: 14px;
+    font-size: 0.9375rem;
     color: var(--card-muted);
   }
 
   #itd .res .note{
-    font-size: 12px;
+    font-size: 0.875rem;
     color: var(--card-muted);
     margin: 0 0 16px;
   }
@@ -741,7 +745,7 @@
 
   #itd .turnkey{
     margin-top: 14px;
-    font-size: 14px;
+    font-size: 0.9375rem;
     color: var(--muted);
   }
 
@@ -794,8 +798,8 @@
     aspect-ratio: 4/3;
     display: grid;
     place-items: center;
-    color: rgba(255,255,255,.55);
-    font-size: 13px;
+    color: #fff;
+    font-size: 0.875rem;
     letter-spacing: .08em;
     text-transform: uppercase;
     background: linear-gradient(135deg,#7a6450,#3b2f25);
@@ -824,7 +828,7 @@
   }
 
   #itd .pf-tag{
-    font-size: 13px;
+    font-size: 0.875rem;
     color: var(--card-muted);
     margin: 0 0 4px;
   }
@@ -835,7 +839,7 @@
   }
 
   #itd .pf-meta{
-    font-size: 14px;
+    font-size: 0.9375rem;
     color: var(--card-muted);
     margin: 0 0 14px;
   }
@@ -849,7 +853,7 @@
     color: var(--card-ink);
     font-weight: 700;
     text-decoration: none;
-    font-size: 15px;
+    font-size: 1rem;
   }
 
   #itd .pf-btn:hover{
@@ -901,7 +905,7 @@
   #itd .cl-prog{
     margin-bottom: 24px;
     color: var(--muted);
-    font-size: 14px;
+    font-size: 0.9375rem;
   }
 
   #itd .cl-bar{
@@ -948,7 +952,7 @@
     padding: 9px 0;
     border-top: 1px solid var(--line);
     cursor: pointer;
-    font-size: 15px;
+    font-size: 1rem;
     line-height: 1.4;
   }
 
@@ -988,7 +992,7 @@
     padding: 9px 16px;
     border-radius: 999px;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 1rem;
     cursor: pointer;
     text-decoration: none;
     font-family: inherit;
@@ -1006,7 +1010,7 @@
   #itd .cl-msg{
     min-height: 1.4em;
     margin: 10px 0 0;
-    font-size: 14px;
+    font-size: 0.9375rem;
     color: var(--accent);
   }
 
@@ -1068,7 +1072,7 @@
   }
 
   #itd .qz-meta{
-    font-size: 14px;
+    font-size: 0.9375rem;
     color: var(--card-muted);
   }
 
@@ -1167,7 +1171,7 @@
   }
 
   #itd .qz-share>p{
-    font-size: 15px;
+    font-size: 1rem;
     font-weight: 600;
     margin: 0 0 10px;
   }
@@ -1179,7 +1183,7 @@
     padding: 8px 15px;
     border-radius: 999px;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 0.9375rem;
     cursor: pointer;
     text-decoration: none;
     font-family: inherit;
@@ -1197,7 +1201,7 @@
   #itd .qz-msg{
     min-height: 1.4em;
     margin: 8px 0 0;
-    font-size: 14px;
+    font-size: 0.9375rem;
     color: var(--card-muted);
   }
 
@@ -1236,7 +1240,7 @@
     border-top: 1px solid rgba(246,241,234,.1);
     padding: 48px clamp(16px,5vw,64px) 24px;
     color: var(--muted);
-    font-size: 15px;
+    font-size: 1rem;
   }
 
   #itd .ft-in{
@@ -1268,7 +1272,7 @@
   #itd .ft h4{
     margin: 0 0 12px;
     color: var(--ink);
-    font-size: 14px;
+    font-size: 0.9375rem;
     letter-spacing: .12em;
     text-transform: uppercase;
   }
@@ -1294,7 +1298,7 @@
     padding: 6px 14px;
     border-radius: 999px;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 0.9375rem;
   }
 
   #itd .ft .soc a:hover{
@@ -1311,7 +1315,7 @@
     justify-content: space-between;
     gap: 12px;
     flex-wrap: wrap;
-    font-size: 13px;
+    font-size: 0.875rem;
   }
 
   @media (max-width: 860px) {

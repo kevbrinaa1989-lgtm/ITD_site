@@ -793,6 +793,10 @@ export function createApp(options = {}) {
         if (e.code === "ENOENT") fail(404, "Страница не найдена");
         throw e;
       }
+      if (["tilda-home-connected-fixed.html", "tilda-anketa-connected-fixed.html"].includes(file)) {
+        // Tilda supplies the viewport when embedded. These routes serve the fragments standalone.
+        bytes = Buffer.concat([Buffer.from('<meta name="viewport" content="width=device-width, initial-scale=1">\n'), bytes]);
+      }
       if (["reset-password.html","recovery.js","invitation.html","invitation-accept.js"].includes(file)) {
         res.setHeader("Referrer-Policy", "no-referrer");
         res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");

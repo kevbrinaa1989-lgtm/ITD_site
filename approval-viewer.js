@@ -217,9 +217,11 @@
       if (!media) return;
       for (const [i, n] of markers.entries())
         if (n.page === page) {
-          const b = btn(String(n.number || i + 1), (e) => {
+          const number = n.number || i + 1;
+          const b = btn(String(number), (e) => {
             e.stopPropagation();
-            onMarker({ ...n, existing: true, index: n.draft ? n.index : i });
+            if (addMode) onMarker({ page, x: n.x, y: n.y, body: "" });
+            else onMarker({ ...n, existing: true, index: n.draft ? n.index : i });
           });
           b.className = "ac-pin";
           if (n.id) b.dataset.noteId = n.id;
@@ -227,7 +229,7 @@
           b.style.top = `${n.y * 100}%`;
           b.setAttribute(
             "aria-label",
-            `Замечание ${n.number || i + 1}: ${n.body}`,
+            `Замечание ${number}: ${n.body}`,
           );
           sheet.append(b);
         }
@@ -340,7 +342,7 @@
       "Материал. В режиме замечания Enter добавляет маркер в центре.",
     );
     sheet.addEventListener("keydown", (e) => {
-      if (addMode && media && e.key === "Enter") {
+      if (addMode && media && e.target === sheet && e.key === "Enter") {
         e.preventDefault();
         onMarker({ page, x: 0.5, y: 0.5, body: "" });
       }

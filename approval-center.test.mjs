@@ -147,7 +147,7 @@ test("submitted return text stays with its project, stage and version and appear
   const mark = { page: 1, x: 0.5, y: 0.5, body: "Перенести розетку" };
   const draft = await f.save([
     f.entry(general, "changes_requested", "Уточнить размер прохода"),
-    f.entry(pinned, "changes_requested", mark.body, [mark]),
+    f.entry(pinned, "changes_requested", "", [mark]),
     f.entry(both, "changes_requested", "Уточнить размещение мебели", [mark]),
   ]);
   const asStudio = () => f.api(f.route, null, f.admin);
@@ -170,6 +170,107 @@ test("submitted return text stays with its project, stage and version and appear
   assert.equal(updated.returnComments[0].versionId, general.currentVersion.id);
   assert.equal((await f.api(`/api/approval-center/projects/${f.p.id}/stages/${f.p.stages[1].id}`, null, f.admin)).materials.length, 0);
   await f.api(f.route, null, f.clients[1].cookie, "GET", 403);
+});
+test("two confirmed corrections on the returned file allow one new explicit approval and preserve the return", async (t) => {
+  const f = await setup(t, 2);
+  const [original, other] = (await f.state()).materials;
+  const markers = [
+    { page: 1, x: 0.22, y: 0.41, body: "Изменить ширину шкафа" },
+    { page: 1, x: 0.65, y: 0.78, body: "Уточнить положение розетки" },
+  ];
+  const returned = await f.submit((await f.save([
+    f.entry(original, "changes_requested", "Две поправки к плану", markers),
+  ])).revision);
+  const statementPath = `/api/approval-center/packages/${returned.packageId}`;
+  const firstStatement = await f.api(statementPath, null, f.client);
+  const material = async () => (await f.state()).materials.find(m => m.id === original.id);
+  const versionId = original.currentVersion.id;
+  const viewPath = `/api/approval-center/versions/${versionId}/view`;
+  const noteEvent = async (index, type, body, actor, status = 200) => {
+    const n = (await material()).notes[index];
+    return f.api(`/api/approval-center/notes/${n.id}/events`,
+      { type, body, expectedRevision: n.revision, versionId }, actor, "POST", status);
+  };
+  const awaitingFix = await material();
+  assert.deepEqual(awaitingFix.notes.map(({ page, x, y, body }) => ({ page, x, y, body })), markers);
+  assert.equal(awaitingFix.correctionApprovalRevision, null);
+  await noteEvent(0, "fixed", "Уточнена ширина", f.admin);
+  await noteEvent(1, "fixed", "Уточнено положение", f.admin);
+  await noteEvent(0, "confirmed", "Проверено", f.client, 409);
+  await f.api(viewPath, { page: 1 }, f.client);
+  await noteEvent(0, "confirmed", "Проверено", f.client);
+  assert.equal((await material()).canApproveAfterCorrection, false);
+  await noteEvent(1, "confirmed", "Согласна с исправлением", f.client);
+  const ready = await material();
+  assert.equal(ready.currentVersion.status, "changes_requested");
+  assert.equal(ready.canApproveAfterCorrection, true);
+  assert.ok(ready.correctionApprovalRevision > 0);
+  assert.equal(ready.currentVersion.file.review.correctionApprovalRevision, ready.correctionApprovalRevision);
+
+  // A previous decision cannot be reversed by an ordinary or bulk draft.
+  const ordinary = await f.save([f.entry(ready)]);
+  await f.submit(ordinary.revision, randomUUID(), 409);
+  const approval = { ...f.entry(ready), afterCorrection: ready.correctionApprovalRevision };
+  const individual = await f.save([approval]);
+  await f.submit(individual.revision, randomUUID(), 409);
+  await f.api(viewPath, { confirm: true }, f.client);
+  await noteEvent(1, "reopened", "Хочу ещё раз проверить", f.client);
+  assert.equal((await material()).canApproveAfterCorrection, false);
+  assert.equal((await f.state()).conflicts.length, 1);
+  await f.submit(individual.revision, randomUUID(), 409);
+
+  await noteEvent(1, "fixed", "Уточнение добавлено", f.admin);
+  await noteEvent(1, "confirmed", "Проверено ещё раз", f.client);
+  const updated = await material();
+  assert.ok(updated.correctionApprovalRevision > ready.correctionApprovalRevision);
+  await f.submit(individual.revision, randomUUID(), 409);
+  assert.equal(f.rows("SELECT COUNT(*) AS n FROM approval_packages")[0].n, 1);
+  await f.restart();
+  assert.equal((await f.state()).draft.entries[0].afterCorrection, ready.correctionApprovalRevision);
+  const finalDraft = await f.save([{ ...approval, afterCorrection: updated.correctionApprovalRevision }]);
+  const operationId = randomUUID();
+  const sent = await f.submit(finalDraft.revision, operationId);
+  assert.equal((await f.submit(finalDraft.revision, operationId)).replayed, true);
+  assert.notEqual(sent.packageId, returned.packageId);
+  assert.deepEqual(await f.api(statementPath, null, f.client), firstStatement);
+  const after = await material();
+  assert.equal(after.currentVersion.status, "approved");
+  assert.equal(after.canApproveAfterCorrection, false);
+  assert.deepEqual(after.currentVersion.file.review.decisionHistory.map(e => e.type), ["changes_requested", "approved"]);
+  assert.equal(after.notes.length, 2);
+  const state = await f.state();
+  assert.equal(state.stage.acceptedSeparately, false);
+  assert.equal(state.materials.find(m => m.id === other.id).currentVersion.status, "pending_approval");
+});
+test("moving a returned file between stages keeps its history and scopes the new approval to its current stage", async (t) => {
+  const f = await setup(t);
+  const [original] = (await f.state()).materials;
+  const v = original.currentVersion;
+  const mark = { page: 1, x: 0.3, y: 0.5, body: "Уточнить размеры" };
+  const returned = await f.submit((await f.save([f.entry(original, "changes_requested", "", [mark])])).revision);
+  const nextStage = f.p.stages[1];
+  await f.api(`/api/projects/${f.p.id}/files/${v.file.id}`,
+    { stageId: nextStage.id, expectedStageId: f.s.id }, f.admin, "PATCH");
+  const nextRoute = `/api/approval-center/projects/${f.p.id}/stages/${nextStage.id}`;
+  const nextState = () => f.api(nextRoute, null, f.client);
+  assert.equal((await f.state()).materials.length, 0);
+  const [moved] = (await nextState()).materials;
+  const [note] = moved.notes;
+  const notePath = `/api/approval-center/notes/${note.id}/events`;
+  await f.api(notePath, { type: "fixed", body: "Размеры уточнены", versionId: v.id,
+    expectedRevision: note.revision }, f.admin);
+  await f.confirm(v);
+  await f.api(notePath, { type: "confirmed", body: "Проверено", versionId: v.id,
+    expectedRevision: note.revision + 1 }, f.client);
+  const ready = await nextState();
+  assert.equal(ready.materials[0].canApproveAfterCorrection, true);
+  const entries = [{ ...f.entry(ready.materials[0]), afterCorrection: ready.materials[0].correctionApprovalRevision }];
+  const draft = await f.api(nextRoute + "/draft", { expectedRevision: ready.draft.revision, entries, position: {} }, f.client, "PUT");
+  const accepted = await f.api(nextRoute + "/submit", { expectedRevision: draft.revision, operationId: randomUUID(), confirm: true }, f.client);
+  const statement = (id) => f.api(`/api/approval-center/packages/${id}`, null, f.client);
+  assert.equal((await statement(returned.packageId)).scope, f.s.id);
+  assert.equal((await statement(accepted.packageId)).scope, nextStage.id);
+  assert.equal((await nextState()).materials[0].currentVersion.status, "approved");
 });
 test("full 40 → 35 + 5 → corrections → confirmation → new versions → separate stage acceptance", async (t) => {
   const f = await setup(t, 40),

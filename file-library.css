@@ -44,7 +44,7 @@
   background: transparent;
   color: var(--muted);
   padding: 16px 0;
-  font-size: 13px;
+  font-size: var(--text-medium);
 }
 #app-view .library-categories button.is-active {
   color: var(--ink);
@@ -60,7 +60,7 @@
   border: 0;
   background: transparent;
   padding: 12px 0;
-  font-size: 13px;
+  font-size: 1rem;
   min-height: 48px;
 }
 #app-view .library-options {
@@ -79,7 +79,7 @@
   gap: 10px;
   cursor: pointer;
   min-height: 44px;
-  font-size: 12px;
+  font-size: var(--text-small);
   color: var(--copper);
   list-style: none;
 }
@@ -98,7 +98,7 @@
 }
 #app-view .library-filter-fields label {
   flex: 1 1 170px;
-  font-size: 11px;
+  font-size: var(--text-caption);
   min-width: 0;
 }
 #app-view .library-filter-fields select {
@@ -112,18 +112,18 @@
   border: 1px solid var(--line);
   min-height: 44px;
   padding: 10px 12px;
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 #app-view .library-sort {
   margin: 0;
 }
 #app-view #library-album-toggle {
   min-height: 44px;
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 #app-view .library-results-count {
   margin: 10px 0 28px;
-  font-size: 11px;
+  font-size: var(--text-caption);
   color: var(--muted);
   line-height: 1.7;
 }
@@ -139,12 +139,12 @@
 }
 #app-view .library-stage-heading h4 {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--text-medium);
   font-weight: 500;
   overflow-wrap: anywhere;
 }
 #app-view .library-stage-heading span {
-  font-size: 11px;
+  font-size: var(--text-caption);
   color: var(--muted);
 }
 #app-view .library-grid {
@@ -189,7 +189,7 @@
 }
 #app-view .library-material h3 {
   margin: 0 0 7px;
-  font-size: 14px;
+  font-size: 1rem;
   line-height: 1.6;
   font-weight: 600;
   display: -webkit-box;
@@ -200,14 +200,14 @@
 }
 #app-view .library-meta {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-small);
   line-height: 1.7;
   margin: 4px 0;
   overflow-wrap: anywhere;
 }
 #app-view .library-status {
   display: inline-block;
-  font-size: 11px;
+  font-size: var(--text-caption);
   line-height: 1.6;
   margin-top: 8px;
   color: var(--muted);
@@ -232,7 +232,7 @@
   color: var(--copper);
   border: 0;
   background: transparent;
-  font-size: 11px;
+  font-size: var(--text-caption);
   text-align: left;
 }
 #app-view .library-item-actions {
@@ -247,7 +247,7 @@
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  font-size: 12px;
+  font-size: var(--text-small);
   color: var(--copper);
   text-decoration: none;
 }
@@ -258,7 +258,7 @@
   display: flex;
   align-items: center;
   list-style: none;
-  font-size: 11px;
+  font-size: var(--text-caption);
   cursor: pointer;
 }
 #app-view .library-more-content {
@@ -274,7 +274,7 @@
 }
 #app-view .library-more-content button {
   display: block;
-  font-size: 12px;
+  font-size: var(--text-small);
   padding: 8px 0;
   min-height: 44px;
   width: 100%;
@@ -308,11 +308,11 @@
   padding: 5px;
   border: 1px solid var(--line);
   color: var(--copper);
-  font-size: 10px;
+  font-size: var(--text-caption);
   font-weight: 600;
 }
 #app-view .library-document h3 {
-  font-size: 14px;
+  font-size: 1rem;
   font-weight: 600;
   line-height: 1.6;
   margin: 0 0 5px;
@@ -326,7 +326,7 @@
 #app-view .library-document-open {
   background: none;
   border: 0;
-  font-size: 12px;
+  font-size: var(--text-small);
   min-height: 44px;
   padding: 8px 0;
   color: var(--ink);
@@ -362,7 +362,7 @@
 .library-dialog select,
 .library-dialog textarea {
   font-family: Manrope, Arial, sans-serif;
-  font-size: 14px;
+  font-size: 1rem;
   min-height: 44px;
   max-width: 100%;
   border-radius: 0;
@@ -409,11 +409,11 @@
 }
 .library-document-fields dt {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 .library-document-fields dd {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--text-medium);
   overflow-wrap: anywhere;
 }
 .library-detail-actions {
@@ -426,7 +426,7 @@
 }
 .library-dialog .file-delete {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--text-small);
   color: #934c3b;
 }
 .library-upload-dialog {
@@ -459,7 +459,7 @@
   border-style: dashed;
 }
 .library-upload-dialog label {
-  font-size: 12px;
+  font-size: var(--text-small);
   line-height: 1.5;
 }
 .library-upload-dialog .recovery-identity {
@@ -480,7 +480,7 @@
   background: transparent;
   padding: 12px 0;
   margin: 8px 0;
-  font-size: 12px;
+  font-size: var(--text-small);
   overflow-wrap: anywhere;
 }
 .library-upload-dialog .upload-recipient p {
@@ -497,7 +497,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 .library-upload-dialog .upload-document-head strong {
   flex: 1 1 100%;
@@ -521,13 +521,13 @@
 }
 .library-upload-dialog #upload-batch-status {
   color: var(--copper);
-  font-size: 12px;
+  font-size: var(--text-small);
   line-height: 1.7;
   overflow-wrap: anywhere;
 }
 .library-upload-dialog #library-upload-message {
   color: #934c3b;
-  font-size: 12px;
+  font-size: var(--text-small);
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
@@ -568,11 +568,11 @@ body[data-section="files"] #project-heading .project-actions {
   }
   #app-view .library-heading .primary {
     min-height: 44px;
-    font-size: 12px;
+    font-size: var(--text-small);
     padding: 10px 16px;
   }
   #app-view .library-heading .muted {
-    font-size: 12px;
+    font-size: var(--text-small);
   }
   #app-view .library-categories {
     width: 100%;
@@ -580,7 +580,7 @@ body[data-section="files"] #project-heading .project-actions {
     gap: 12px;
   }
   #app-view .library-categories button {
-    font-size: 12px;
+    font-size: var(--text-small);
   }
   #app-view .library-search input,
   #app-view .library-options select {
@@ -606,18 +606,18 @@ body[data-section="files"] #project-heading .project-actions {
     width: 100%;
   }
   #app-view #library-album-toggle {
-    font-size: 11px;
+    font-size: var(--text-caption);
   }
   #app-view .library-grid {
     gap: 24px 16px;
   }
   #app-view .library-material h3 {
-    font-size: 13px;
+    font-size: var(--text-medium);
   }
   #app-view .library-material .library-format-cover {
     flex-direction: column;
     gap: 8px;
-    font-size: 11px;
+    font-size: var(--text-caption);
   }
   #app-view .library-item-actions {
     gap: 6px;
@@ -633,7 +633,7 @@ body[data-section="files"] #project-heading .project-actions {
   #app-view .library-file-type {
     min-width: 36px;
     height: 48px;
-    font-size: 9px;
+    font-size: var(--text-caption);
   }
   #app-view .library-document-actions {
     grid-column: 2;
@@ -641,7 +641,7 @@ body[data-section="files"] #project-heading .project-actions {
     justify-content: flex-start;
   }
   #app-view .library-document h3 {
-    font-size: 14px;
+    font-size: 1rem;
   }
   .library-dialog {
     padding: 20px;
@@ -657,7 +657,7 @@ body[data-section="files"] #project-heading .project-actions {
   }
   .library-dialog-heading button {
     padding: 8px;
-    font-size: 12px;
+    font-size: var(--text-small);
   }
   .library-dialog input,
   .library-dialog select {
@@ -769,7 +769,7 @@ body[data-section="files"] #project-navigation {
   align-items: center;
   cursor: pointer;
   color: var(--copper);
-  font-size: 12px;
+  font-size: var(--text-small);
   gap: 8px;
 }
 .library-upload-dialog .upload-document-requisites summary::before {

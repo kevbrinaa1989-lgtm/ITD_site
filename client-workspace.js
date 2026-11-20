@@ -29,7 +29,8 @@
     });
   }
   const waitingForDecision = (item) =>
-    window.ITDUI.active(item.project) && item.status === "pending_approval";
+    window.ITDUI.active(item.project) &&
+    (item.status === "pending_approval" || item.file.review.canApproveAfterCorrection);
   const sentDecision = (file) => file.review.lastDecision;
   function previousReturn(item) {
     const previous = item.versions.find((f) =>
@@ -122,8 +123,11 @@
     const history = reviewView === "history";
     const decision = history ? sentDecision(file) : file.review.status;
     const original = decision === "pending_approval" ? previousReturn(item) : null;
+    const ready = !history && file.review.canApproveAfterCorrection;
+    const events = history ? file.review.decisionHistory || [] : [];
     let state;
-    if (decision === "changes_requested") state = "Отправлено на доработку";
+    if (ready) state = "Исправления приняты · Можно согласовать";
+    else if (decision === "changes_requested") state = "Отправлено на доработку";
     else if (decision === "approved")
       state = file.review.status === "pending_approval" ? "Согласование отменено" : "Согласовано";
     else state = original ? "Исправления готовы к проверке" : "Ожидает решения";
@@ -131,12 +135,22 @@
       node("p", [item.project.title, item.stage?.title || "Без этапа",
         item.project.status === "Архив" ? "Архив" : ""].filter(Boolean).join(" · "), "client-decision-context"),
       node("h3", item.title),
-      node("p", `Версия ${file.review.versionNumber} · ${state}`, "client-decision-state"),
+      node("p", events.length > 1 ? `Версия ${file.review.versionNumber}` :
+        `Версия ${file.review.versionNumber} · ${state}`, "client-decision-state"),
     );
+    if (events.length > 1) {
+      const list = node("ol", undefined, "client-decision-state");
+      list.setAttribute("aria-label", `История решений по версии ${file.review.versionNumber}`);
+      const labels = { changes_requested: "Отправлено на доработку", approved: "Согласовано",
+        approval_cancelled: "Согласование отменено" };
+      for (const event of events) list.append(node("li", `${labels[event.type]} · ${date(event.createdAt)}`));
+      copy.append(list);
+    }
     card.dataset.materialId = file.review.materialId;
     card.dataset.versionId = file.review.versionId;
     if (decision === "changes_requested") {
       const next = item.versions.find((v) => v.review.versionNumber === file.review.versionNumber + 1);
+      if (ready) actions.append(materialButton(item, file, "Перейти к согласованию", "viewer"));
       actions.append(materialButton(item, file, next ?
         `Исходное замечание · версия ${file.review.versionNumber}` : "Открыть замечания", "notes"));
       if (next) {
@@ -162,9 +176,11 @@
     copy.append(node("p", "Ждёт вашего решения", "client-next-label"),
       node("h2", item.title),
       node("p", `${item.stage?.title || "Без этапа"} · Версия ${item.file.review.versionNumber}`, "client-decision-context"));
-    const corrected = !!previousReturn(item);
+    const ready = item.file.review.canApproveAfterCorrection;
+    const corrected = !ready && previousReturn(item);
     section.append(copy, materialButton(item, item.file,
-      corrected ? "Проверить исправления" : "Посмотреть и решить", corrected ? "notes" : "viewer", "primary"));
+      ready ? "Перейти к согласованию" : corrected ? "Проверить исправления" : "Посмотреть и решить",
+      corrected ? "notes" : "viewer", "primary"));
     return section;
   }
   function heading(host, title, subtitle) {
@@ -389,22 +405,21 @@
   }
   function onTab(tab) {
     if (!client()) return;
-    const entering = lastTab !== tab;
+    const previousTab = lastTab;
     lastTab = tab;
     if (tab === "client-home") {
       renderHome();
       loadNotifications();
     }
     if (tab === "client-projects") renderProjects();
-    if (tab === "client-review") {
-      renderReview();
-      if (entering) {
-        const generation = epoch, user = hooks.getUser();
-        hooks.refresh().catch((error) => {
-          if (lastTab === tab && valid(generation, user))
-            hooks.message(error.message || "Не удалось обновить решения.", true);
-        });
-      }
+    if (tab === "client-review") renderReview();
+    const returningHome = tab === "client-home" && previousTab !== null;
+    if (previousTab !== tab && (tab === "client-review" || returningHome)) {
+      const generation = epoch, user = hooks.getUser();
+      hooks.refresh().catch((error) => {
+        if (lastTab === tab && valid(generation, user))
+          hooks.message(error.message || "Не удалось обновить решения.", true);
+      });
     }
     if (tab === "profile") fillProfile();
   }

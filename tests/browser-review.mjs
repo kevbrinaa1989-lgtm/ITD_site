@@ -8,3 +8,5 @@ await import("./browser-approval-round.mjs");
 await import("./browser-approval-layout.mjs");
 await import("./browser-approval-decisions.mjs");
 await import("./browser-approval-feedback.mjs");
+await import("./browser-approval-marks.mjs");
+await import("./browser-approval-draft-compat.mjs");
