@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { ownershipFixture } from "./ownership-fixture.mjs";
 import { seedApprovalDemo } from "./approval-demo.mjs";
 import { openProject } from "./browser-navigation.mjs";
-import { button, queue, saved, summary } from "./approval-navigation.mjs";
+import { button, closeNotes, editDraftRemark, queue, saved, summary } from "./approval-navigation.mjs";
 const { chromium } = await import(
   process.env.ITD_PLAYWRIGHT_MODULE || "playwright"
 );
@@ -188,13 +188,14 @@ try {
   await saved(mobile);
   await mobile.reload();
   await enter(mobile);
-  await button(mobile, "Нужны правки").click();
+  await editDraftRemark(mobile, "Уточнить ширину дверного проёма");
   assert.equal(
     await dialog.getByLabel("Текст замечания").inputValue(),
     "Уточнить ширину дверного проёма",
   );
   await button(dialog, "Переместить отметку · стр. 2").waitFor();
   await button(dialog, "Закрыть").click();
+  await closeNotes(mobile);
   await summary(mobile);
   assert.equal(await dialog.locator("article").count(), 3);
   await button(dialog, "Изменить").first().click();

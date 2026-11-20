@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { ownershipFixture } from "./ownership-fixture.mjs";
 import { drawing } from "./approval-demo.mjs";
 import { openProject, openGlobal } from "./browser-navigation.mjs";
-import { button, closeNotes, notes, saved, summary } from "./approval-navigation.mjs";
+import { button, closeNotes, editDraftRemark, notes, saved, summary } from "./approval-navigation.mjs";
 
 const { chromium } = await import(process.env.ITD_PLAYWRIGHT_MODULE || "playwright");
 const f = await ownershipFixture();
@@ -36,6 +36,8 @@ try {
   async function enter() {
     await openProject(page, project.id, { client: true });
     await page.locator("#tab-review").click();
+    await sheet.locator("canvas").waitFor({ state: "attached" });
+    await closeNotes(page);
     await sheet.locator("canvas").waitFor();
   }
   async function send() {
@@ -47,7 +49,7 @@ try {
   await page.locator("#login-password").fill(f.password);
   await page.locator("#login-form .primary").click();
   await enter();
-  await button(page, "Нужны правки").click();
+  await editDraftRemark(page, oldText);
   await button(dialog, "Переместить отметку · стр. 2").waitFor();
   assert.equal(await field.inputValue(), oldText);
   await field.fill(correctedText);

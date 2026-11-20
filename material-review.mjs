@@ -578,6 +578,8 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
             (b.comment || "").trim(),
             "admin",
           );
+          if (b.comment?.trim())
+            run("INSERT INTO approval_general_remarks(eventId) VALUES(?)", eventId);
         } else {
           strict(b, ["reason", "confirm", "expectedRevision"], fail);
           if (b.confirm !== true || !validText(b.reason))

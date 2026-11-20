@@ -13,9 +13,16 @@ export async function action(page, name) {
 }
 export async function notes(page) {
   if (await page.locator(".ac-rail").isVisible()) return;
-  if (await page.locator(".ac-compare").isVisible())
+  const remarks = page.locator(".ac-view-heading .ac-remarks-link");
+  if (await remarks.isVisible()) await remarks.click();
+  else if (await page.locator(".ac-compare").isVisible())
     await button(page.locator(".ac-footer"), "Замечания и история").click();
   else await action(page, "Замечания и история");
+}
+export async function editDraftRemark(page, text) {
+  await notes(page);
+  const card = page.locator(".ac-rail .ac-draft-note").filter({ has: page.getByText(text, { exact: true }) });
+  await button(card, "Изменить").click();
 }
 export async function closeNotes(page) {
   if (await page.locator(".ac-rail").isVisible())

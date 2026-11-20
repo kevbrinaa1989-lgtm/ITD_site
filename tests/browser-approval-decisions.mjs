@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { ownershipFixture } from "./ownership-fixture.mjs";
 import { drawing, seedApprovalDemo } from "./approval-demo.mjs";
 import { openProject, openFiles } from "./browser-navigation.mjs";
-import { button, markForRevision, menu, notes, saved, summary } from "./approval-navigation.mjs";
+import { button, closeNotes, editDraftRemark, markForRevision, menu, notes, saved, summary } from "./approval-navigation.mjs";
 
 const { chromium } = await import(process.env.ITD_PLAYWRIGHT_MODULE || "playwright");
 const f = await ownershipFixture();
@@ -50,6 +50,11 @@ try {
   const search = page => page.getByRole("searchbox", { name: "Найти материал" });
   const countChecked = page => page.locator(".ac-material input:checked").count();
   const approval = page => button(page, "Согласовать и далее");
+  const saveChanges = page => button(page.locator(".ac-footer"), "Сохранить правки и далее");
+  async function approveWithRemarks(page) {
+    await notes(page);
+    await button(page.locator(".ac-rail"), "Согласовать с замечаниями").click();
+  }
   const missing = "Чтобы согласовать материал, просмотрите все страницы. Просмотрено 2 из 5. Осталось 3";
 
   const client = await login();
@@ -103,7 +108,9 @@ try {
   await dialog(client).getByLabel("Текст замечания").fill("Проверить размер на листе 2");
   await button(dialog(client), "Закрыть").click();
   await saved(client);
-  await approval(client).click();
+  await saveChanges(client).waitFor();
+  assert.equal(await approval(client).count(), 0);
+  await approveWithRemarks(client);
   await client.locator(".ac-footer").getByText(missing, { exact: true }).waitFor();
   await shot(client, "approval-missing-pages");
   let s = await state();
@@ -116,10 +123,10 @@ try {
   const mobilePage = await login(false, phone);
   await center(mobilePage);
   await mobilePage.getByText("Страница 5 из 5", { exact: true }).waitFor();
-  await approval(mobilePage).click();
+  await approveWithRemarks(mobilePage);
   const feedback = mobilePage.locator(".ac-view-feedback");
   await feedback.getByText(missing, { exact: true }).waitFor();
-  const warningBox = await feedback.boundingBox(), actionBox = await approval(mobilePage).boundingBox();
+  const warningBox = await feedback.boundingBox(), actionBox = await saveChanges(mobilePage).boundingBox();
   assert.ok(warningBox.y >= 0 && warningBox.y + warningBox.height <= actionBox.y && actionBox.y + actionBox.height <= 844);
   await shot(mobilePage, "approval-missing-mobile");
   await saved(mobilePage);
@@ -131,9 +138,10 @@ try {
   }
   await client.getByText("Все страницы просмотрены", { exact: true }).waitFor();
   assert.equal(await client.locator(".ac-view-feedback").count(), 0);
-  await button(client, "Нужны правки").click();
+  await editDraftRemark(client, "Проверить размер на листе 2");
   await dialog(client).getByLabel("Текст замечания").fill("");
   await button(dialog(client), "Закрыть").click();
+  await closeNotes(client);
   await approval(client).click();
   await heading(client, returned);
   assert.equal(draftOf(await state(), plan).decision, "approved");
@@ -144,7 +152,7 @@ try {
   await Promise.all([client.waitForEvent("dialog").then(async d => {
     assert.match(d.message(), new RegExp(returned.title));
     await d.dismiss();
-  }), approval(client).click()]);
+  }), approveWithRemarks(client)]);
   assert.equal(draftOf(await state(), returned).decision, "changes_requested");
   await view(client, textOnly);
   await button(client, "Нужны правки").click();
@@ -246,7 +254,8 @@ try {
   assert.ok(pdfText.includes(note));
 
   await view(client, returned);
-  await client.locator(".ac-footer").getByText("На доработку", { exact: true }).waitFor();
+  await row(client, returned).getByText("На доработку", { exact: true }).waitFor();
+  await button(client.locator(".ac-footer"), "Далее без решения").waitFor();
   await client.locator(".ac-pin").waitFor();
   await saved(client);
   await shot(client, "approval-returned-client");

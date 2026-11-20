@@ -171,6 +171,39 @@ test("submitted return text stays with its project, stage and version and appear
   assert.equal((await f.api(`/api/approval-center/projects/${f.p.id}/stages/${f.p.stages[1].id}`, null, f.admin)).materials.length, 0);
   await f.api(f.route, null, f.clients[1].cookie, "GET", 403);
 });
+test("published general remarks survive approval and keep intentionally matching pins", async (t) => {
+  const f = await setup(t, 3);
+  const [approved, separate, mirrored] = (await f.state()).materials;
+  const comment = "Размеры согласованы с учётом чистовой отделки.";
+  const mark = { page: 1, x: 0.25, y: 0.75, body: "Проверить зазор." };
+  await f.confirm(approved.currentVersion);
+  const draft = await f.save([
+    f.entry(approved, "approved", comment),
+    { ...f.entry(separate, "changes_requested", mark.body, [mark]), separateComment: true },
+    f.entry(mirrored, "changes_requested", mark.body, [mark]),
+  ]);
+  await f.submit(draft.revision);
+  await f.restart();
+  for (const user of [f.client, f.admin]) {
+    const { materials: [a, b, c] } = await f.api(f.route, null, user);
+    assert.deepEqual(a.returnComments.map(n => n.body), [comment]);
+    assert.deepEqual(b.returnComments.map(n => n.body), [mark.body]);
+    assert.deepEqual(b.notes.map(n => n.body), [mark.body]);
+    assert.deepEqual(c.returnComments, []);
+    assert.deepEqual(c.notes.map(n => n.body), [mark.body]);
+  }
+  await f.api(`/api/material-versions/${approved.currentVersion.id}/cancel`, {
+    confirm: true, reason: "Перепроверить план.", expectedRevision: (await f.state()).materials[0].currentVersion.revision,
+  }, f.admin);
+  const reopened = (await f.state()).materials[0];
+  const followup = await f.save([f.entry(reopened, null, "", [mark])]);
+  await f.submit(followup.revision);
+  await f.api(`/api/material-versions/${reopened.currentVersion.id}/decision`, {
+    decision: "approved", confirm: true, comment: mark.body, expectedRevision: reopened.currentVersion.revision,
+  }, f.client);
+  const material = (await f.state()).materials[0];
+  assert.deepEqual(material.returnComments.map(n => n.body), [mark.body, comment]);
+});
 test("two confirmed corrections on the returned file allow one new explicit approval and preserve the return", async (t) => {
   const f = await setup(t, 2);
   const [original, other] = (await f.state()).materials;

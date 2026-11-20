@@ -1,4 +1,4 @@
-import { button, closeNotes, menu, notes, queue, saved } from "./approval-navigation.mjs";
+import { button, closeNotes, editDraftRemark, menu, notes, queue, saved } from "./approval-navigation.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -149,6 +149,7 @@ try {
     headless: true,
     args: ["--no-sandbox"],
   });
+  let previousRemark = null;
   for (const width of (process.env.ITD_TEST_WIDTHS || "360,390,768,1024,1440")
     .split(",")
     .map(Number)) {
@@ -271,12 +272,13 @@ try {
       ),
     );
     await capture("approval");
-    const currentRemark = async () => {
+    const draftText = "Черновик: уточнить оттенок " + width;
+    const currentRemark = async (existingText = draftText) => {
       await closeNotes(page);
-      await button(page, "Нужны правки").click();
+      if (existingText) await editDraftRemark(page, existingText);
+      else await button(page, "Нужны правки").click();
       return page.getByRole("dialog").getByLabel("Текст замечания");
     };
-    const draftText = "Черновик: уточнить оттенок " + width;
     const failDraft = "**/api/approval-center/projects/*/stages/*/draft";
     await page.route(failDraft, (r) =>
       r.fulfill({
@@ -285,12 +287,13 @@ try {
         body: JSON.stringify({ error: "Временно недоступно" }),
       }),
     );
-    await (await currentRemark()).fill(draftText);
+    await (await currentRemark(previousRemark)).fill(draftText);
     await button(page.getByRole("dialog"), "Закрыть").click();
     await page.getByText("Не удалось сохранить", { exact: true }).waitFor();
     assert.equal(await (await currentRemark()).inputValue(), draftText);
     await button(page.getByRole("dialog"), "Закрыть").click();
     await page.unroute(failDraft);
+    await closeNotes(page);
     await button(page, "Повторить сохранение").click();
     await saved(page);
     await menu(page);
@@ -377,12 +380,13 @@ try {
     await page
       .getByText("Комментарии и история решений", { exact: true })
       .click();
-    await page.locator(".ac-draft-feedback").getByText(draftText, { exact: true }).waitFor();
+    await page.locator(".ac-notes .ac-draft-note").getByText(draftText, { exact: true }).waitFor();
     const sentComment = page.locator(".ac-history[open] .ac-history-event").filter({ hasText: draftText });
     await sentComment.getByText("Комментарий клиента", { exact: true }).waitFor();
     await sentComment.getByText(draftText, { exact: true }).waitFor();
     assert.deepEqual(errors, []);
     assert.deepEqual(external, []);
+    previousRemark = draftText;
     results.push({
       width,
       admin: true,

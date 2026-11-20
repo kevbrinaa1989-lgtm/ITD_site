@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { ownershipFixture } from "./ownership-fixture.mjs";
 import { drawing } from "./approval-demo.mjs";
 import { openGlobal, openProject } from "./browser-navigation.mjs";
-import { button, notes, saved, summary } from "./approval-navigation.mjs";
+import { button, editDraftRemark, notes, saved, summary } from "./approval-navigation.mjs";
 
 const { chromium } = await import(process.env.ITD_PLAYWRIGHT_MODULE || "playwright");
 const f = await ownershipFixture();
@@ -243,7 +243,7 @@ try {
   const large = await enter();
   await large.locator(`.ac-material[data-material-id="${target.id}"] .ac-material-open`).click();
   await large.locator(".ac-sheet canvas").waitFor();
-  await button(large, "Нужны правки").click();
+  await editDraftRemark(large, existing[0].body);
   const largeForm = large.getByRole("dialog");
   const add = button(largeForm, "Добавить ещё одну отметку");
   await add.click();
@@ -255,7 +255,7 @@ try {
   await saved(large);
   await notes(large);
   assert.ok(await button(large.locator(".ac-rail"), "Добавить ещё одну отметку").isDisabled());
-  await button(large.locator(".ac-rail"), "Черновик маркера 100 · стр. 1: Сотая отметка").click();
+  await editDraftRemark(large, "Сотая отметка");
   await largeForm.locator(".ac-composer-marks summary").click();
   await button(largeForm, "Убрать отметку").click();
   assert.ok(await add.isEnabled());

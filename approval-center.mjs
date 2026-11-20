@@ -35,6 +35,7 @@ export function initApprovalCenter({
     CREATE TABLE IF NOT EXISTS approval_view_confirmations(versionId INTEGER NOT NULL REFERENCES review_versions(id),userId INTEGER NOT NULL REFERENCES users(id),pageCount INTEGER NOT NULL,createdAt INTEGER NOT NULL,PRIMARY KEY(versionId,userId));
     CREATE TABLE IF NOT EXISTS approval_preview_metadata(versionId INTEGER PRIMARY KEY REFERENCES review_versions(id),pageCount INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS approval_packages(id INTEGER PRIMARY KEY,projectId INTEGER NOT NULL REFERENCES projects(id),scope INTEGER NOT NULL,userId INTEGER NOT NULL REFERENCES users(id),operationId TEXT NOT NULL,requestHash TEXT NOT NULL,roundNumber INTEGER NOT NULL,snapshot TEXT NOT NULL,createdAt INTEGER NOT NULL,UNIQUE(userId,operationId));
+    CREATE TABLE IF NOT EXISTS approval_general_remarks(eventId INTEGER PRIMARY KEY REFERENCES review_events(id));
     CREATE TABLE IF NOT EXISTS approval_notes(id INTEGER PRIMARY KEY,materialId INTEGER NOT NULL REFERENCES review_materials(id),versionId INTEGER NOT NULL REFERENCES review_versions(id),packageId INTEGER NOT NULL REFERENCES approval_packages(id),number INTEGER NOT NULL,page INTEGER NOT NULL,x REAL NOT NULL,y REAL NOT NULL,body TEXT NOT NULL,authorId INTEGER NOT NULL REFERENCES users(id),createdAt INTEGER NOT NULL,status TEXT NOT NULL DEFAULT 'open',revision INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS approval_note_events(id INTEGER PRIMARY KEY,noteId INTEGER NOT NULL REFERENCES approval_notes(id),actorId INTEGER NOT NULL REFERENCES users(id),type TEXT NOT NULL,body TEXT NOT NULL,versionId INTEGER REFERENCES review_versions(id),createdAt INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS approval_corrections(versionId INTEGER PRIMARY KEY REFERENCES review_versions(id),actorId INTEGER NOT NULL REFERENCES users(id),report TEXT NOT NULL,createdAt INTEGER NOT NULL);
@@ -49,6 +50,7 @@ export function initApprovalCenter({
   );
   for (const table of [
     "approval_packages",
+    "approval_general_remarks",
     "approval_note_events",
     "approval_corrections",
     "approval_stage_events",
@@ -114,15 +116,17 @@ export function initApprovalCenter({
   }
   function list(pid, scope, user) {
     const p = review.access(pid, user, fail);
-    const returns = all(
-      `SELECT e.id,e.materialId,e.versionId,v.versionNumber,e.body,e.createdAt,u.name AS authorName
+    const published = all(
+      `SELECT e.id,e.materialId,e.versionId,v.versionNumber,e.type,e.body,e.createdAt,u.name AS authorName,
+              g.eventId IS NOT NULL AS standalone
        FROM review_events e JOIN review_materials m ON m.id=e.materialId
        JOIN review_versions v ON v.id=e.versionId JOIN users u ON u.id=e.actorId
-       WHERE m.projectId=? AND m.stageId IS ? AND e.type='changes_requested'
+       LEFT JOIN approval_general_remarks g ON g.eventId=e.id
+       WHERE m.projectId=? AND m.stageId IS ? AND (e.type IN ('changes_requested','approved') OR g.eventId IS NOT NULL)
        AND length(trim(e.body))>0 ORDER BY e.id DESC`,
       pid, scope || null,
     );
-    const comments = Map.groupBy(returns, (r) => r.materialId);
+    const comments = Map.groupBy(published, (r) => r.materialId);
     return all(
       `SELECT m.id FROM review_materials m WHERE m.projectId=? AND m.stageId IS ?
        ORDER BY (SELECT v.fileId FROM review_versions v WHERE v.materialId=m.id
@@ -154,9 +158,9 @@ export function initApprovalCenter({
         };
       });
       const markers = notes(id);
-      // The composer can reuse the same sentence for the return and its pin.
+      // Older decisions could reuse the first pin as their reason for returning the material.
       const returnComments = (comments.get(id) || []).filter((c) =>
-        !markers.some((n) => n.versionId === c.versionId && n.body.trim() === c.body.trim()),
+        c.standalone || !markers.some((n) => n.versionId === c.versionId && n.body.trim() === c.body.trim()),
       );
       return {
         ...m,
@@ -816,6 +820,8 @@ export function initApprovalCenter({
           for (const e of entries) {
             const m = materials.find((m) => m.id === e.materialId),
               v = m.currentVersion;
+            const comment = e.comment.trim();
+            let eventId;
             if (e.decision) {
               run(
                 "UPDATE review_versions SET status=?,revision=revision+1,decisionAt=?,decisionBy=? WHERE id=?",
@@ -824,11 +830,13 @@ export function initApprovalCenter({
                 user.id,
                 v.id,
               );
-              const reason = e.decision === "changes_requested" && !e.comment.trim()
+              const reason = e.decision === "changes_requested" && !comment
                 ? e.markers[0].body : e.comment;
-              review.addEvent(m, v, user, e.decision, reason);
-            } else if (e.comment.trim())
-              review.addEvent(m, v, user, "comment", e.comment);
+              eventId = review.addEvent(m, v, user, e.decision, reason);
+            } else if (comment)
+              eventId = review.addEvent(m, v, user, "comment", e.comment);
+            if (comment && (e.separateComment || comment !== e.markers[0]?.body.trim()))
+              run("INSERT INTO approval_general_remarks(eventId) VALUES(?)", eventId);
             for (const n of e.markers) {
               const nid = Number(
                 run(

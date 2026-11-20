@@ -104,7 +104,7 @@ try {
 
   const customer = await enter(false, true);
   await openMaterial(customer, general);
-  await button(customer, "Открыть замечания").click();
+  await button(customer.locator(".ac-view-heading"), "Замечания · 1").click();
   await customer.locator(".ac-notes .ac-note-body").getByText(plain).waitFor();
   assert.equal(await button(customer, "Загрузить исправленную версию").count(), 0);
   await shot(customer, "feedback-client-mobile");
