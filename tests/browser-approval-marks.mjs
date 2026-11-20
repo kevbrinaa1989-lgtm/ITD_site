@@ -26,6 +26,7 @@ try {
     await openProject(page, project.id, { client: !studio });
     await page.locator("#tab-review").click();
     await page.locator(".ac-sheet canvas").waitFor();
+    await page.evaluate(() => document.fonts.ready);
   }
   async function enter(studio = false, mobile = false) {
     const ctx = await browser.newContext({ viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 900 },
@@ -61,6 +62,10 @@ try {
   ];
   async function putPoint(page, { x, y }, touch = false) {
     const canvas = page.locator(".ac-sheet");
+    // Opening the pin toolbar can resize the fitted sheet. Measure after the
+    // browser has painted the page and the target has stopped moving.
+    await canvas.locator("canvas").waitFor();
+    await canvas.click({ trial: true });
     const box = await canvas.boundingBox();
     const position = { x: box.width * x, y: box.height * y };
     if (touch) await canvas.tap({ position });
@@ -72,7 +77,8 @@ try {
     actual.forEach((actualMark, i) => {
       assert.equal(actualMark.page, marks[i].page);
       assert.equal(actualMark.body, marks[i].body);
-      assert.ok(Math.abs(actualMark.x - marks[i].x) < 0.01 && Math.abs(actualMark.y - marks[i].y) < 0.01);
+      assert.ok(Math.abs(actualMark.x - marks[i].x) < 0.01 && Math.abs(actualMark.y - marks[i].y) < 0.01,
+        `Pin ${i + 1} at ${actualMark.x}, ${actualMark.y}, expected ${marks[i].x}, ${marks[i].y}`);
     });
   }
   await button(author, "Нужны правки").click();
