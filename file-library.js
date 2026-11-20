@@ -35,12 +35,17 @@
     a.setAttribute("aria-label", `Скачать: ${file.name}`);
     return a;
   }
+  function reviewStatus(review) {
+    if (!review) return "Без согласования";
+    const studio = h.getUser()?.role === "admin";
+    if (review.canApproveAfterCorrection)
+      return studio ? "Ожидает согласования клиента" : "Можно согласовать";
+    if (review.status === "pending_approval" && review.versionNumber > 1)
+      return studio ? "Ожидает проверки клиента" : "Проверить исправления";
+    return labels[review.status] || "Без согласования";
+  }
   function badge(e) {
-    const b = node(
-      "span",
-      labels[e.status] || "Без согласования",
-      "library-status",
-    );
+    const b = node("span", reviewStatus(e.file.review), "library-status");
     b.dataset.status = e.status || "ordinary";
     return b;
   }
@@ -93,20 +98,16 @@
       .map((entry) => entry.file);
   }
   function material(e) {
-    const file = e.matchFile || e.file;
+    const file = e.file;
     let card;
     if (window.ITDViewer.image(e.file)) {
-      const historical = file.id !== e.file.id;
       card = window.ITDViewer.thumbnail(
-        e.file,
-        stageImages(e.file),
-        historical
-          ? {
-              onOpen: () => openReview(file),
-              label: `Открыть версию: ${e.title}`,
-            }
-          : { label: `Открыть фото: ${e.title}` },
+        file,
+        stageImages(file),
+        { label: `Открыть фото: ${e.title}` },
       );
+      if (e.versions.some((version) => version.contentType === "application/pdf"))
+        card.classList.add("library-plan-preview");
       card.querySelector(".gallery-caption").remove();
     } else {
       card = node("article", undefined, "gallery-card");
@@ -117,7 +118,9 @@
           : button("", () => documentDetail(e));
       open.className = "gallery-open library-format-cover";
       open.setAttribute("aria-label", `Открыть материал: ${e.title}`);
-      open.append(fileType(e), node("span", "Материал проекта"));
+      open.append(e.file.contentType === "application/pdf"
+        ? window.ITDApprovalThumbnails.mount(e.file, { width: 480, height: 360 })
+        : fileType(e));
       card.append(open);
     }
     card.classList.add("library-material");
@@ -133,12 +136,12 @@
       ),
       badge(e),
     );
-    if (!e.file.review) copy.append(meta(e.file.name));
+    if (!e.file.review || e.versions.length > 1) copy.append(meta(e.file.name));
     if (e.file.review)
       copy.append(
         button(
           e.versions.length > 1
-            ? `${e.versions.length} версии · комментарии и согласование`
+            ? `Версии · ${e.versions.length} · комментарии и согласование`
             : "Комментарии и согласование",
           () => openReview(file),
           "library-history",
@@ -146,8 +149,10 @@
       );
     if (e.matchFile && e.matchFile.id !== e.file.id)
       copy.append(
-        meta(
-          `Найдено в версии ${e.matchFile.review.versionNumber}: ${e.matchFile.name}`,
+        button(
+          `Открыть архивную версию ${e.matchFile.review.versionNumber} · ${e.matchFile.name}`,
+          () => openReview(e.matchFile),
+          "library-archive-match",
         ),
       );
     copy.append(actions(e));
@@ -255,29 +260,27 @@
     const imageCount = materials.filter((e) =>
       window.ITDViewer.image(e.file),
     ).length;
+    const showAlbum = album && imageCount > 0;
+    const chosenStage = project.stages.find((stage) => String(stage.id) === s.stage);
+    const categoryNames = { all: "Файлы", document: "Документы", result: "Материалы" };
+    const sectionName = showAlbum ? "Альбом" : categoryNames[s.category];
+    const stageTitle = chosenStage && `${sectionName} этапа «${chosenStage.title}»`;
     $("library-album-toggle").hidden = !imageCount;
-    $("library-album-toggle").textContent = album
-      ? "← К библиотеке"
-      : "Смотреть альбом";
+    let returnLabel = `К списку файлов · ${items.length}`;
+    if (s.query || s.type) returnLabel = `К результатам поиска · ${items.length}`;
+    else if (s.category === "result")
+      returnLabel = `${chosenStage ? "Все материалы этапа" : "Все материалы без этапа"} · ${items.length}`;
+    $("library-album-toggle").textContent = showAlbum ? returnLabel : `Смотреть альбом · ${imageCount}`;
     $("library-upload").hidden = h.getUser()?.role !== "admin";
-    const chosenStage = project.stages.find(
-      (stage) => String(stage.id) === s.stage,
-    );
-    $("library-title").textContent = chosenStage
-      ? `${album && imageCount ? "Альбом" : s.category === "result" ? "Материалы" : s.category === "document" ? "Документы" : "Файлы"} этапа «${chosenStage.title}»`
-      : "Файлы проекта";
+    $("library-title").textContent = stageTitle || (showAlbum ? "Альбом материалов без этапа" : "Файлы проекта");
     $("library-back").hidden = !chosenStage;
-    $("library-count").textContent =
-      s.category === "all" && s.stage === "unassigned"
-        ? `Файлы без этапа · ${items.length}`
-        : s.category === "document" && s.stage === "unassigned"
-          ? `Документы без этапа · ${items.length}`
-          : s.category === "document" && chosenStage
-            ? `Документы этапа «${chosenStage.title}» · ${items.length}`
-            : s.category === "result" && chosenStage
-              ? `Материалы этапа «${chosenStage.title}» · ${items.length}`
-              : `Материалов: ${all.filter((e) => !e.document).length} · Документов: ${all.filter((e) => e.document).length}`;
-    $("library-results-count").textContent =
+    const count = $("library-count");
+    if (showAlbum) count.textContent = `Изображений в альбоме · ${imageCount}`;
+    else if (s.stage === "unassigned") count.textContent = `${sectionName} без этапа · ${items.length}`;
+    else if (s.category !== "all") count.textContent = `${stageTitle} · ${items.length}`;
+    else count.textContent = `Материалов: ${all.filter((e) => !e.document).length} · Документов: ${all.filter((e) => e.document).length}`;
+    $("library-results-count").hidden = showAlbum;
+    $("library-results-count").textContent = showAlbum ? "" :
       `Найдено: ${items.length}${all.some((e) => e.versions.length > 1) ? " · Предыдущие версии — в истории материалов" : ""}`;
     for (const b of document.querySelectorAll("[data-library-category]")) {
       const selected = b.dataset.libraryCategory === s.category;
@@ -293,8 +296,7 @@
       $(id).value = s[key];
     $("library-filters").open ||= !!s.type;
     const list = $("library-content");
-    window.ITDViewer.releaseWithin(list);
-    list.replaceChildren();
+    clearMaterialCards();
     $("library-empty").hidden = items.length > 0;
     $("library-empty-text").textContent = all.length
       ? "По этим условиям файлы не найдены. Измените поиск или сбросьте фильтры."
@@ -302,12 +304,12 @@
         ? "Загрузите первые материалы или документы проекта."
         : "Здесь появятся материалы и документы, опубликованные студией.";
     $("library-reset").hidden = !all.length;
-    if (album && imageCount) {
+    if (showAlbum) {
       list.hidden = true;
       window.ITDGallery.render({
         ...project,
         files: materials.map((e) => e.file),
-      });
+      }, reviewStatus);
       $("project-gallery").hidden = false;
       return;
     }
@@ -353,6 +355,12 @@
       list.append(section);
     }
   }
+  function clearMaterialCards() {
+    const list = $("library-content");
+    window.ITDViewer.releaseWithin(list);
+    window.ITDApprovalThumbnails.clear(list);
+    list.replaceChildren();
+  }
   function setProject(next) {
     const changed = project?.id !== next?.id;
     project = next;
@@ -372,8 +380,8 @@
     if (!project) {
       scopeEpoch++;
       scopeFiles = null;
-      window.ITDViewer.releaseWithin($("library-content"));
-      $("library-content").replaceChildren();
+      clearMaterialCards();
+      window.ITDViewer.releaseWithin($("project-gallery"));
       $("project-gallery").replaceChildren();
       return;
     }
@@ -580,6 +588,7 @@
     },
     reset: () => {
       closeDocument();
+      clearMaterialCards();
       $("library-document-detail").replaceChildren();
       $("library-edit-form").reset();
       $("library-edit-form").onsubmit = null;

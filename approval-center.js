@@ -67,9 +67,11 @@
     operation = null,
     active = false,
     pendingOpen = null,
+    waitingVersionChoice = null,
     localKey = null,
     returnToLibrary = null;
   const historyByMaterial = new Map();
+  const pendingVersionReads = new Map();
   const admin = () => hooks?.getUser()?.role === "admin";
   function newOperationId() {
     if (crypto.randomUUID) return crypto.randomUUID();
@@ -89,6 +91,17 @@
   const current = () => data?.materials.find((m) => m.id === mid);
   const version = () =>
     current()?.versions.find((v) => v.id === vid) || current()?.currentVersion;
+  const correctionStatus = () => admin() ? "Ожидает проверки клиента" : "Проверить исправления";
+  const materialStatus = (m) => {
+    if (m.canApproveAfterCorrection) return admin() ? "Ожидает согласования клиента" : "Можно согласовать";
+    const v = m.currentVersion;
+    return v.status === "pending_approval" && v.versionNumber > 1 ? correctionStatus() : labels[v.status];
+  };
+  const fileFormat = (file) => {
+    const type = file.contentType || file.type || "";
+    return type === "application/pdf" ? "PDF" : type === "image/jpeg" ? "JPG"
+      : file.name.match(/\.([^.]+)$/)?.[1].toUpperCase() || type.split("/")[1]?.toUpperCase() || "Файл";
+  };
   const say = (s) => {
     if (notice) notice.textContent = s;
   };
@@ -281,6 +294,9 @@
   }
   function reset() {
     historyByMaterial.clear();
+    pendingVersionReads.clear();
+    waitingVersionChoice = null;
+    for (const dialog of document.querySelectorAll("dialog.ac-dialog[open]")) dialog.close();
     lastViewContext = incompleteVersion = confirmationError = null;
     window.ITDApprovalThumbnails?.clear(root || document.createElement("div"));
     window.ITDApprovalViewer.clearPrefetch();
@@ -425,7 +441,7 @@
           ["draft", "К отправке"],
           ["approved", "Согласованы"],
           ["changes_requested", "На доработке"],
-          ["new", "Проверить исправления"],
+          ["new", correctionStatus()],
           ["notes", "С замечаниями"],
           ["fixed", "Исправлено дизайнером"],
           ["open", "Открытые замечания"],
@@ -604,8 +620,14 @@
     let result;
     try {
       result = await hooks.api(route(s));
+      if (target?.requireMaterial && !result.materials.some((m) => m.id === target.mid))
+        throw Error("Материал перемещён или больше недоступен в этом этапе.");
     } catch (error) {
-      if (scopeRequest === generation && (!changing || root?.dataset.openingStage === String(s))) {
+      if (active && project?.id === pid && scopeRequest === generation && (!changing || root?.dataset.openingStage === String(s))) {
+        if (error.status === 403) {
+          await hooks.leaveRestrictedProject(pid);
+          return;
+        }
         finishScope(s, data ? scope : s);
         if (data) await showMaterial(mid, vid);
         else
@@ -656,10 +678,20 @@
     } catch {}
     data.materials.forEach((m) => {
       m.currentVersion = m.versions.find((v) => v.id === m.currentVersion.id);
+      const pending = pendingVersionReads.get(m.id);
+      if (pending && m.versions.some((v) => v.id === pending.versionId)) pendingVersionReads.delete(m.id);
     });
     mid =
       target?.mid || data.draft.position.materialId || data.materials[0]?.id;
-    vid = target?.mid ? target.vid : data.draft.position.versionId;
+    vid = target?.mid ? target.vid : undefined;
+    if (!target?.mid && !admin() && current() && data.draft.position.versionId) {
+      // An older saved page may have been current before the studio uploaded a replacement.
+      const positionVersion = data.draft.position.versionId;
+      try {
+        if (sessionStorage.getItem(localKey + ":archive") === `${mid}/${positionVersion}/${current().currentVersion.id}`)
+          vid = positionVersion;
+      } catch {}
+    }
     if (!data.materials.some((m) => m.id === mid)) {
       mid = data.materials[0]?.id;
       vid = null;
@@ -673,7 +705,7 @@
     const viewContext = target?.panel === "notes" && target.mid === mid
       ? { ...context, panel: "notes" }
       : context;
-    await showMaterial(mid, vid, viewContext);
+    const shown = await showMaterial(mid, vid, viewContext);
     if (generation !== epoch) return;
     if (context && active) {
       if (context.versionId === vid) {
@@ -713,6 +745,7 @@
         "Есть черновики по изменённым версиям. Откройте замечания и проверьте новую версию.",
       );
     updateFooter();
+    return shown;
   }
   const visible = () =>
     !data
@@ -727,7 +760,7 @@
                 .toLocaleLowerCase("ru-RU")
                 .includes(query)) &&
             (filter === "all" ||
-              ((filter === v.status || (filter === "pending_approval" && m.canApproveAfterCorrection)) &&
+              (filter === (m.canApproveAfterCorrection ? "pending_approval" : v.status) &&
                 (filter !== "pending_approval" ||
                   !d?.decision ||
                   data.conflicts.includes(m.id))) ||
@@ -754,7 +787,7 @@
     if (!admin()) packageButton.textContent = `К отправке · ${count}`;
     const progress = admin()
       ? data.materials.filter(
-          (m) => m.currentVersion.status !== "pending_approval",
+          (m) => m.currentVersion.status !== "pending_approval" && !m.canApproveAfterCorrection,
         ).length
       : count;
     summaryHost.textContent = `${admin() ? "Решений получено" : "Подготовлено"} ${progress} из ${total}`;
@@ -839,19 +872,17 @@
         ? "Проверьте новую версию"
         : draft?.decision
           ? draftLabels[draft.decision]
-          : m.canApproveAfterCorrection
-            ? "Можно согласовать"
-            : v.status === "pending_approval" && v.versionNumber > 1
-            ? "Проверить исправления"
-            : labels[v.status];
+          : materialStatus(m);
       if (listHost.children[i] !== row)
         listHost.insertBefore(row, listHost.children[i] || null);
     }
     if (!materials.length)
       listHost.append(el("p", "Материалов в этой выборке нет."));
+    updateNavigation(viewHost, materials);
   }
   async function showMaterial(id, requested, context) {
     if (busy) return false;
+    waitingVersionChoice = null;
     if (!id) {
       panel("viewer");
       viewHost.replaceChildren(
@@ -870,11 +901,28 @@
     }
     const m = data?.materials.find(item => item.id === id);
     if (!m) return false;
+    const unread = pendingVersionReads.get(id);
+    if (unread && !m.versions.some((v) => v.id === unread.versionId)) {
+      const choice = waitingVersionChoice = { id }, generation = epoch;
+      try {
+        if (!await retryVersionRead(unread) || waitingVersionChoice !== choice || epoch !== generation || !active)
+          return false;
+      } finally {
+        if (waitingVersionChoice === choice) waitingVersionChoice = null;
+      }
+      return showMaterial(id, requested, context);
+    }
     pinRequest = advanceAfterSave = null;
     incompleteVersion = confirmationError = null;
-    say("");
+    say(context?.notice || "");
     mid = id;
     vid = m.versions.find((v) => v.id === requested)?.id || m.currentVersion.id;
+    if (!admin()) {
+      try {
+        if (vid === m.currentVersion.id) sessionStorage.removeItem(localKey + ":archive");
+        else sessionStorage.setItem(localKey + ":archive", `${mid}/${vid}/${m.currentVersion.id}`);
+      } catch {}
+    }
     const seq = ++openSeq;
     const work = root.querySelector(".ac-work");
     const displayed = () => seq === openSeq && current() === m && active &&
@@ -888,25 +936,37 @@
       heading = el("div", undefined, "ac-view-heading"),
       title = el("div", undefined, "ac-title"),
       nav = el("div", undefined, "ac-material-nav");
-    const format =
-      v.file.contentType === "application/pdf"
-        ? "PDF"
-        : v.file.name.split(".").pop().toUpperCase();
     const meta = el(
       "p",
-      `Материал ${data.materials.indexOf(m) + 1} из ${data.materials.length} · ${format} · v${v.versionNumber}`,
+      `Материал ${data.materials.indexOf(m) + 1} из ${data.materials.length} · ${fileFormat(v.file)} · v${v.versionNumber}`,
     );
     meta.title = v.file.name;
+    const download = el("a", "Скачать оригинал");
+    download.href = `/api/files/${v.file.id}/download`;
+    download.download = v.file.name;
+    if (m.versions.length > 1) {
+      const fileLink = download.cloneNode(true);
+      fileLink.textContent = "Скачать файл этой версии";
+      fileLink.id = "ac-version-download";
+      fileLink.hidden = true;
+      const filename = button(v.file.name, () => {
+        fileLink.hidden = !fileLink.hidden;
+        filename.setAttribute("aria-expanded", String(!fileLink.hidden));
+      }, "ac-version-filename");
+      filename.setAttribute("aria-expanded", "false");
+      filename.setAttribute("aria-controls", fileLink.id);
+      filename.setAttribute("aria-label", `Полное имя файла: ${v.file.name}`);
+      filename.title = v.file.name;
+      meta.append(filename, fileLink);
+    }
     title.append(el("h3", displayTitle(m)), meta);
     const mobile = button("Материалы", () => panel("list"), "ac-mobile-queue");
     mobile.setAttribute("aria-label", "Материалы");
     title.prepend(mobile);
     const prev = iconButton("Предыдущий материал", "‹", () => navigate(-1)),
-      next = iconButton("Следующий материал", "›", () => navigate(1)),
-      items = visible(),
-      index = items.findIndex((x) => x.id === mid);
-    prev.disabled = index <= 0;
-    next.disabled = index < 0 || index >= items.length - 1;
+      next = iconButton("Следующий материал", "›", () => navigate(1));
+    prev.dataset.materialStep = "-1";
+    next.dataset.materialStep = "1";
     const menu = el("details", undefined, "ac-menu"),
       trigger = el("summary", "•••"),
       tools = el("div", undefined, "ac-menu-items");
@@ -917,9 +977,6 @@
       back.dataset.libraryReturn = "true";
       title.prepend(back);
     }
-    const download = el("a", "Скачать оригинал");
-    download.href = `/api/files/${v.file.id}/download`;
-    download.download = v.file.name;
     tools.append(
       button("Замечания и история", () => panel("notes")),
       download,
@@ -955,6 +1012,7 @@
     menu.append(trigger, tools);
     if (!admin()) nav.append(notesButton(`Замечания · ${feedbackFor(m, v).count}`, "ac-remarks-link"));
     nav.append(prev, next, menu);
+    updateNavigation(nav, visible());
     heading.append(title, nav);
     viewHost.append(heading);
     const selectedRow = listHost.querySelector(".is-selected");
@@ -1020,9 +1078,7 @@
     if (context?.panel) panel(context.panel);
     viewer.ready.then(() => {
       if (seq === openSeq) {
-        const items = visible(),
-          idx = items.findIndex((x) => x.id === mid);
-        window.ITDApprovalViewer.prefetch(items[idx + 1]?.currentVersion.file);
+        window.ITDApprovalViewer.prefetch(adjacentMaterial(1)?.currentVersion.file);
       }
     });
     let detail;
@@ -1030,6 +1086,10 @@
       detail = await hooks.api(`/api/materials/${m.id}`);
     } catch (error) {
       if (!displayed()) return false;
+      if (error.status === 403) {
+        await hooks.leaveRestrictedProject(project.id);
+        return false;
+      }
       throw error;
     }
     if (!displayed()) return false;
@@ -1053,11 +1113,20 @@
     }
     body.insertBefore(history, body.querySelector(".ac-properties"));
   }
+  function adjacentMaterial(step, items = visible()) {
+    const index = data.materials.findIndex((m) => m.id === mid);
+    if (index < 0) return;
+    const shown = new Set(items);
+    for (let i = index + step; i >= 0 && i < data.materials.length; i += step)
+      if (shown.has(data.materials[i])) return data.materials[i];
+  }
+  function updateNavigation(host, items) {
+    for (const b of host.querySelectorAll("[data-material-step]"))
+      b.disabled = !adjacentMaterial(Number(b.dataset.materialStep), items);
+  }
   function navigate(delta) {
-    const items = visible(),
-      index = items.findIndex((m) => m.id === mid);
-    if (items[index + delta])
-      showMaterial(items[index + delta].id).catch((e) => say(e.message));
+    const item = adjacentMaterial(delta);
+    if (item) return showMaterial(item.id);
   }
   async function recordView(v, page, downloaded = false) {
     if (admin()) return;
@@ -1432,9 +1501,7 @@
       notice.append(" ", button("Перейти к сводке", submit, "ac-summary-link"));
   }
   function nextInQueue() {
-    const shown = new Set(visible().map(m => m.id));
-    const index = data.materials.findIndex(m => m.id === mid);
-    const next = index >= 0 && data.materials.slice(index + 1).find(m => shown.has(m.id));
+    const next = adjacentMaterial(1);
     if (next) return showMaterial(next.id);
     endOfQueue("Это последний материал в очереди.");
   }
@@ -1923,7 +1990,7 @@
       el("small", `${n.authorName} · ${date(n.createdAt)}`));
     if (corrected) {
       card.append(el("small", `Исходная отметка: лист ${n.page} · версия ${n.versionNumber}`),
-        button(`Проверить исправление · версия ${corrected.versionNumber}`, () => checkCorrection(m, corrected), "ac-check-fix"),
+        button(admin() ? `Открыть исправленную версию ${corrected.versionNumber}` : `Проверить исправление · версия ${corrected.versionNumber}`, () => checkCorrection(m, corrected), "ac-check-fix"),
         button(`Исходное замечание · версия ${n.versionNumber}`, () => focusNote(m, n), "ac-locate-note"));
     } else {
       card.append(button(`Показать на листе ${n.page} · v${n.versionNumber}`, () => focusNote(m, n), "ac-locate-note"));
@@ -2240,7 +2307,7 @@
       actions.append(
         el(
           "span",
-          vid !== m.currentVersion.id ? "Архивная версия" : labels[v.status],
+          vid !== m.currentVersion.id ? "Архивная версия" : admin() ? materialStatus(m) : labels[v.status],
         ),
       );
       if (admin()) actions.append(
@@ -2591,13 +2658,75 @@
       );
     });
   }
+  function retryVersionRead(receipt) {
+    if (!receipt.reading) receipt.reading = receipt.retry().finally(() => { receipt.reading = null; });
+    return receipt.reading;
+  }
   function uploadVersion() {
     const m = current(), v = m.currentVersion;
     if (!admin() || vid !== v.id) return;
+    const unread = pendingVersionReads.get(m.id);
+    if (unread) return retryVersionRead(unread);
+    const uploadUser = hooks.getUser(), stageId = m.stageId || 0;
     const destination = {
       ...window.ITDUploads.contextOf(project),
       stageId: m.stageId, materialId: m.id, expectedVersionId: v.id,
     };
+    const inScope = () => active && hooks.getUser() === uploadUser && data &&
+      project?.id === destination.projectId && scope === stageId &&
+      !pendingOpen && !root?.hasAttribute("data-opening-stage");
+    const sameMaterial = () => inScope() && mid === m.id;
+    const atMaterial = (newVersionId) => sameMaterial() && (vid === v.id || vid === newVersionId);
+    async function showUploaded(result) {
+      if (hooks.getUser() !== uploadUser) return;
+      const { versionId, versionNumber } = result.review;
+      const receipt = `Версия ${versionNumber} отправлена клиенту.`;
+      if (atMaterial(versionId)) say(receipt + " Обновляем просмотр…");
+      let generation = epoch;
+      try {
+        await hooks.refreshAfterVersion(destination.projectId);
+        if (!inScope()) return;
+        generation = epoch;
+        const updated = await hooks.api(route(stageId));
+        if (!inScope() || epoch !== generation) return;
+        const fresh = updated.materials.find((item) => item.id === m.id);
+        const cached = data.materials.find((item) => item.id === m.id);
+        if (!cached || !fresh?.versions.some((item) => item.id === versionId))
+          throw Error("Отправленная версия пока недоступна в этом этапе.");
+        const openUpdated = atMaterial(versionId) && (vid === cached.currentVersion.id || vid === versionId);
+        if (fresh.currentVersion.versionNumber >= cached.currentVersion.versionNumber) {
+          Object.assign(cached, fresh);
+          cached.currentVersion = cached.versions.find((item) => item.id === fresh.currentVersion.id);
+          data.stage = updated.stage;
+          renderList();
+        }
+        if (pendingVersionReads.get(m.id)?.versionId === versionId) pendingVersionReads.delete(m.id);
+        if (notice.querySelector("[data-version-retry]")?.dataset.versionRetry === String(m.id)) say("");
+        // A designer may already be writing a reply on the next material.
+        if (!openUpdated || waitingVersionChoice?.id === m.id) return true;
+        const shown = await showMaterial(m.id, versionId, { notice: receipt });
+        if (!atMaterial(versionId)) return;
+        if (shown && vid === versionId) {
+          say(receipt);
+          return true;
+        }
+      } catch (error) {
+        if (error.status === 403 && inScope() && epoch === generation) {
+          await hooks.leaveRestrictedProject(destination.projectId);
+          return;
+        }
+        if (!inScope() || epoch !== generation) return;
+      }
+      const failed = pendingVersionReads.get(m.id) || { versionId, retry: () => showUploaded(result) };
+      if (!data.materials.find((item) => item.id === m.id)?.versions.some((item) => item.id === versionId))
+        pendingVersionReads.set(m.id, failed);
+      const name = mid === m.id ? "" : `«${displayTitle(m)}». `;
+      say(name + receipt + " Не удалось обновить просмотр.");
+      const retry = button("Повторить обновление", () => retryVersionRead(failed), "ac-summary-link");
+      retry.dataset.versionRetry = m.id;
+      notice.append(" ", retry);
+      return false;
+    }
     const pending = m.notes.filter((n) => n.status !== "confirmed");
     modal("Отправить исправленную версию", (dialog) => {
       dialog.classList.add("ac-version-dialog");
@@ -2613,7 +2742,21 @@
       const file = input("Файл новой версии", "file");
       file.field.name = "file";
       file.field.required = true;
-      fields.append(context, file.wrap);
+      const previousFile = el("p", `Текущий файл · ${fileFormat(v.file)} · ${v.file.name}`, "ac-version-old-file");
+      context.append(previousFile);
+      const fileChange = el("p", "", "ac-file-change");
+      fileChange.hidden = true;
+      fileChange.setAttribute("role", "status");
+      form.addEventListener("reset", () => { fileChange.hidden = true; });
+      file.field.addEventListener("change", () => {
+        const nextFile = file.field.files[0];
+        fileChange.hidden = !nextFile;
+        if (!nextFile) return;
+        const before = fileFormat(v.file), after = fileFormat(nextFile);
+        fileChange.textContent = before === after ? `Новый файл · ${after} · ${nextFile.name}`
+          : `Формат изменится: ${before} → ${after}. Клиент получит файл «${nextFile.name}».`;
+      });
+      fields.append(context, file.wrap, fileChange);
       const general = (m.returnComments || []).filter((c) => c.versionId === v.id);
       if (general.length || pending.length) fields.append(el("h3", "Замечания клиента"));
       for (const c of general) fields.append(generalNote(c));
@@ -2658,7 +2801,29 @@
       status.setAttribute("role", "status");
       const send = el("button", "Отправить новую версию", "primary");
       send.type = "submit";
-      actions.append(status, send);
+      const reload = button("Открыть актуальную версию", async () => {
+        reload.disabled = true;
+        status.textContent = "Обновляем материал…";
+        try {
+          await hooks.refreshAfterVersion(destination.projectId);
+          if (!dialog.open || !sameMaterial()) return;
+          const { material } = await hooks.api(`/api/materials/${m.id}`);
+          if (!dialog.open || !sameMaterial()) return;
+          if (material.projectId !== destination.projectId) {
+            status.textContent = "Материал больше недоступен в этом проекте.";
+            return;
+          }
+          if (await loadScope(material.stageId || 0, { mid: m.id, requireMaterial: true })) dialog.close("version-updated");
+          else status.textContent = "Не удалось открыть этот материал. Возможно, его переместили. Повторите обновление.";
+        } catch (error) {
+          if (error.status === 403 && sameMaterial()) await hooks.leaveRestrictedProject(destination.projectId);
+          else status.textContent = error.status === 404 ? "Материал больше недоступен в этом проекте." : error.message;
+        } finally {
+          reload.disabled = false;
+        }
+      });
+      reload.hidden = true;
+      actions.append(status, send, reload);
       form.append(fields, actions);
       dialog.append(form);
       window.ITDUploads.register(form, { context: () => destination, receiver });
@@ -2679,22 +2844,37 @@
           `Исправлено отметок: ${fixedCount}. Осталось исправить: ${resolutions.length - fixedCount}.`);
         send.disabled = true;
         status.textContent = "Отправляем файл…";
+        let result;
         try {
-          const result = await window.ITDUploads.send(form, {
+          result = await window.ITDUploads.send(form, {
             category: "result", stageId: m.stageId, materialId: m.id, expectedVersionId: v.id,
             correctionReport: { description: summary, resolutions },
           });
-          if (result) {
-            dialog.close();
-            await hooks.refresh();
-            await loadScope(m.stageId || 0, { mid: m.id });
-            say("Исправленная версия отправлена клиенту.");
-          }
         } catch (error) {
           status.textContent = error.message;
-        } finally {
-          send.disabled = false;
+          let contextChanged = error.status === 409;
+          if (error.status === 400 && dialog.open && sameMaterial()) {
+            try {
+              const { material } = await hooks.api(`/api/materials/${m.id}`);
+              contextChanged = material.projectId !== destination.projectId ||
+                material.stageId !== destination.stageId || material.currentVersion.id !== v.id;
+              if (contextChanged) status.textContent = "Материал изменился. Откройте его актуальную версию.";
+            } catch (detailError) {
+              if (detailError.status === 403 && sameMaterial()) await hooks.leaveRestrictedProject(destination.projectId);
+              contextChanged = detailError.status === 404;
+            }
+          }
+          reload.hidden = !contextChanged;
+          send.disabled = !reload.hidden;
+          return;
         }
+        if (!result) {
+          send.disabled = false;
+          return;
+        }
+        const updated = showUploaded(result);
+        dialog.close("version-updated");
+        await updated;
       });
     });
   }
@@ -2718,12 +2898,13 @@
       document.getElementById("app-view").inert = true;
       hooks.selectTab("review");
       build();
-      await loadScope(detail.material.stageId || 0, {
+      const shown = await loadScope(detail.material.stageId || 0, {
         mid: id,
         vid: requested,
         panel: options.panel,
+        requireMaterial: true,
       });
-      return pendingOpen === token;
+      return !!shown && pendingOpen === token;
     } finally {
       if (pendingOpen === token) pendingOpen = null;
     }

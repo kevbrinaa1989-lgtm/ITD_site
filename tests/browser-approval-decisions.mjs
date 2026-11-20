@@ -291,8 +291,8 @@ try {
     category: "result", stageId: full.id, materialId: plan.id, expectedVersionId: plan.currentVersion.id,
   }, f.admin, "POST", 201);
   await center(admin);
-  await row(admin, plan).getByText("Проверить исправления", { exact: true }).waitFor();
-  await admin.locator(".ac-footer").getByText("Ожидает решения", { exact: true }).waitFor();
+  await row(admin, plan).getByText("Ожидает проверки клиента", { exact: true }).waitFor();
+  await admin.locator(".ac-footer").getByText("Ожидает проверки клиента", { exact: true }).waitFor();
   await menu(admin);
   assert.equal(await admin.getByLabel("Версия", { exact: true }).inputValue(), String(replacement.review.versionId));
   await admin.getByLabel("Версия", { exact: true }).selectOption(String(plan.currentVersion.id));

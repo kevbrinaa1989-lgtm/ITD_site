@@ -128,7 +128,7 @@ try {
   assert.ok(await mobileForm.locator(".ac-version-fields").evaluate(e => e.scrollHeight > e.clientHeight));
   await send.click();
   await mobileForm.waitFor({state:"hidden"});
-  await phone.getByText("Исправленная версия отправлена клиенту.", {exact:true}).waitFor();
+  await phone.getByText(/Версия 2 отправлена клиенту\./).waitFor();
   const latest = (await state()).materials.find(m => m.id === marked.id);
   assert.equal(latest.currentVersion.versionNumber, 2);
   assert.equal(latest.stageId, full.id);

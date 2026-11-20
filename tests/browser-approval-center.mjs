@@ -248,7 +248,7 @@ try {
     .getByRole("button", { name: "Отправить новую версию", exact: true })
     .click();
   await a
-    .getByText("Исправленная версия отправлена клиенту.", { exact: true })
+    .getByText(/Версия 2 отправлена клиенту\./)
     .waitFor();
   const corrected = (
     await f.api(

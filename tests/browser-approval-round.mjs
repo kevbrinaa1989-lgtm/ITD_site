@@ -96,7 +96,7 @@ try {
     await report.locator("input[type=file]").setInputFiles(replacement);
     await button(report, "Отправить новую версию").click();
     await report.waitFor({ state: "hidden" });
-    await designer.getByText("Исправленная версия отправлена клиенту.", { exact: true }).waitFor();
+    await designer.getByText(/Версия 2 отправлена клиенту\./).waitFor();
   }
   const revised = (await state()).materials.filter(m => returned.includes(m.id));
   assert.ok(revised.every(m => m.currentVersion.versionNumber === 2 && m.notes[0].status === "fixed"));

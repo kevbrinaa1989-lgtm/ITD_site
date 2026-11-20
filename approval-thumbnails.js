@@ -4,6 +4,7 @@
   let jobs = [],
     running = 0;
   const records = new Map();
+  const placeholder = (file) => file.contentType === "application/pdf" ? "PDF" : "Фото";
   const pump = () => {
     while (running < 2 && jobs.length) {
       const r = jobs.shift();
@@ -31,9 +32,7 @@
       if (!response.ok) throw Error("preview");
       const bytes = await response.arrayBuffer();
       if (!valid()) return;
-      let canvas = document.createElement("canvas");
-      canvas.width = 80;
-      canvas.height = 64;
+      const canvas = document.createElement("canvas");
       if (r.file.contentType === "application/pdf") {
         const lib = await import("/vendor/pdfjs/pdf.mjs");
         if (!valid()) return;
@@ -54,7 +53,7 @@
         if (!valid()) return;
         const base = page.getViewport({ scale: 1 }),
           vp = page.getViewport({
-            scale: Math.min(80 / base.width, 64 / base.height),
+            scale: Math.min(r.width / base.width, r.height / base.height),
           });
         canvas.width = Math.ceil(vp.width);
         canvas.height = Math.ceil(vp.height);
@@ -67,7 +66,7 @@
         const bitmap = await createImageBitmap(
           new Blob([bytes], { type: r.file.contentType }),
         );
-        const ratio = Math.min(80 / bitmap.width, 64 / bitmap.height);
+        const ratio = Math.min(r.width / bitmap.width, r.height / bitmap.height);
         canvas.width = Math.max(1, Math.round(bitmap.width * ratio));
         canvas.height = Math.max(1, Math.round(bitmap.height * ratio));
         canvas
@@ -80,9 +79,7 @@
         r.host.replaceChildren(canvas);
       }
     } catch (e) {
-      if (valid())
-        r.host.textContent =
-          r.file.contentType === "application/pdf" ? "PDF" : "Фото";
+      if (valid()) r.host.textContent = placeholder(r.file);
     } finally {
       await task?.destroy().catch(() => {});
       if (r.generation === generation) r.task = null;
@@ -103,21 +100,23 @@
           r.render?.cancel();
           r.task?.destroy().catch(() => {});
           r.started = false;
-          r.host.replaceChildren();
+          r.host.textContent = placeholder(r.file);
         }
       }
     },
     { rootMargin: "80px" },
   );
-  function mount(file) {
+  function mount(file, { width = 80, height = 64 } = {}) {
     const host = document.createElement("span");
     host.className = "ac-thumbnail";
     host.setAttribute("aria-hidden", "true");
-    host.textContent = file.contentType === "application/pdf" ? "PDF" : "Файл";
+    host.textContent = window.ITDViewer.supported(file) ? placeholder(file) : "Файл";
     if (file.size <= 2 * 1024 * 1024 && window.ITDViewer.supported(file)) {
       records.set(host, {
         host,
         file,
+        width,
+        height,
         visible: false,
         started: false,
         generation: 0,

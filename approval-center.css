@@ -215,6 +215,7 @@ body:has(> .approval-center:not([hidden])) #app-view {
   background: #f1ecdf;
   color: #654d31;
   font-size: var(--text-medium);
+  overflow-wrap: anywhere;
 }
 .ac-notice:empty {
   display: none;
@@ -497,6 +498,43 @@ body:has(> .approval-center:not([hidden])) #app-view {
   color: var(--ac-muted);
   font-size: 1rem;
   margin-top: 3px;
+}
+.ac-version-old-file,
+.ac-version-filename,
+.ac-file-change {
+  overflow-wrap: anywhere;
+}
+.approval-center button.ac-version-filename {
+  display: block;
+  position: relative;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 2px 17px 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ac-muted);
+  font: inherit;
+  text-align: start;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.approval-center button.ac-version-filename::after {
+  position: absolute;
+  right: 3px;
+  top: 9px;
+  width: 6px;
+  height: 6px;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  content: "";
+  transform: rotate(45deg);
+}
+.approval-center button.ac-version-filename[aria-expanded="true"] {
+  white-space: normal;
+}
+.approval-center button.ac-version-filename[aria-expanded="true"]::after {
+  transform: rotate(225deg);
 }
 .ac-material-nav,
 .ac-page-controls,
@@ -1079,6 +1117,7 @@ body:has(> .approval-center:not([hidden])) #app-view {
 }
 .ac-version-fields {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 14px;
   min-height: 0;
@@ -1087,6 +1126,11 @@ body:has(> .approval-center:not([hidden])) #app-view {
   padding: 16px 20px;
 }
 .ac-version-fields h3 { font-size: 17px; }
+.ac-file-change {
+  color: var(--ac-muted);
+  font-size: var(--text-small);
+  line-height: 1.5;
+}
 .ac-version-context {
   display: grid;
   gap: 4px;
@@ -1352,27 +1396,33 @@ body:has(> .approval-center:not([hidden])) #app-view {
   .ac-view-heading p {
     font-size: var(--text-caption);
   }
-  .ac-view-heading:has(.ac-remarks-link:not([hidden])) {
+  .ac-view-heading:has(.ac-remarks-link:not([hidden]), button.ac-version-filename) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 2px 5px;
   }
-  .ac-view-heading:has(.ac-remarks-link:not([hidden])) .ac-title {
+  .ac-view-heading:has(.ac-remarks-link:not([hidden]), button.ac-version-filename) .ac-title {
     display: contents;
   }
-  .ac-view-heading:has(.ac-remarks-link:not([hidden])) .ac-mobile-queue {
+  .ac-view-heading:has(.ac-remarks-link:not([hidden]), button.ac-version-filename) .ac-mobile-queue {
     grid-area: 1 / 1;
     justify-self: start;
     white-space: nowrap;
   }
-  .ac-view-heading:has(.ac-remarks-link:not([hidden])) .ac-material-nav {
+  .ac-view-heading:has(.ac-remarks-link:not([hidden]), button.ac-version-filename) .ac-material-nav {
     grid-area: 1 / 2;
   }
-  .ac-view-heading:has(.ac-remarks-link:not([hidden])) :is(h3, p, .review-library-back) {
+  .ac-view-heading:has(.ac-remarks-link:not([hidden]), button.ac-version-filename) :is(h3, p, .review-library-back) {
     grid-column: 1 / -1;
     justify-self: start;
   }
+  .ac-title p:has(button.ac-version-filename) {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .approval-center button.ac-version-filename { min-height: 32px; }
+  .approval-center button.ac-version-filename::after { top: 12px; }
   .ac-material-nav {
     gap: 3px;
   }
@@ -1525,7 +1575,7 @@ body:has(> .approval-center:not([hidden])) #app-view {
     grid-area: 1 / 1 / 2 / -1;
     justify-self: end;
   }
-  .ac-view-heading:has(.ac-remarks-link:not([hidden])) .ac-title p { grid-column: 1; }
+  .ac-view-heading:has(.ac-remarks-link:not([hidden])) .ac-title p:not(:has(button.ac-version-filename)) { grid-column: 1; }
   .ac-actions.ac-decisions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

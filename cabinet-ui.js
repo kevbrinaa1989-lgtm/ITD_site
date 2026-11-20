@@ -93,8 +93,9 @@
     const currentStage = window.ITDProjectState.currentStage(stages);
     const stage = window.ITDProjectState.selectedStage(stages, selectedStageId);
     const isPreview = !!stage && stage.id !== currentStage?.id;
-    const stageMaterials = window.ITDProjectFiles.select(window.ITDProjectFiles.entries(project),
-      { category: "result", stage: stage ? String(stage.id) : "unassigned", sort: "oldest" });
+    const stageFiles = window.ITDProjectFiles.select(window.ITDProjectFiles.entries(project),
+      { stage: stage ? String(stage.id) : "unassigned", sort: "oldest" });
+    const stageMaterials = stageFiles.filter((entry) => entry.file.category === "result");
     const waiting = active(project) ? stageMaterials.filter((m) => m.status === "pending_approval") : [];
     const suggested = waiting[0] || stageMaterials.at(-1);
     const alreadyFeatured = actions.featuredMaterialId != null &&
@@ -248,19 +249,25 @@
       copy.append(node("p", chosen.name, "file-meta"));
     copy.querySelector("h3").title = copy.querySelector("h3").textContent;
     copy.querySelector(".file-meta")?.setAttribute("title", chosen?.name || "");
-    // Keep the image and the two shortcuts in one responsive composition.
-    // Detailed stage actions remain available, but do not crowd empty stages.
     const links = node("div", undefined, "route-links");
-    const hasAlbum = stageMaterials.some((m) => window.ITDViewer.image(m.file));
-    const place = stage ? `Этап «${stage.title}»` : "Файлы без привязки к этапу";
-    for (const [title, tab, album] of [
-      [hasAlbum ? (stage ? "Альбом этапа" : "Альбом проекта") : (stage ? "Материалы этапа" : "Материалы проекта"), "results", hasAlbum],
-      [stage ? "Документы этапа" : "Документы проекта", "documents", false],
-    ]) {
+    const scope = stage ? "этапа" : "без этапа";
+    const imageCount = stageMaterials.filter((entry) => window.ITDViewer.image(entry.file)).length;
+    const shortcuts = [
+      [`Материалы ${scope}`, `Все форматы · ${stageMaterials.length}`, "results"],
+      [`Документы ${scope}`, `Документов · ${stageFiles.filter((entry) => entry.document).length}`, "documents"],
+    ];
+    if (imageCount) shortcuts.push([`Альбом ${scope}`, `Только изображения · ${imageCount}`, "results", true]);
+    for (const [title, description, tab, album = false] of shortcuts) {
       const item = node("section", undefined, "panel");
-      const open = button("Открыть →", () => actions.openTab(tab, { stageId: stage?.id ?? null, album }));
+      const heading = node("h2");
+      const open = button("", () => actions.openTab(tab, { stageId: stage?.id ?? null, album }), "route-shortcut");
       open.setAttribute("aria-label", `Открыть: ${title}`);
-      item.append(node("h2", title), node("p", place, "muted"), open);
+      open.setAttribute("aria-description", description);
+      const arrow = node("span", "→", "route-shortcut-arrow");
+      arrow.setAttribute("aria-hidden", "true");
+      open.append(node("span", title), node("small", description), arrow);
+      heading.append(open);
+      item.append(heading);
       links.append(item);
     }
     body.append(links);

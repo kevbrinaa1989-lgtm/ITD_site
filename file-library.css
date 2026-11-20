@@ -121,6 +121,20 @@
   min-height: 44px;
   font-size: var(--text-small);
 }
+#panel-files:has(#project-gallery:not([hidden])) .library-options {
+  padding-bottom: 12px;
+}
+#panel-files:has(.album-hero-media:only-child) .library-sort {
+  display: none;
+}
+#app-view #panel-files:has(#project-gallery:not([hidden])) #library-album-toggle {
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--text-small);
+  font-weight: 600;
+}
 #app-view .library-results-count {
   margin: 10px 0 28px;
   font-size: var(--text-caption);
@@ -177,12 +191,35 @@
   height: 100%;
   object-fit: cover;
 }
+#app-view .library-plan-preview .gallery-open img {
+  object-fit: contain;
+  padding: clamp(6px, 1vw, 14px);
+  background: #eeeae2;
+}
 #app-view .library-material .library-format-cover {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 16px;
   color: var(--muted);
+}
+#app-view .library-format-cover .ac-thumbnail {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  aspect-ratio: auto;
+  padding: clamp(6px, 1vw, 14px);
+  border: 0;
+  border-radius: 0;
+  background: #eeeae2;
+  color: var(--muted);
+}
+#app-view .library-format-cover .ac-thumbnail canvas {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  object-fit: contain;
 }
 #app-view .library-material-copy {
   padding: 14px 0 0;
@@ -225,7 +262,8 @@
 #app-view .library-status[data-status="changes_requested"] {
   color: #934c3b;
 }
-#app-view .library-history {
+#app-view .library-history,
+#app-view .library-archive-match {
   display: block;
   min-height: 44px;
   padding: 8px 0;
@@ -234,6 +272,7 @@
   background: transparent;
   font-size: var(--text-caption);
   text-align: left;
+  overflow-wrap: anywhere;
 }
 #app-view .library-item-actions {
   display: flex;

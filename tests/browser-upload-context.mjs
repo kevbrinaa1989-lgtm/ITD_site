@@ -590,7 +590,7 @@ try {
     assert.deepEqual(await fileBytes(uploadedVersion, a), pdf);
     await fileBytes(uploadedVersion, b, 403);
     await page
-      .getByText("Исправленная версия отправлена клиенту.", { exact: true })
+      .getByText(new RegExp(`Версия ${uploadedVersion.review.versionNumber} отправлена клиенту\\.`))
       .waitFor();
     version = await versionForm();
     await choose(
@@ -681,7 +681,7 @@ try {
     assert.deepEqual(await fileBytes(reassigned, b), pdf);
     await fileBytes(reassigned, a, 403);
     await page
-      .getByText("Исправленная версия отправлена клиенту.", { exact: true })
+      .getByText(new RegExp(`Версия ${reassigned.review.versionNumber} отправлена клиенту\\.`))
       .waitFor();
     // Bulk results also work; each item retains the selected stage and recipient.
     await select(pa, 0);

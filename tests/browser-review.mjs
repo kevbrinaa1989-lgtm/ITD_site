@@ -11,3 +11,4 @@ await import("./browser-approval-feedback.mjs");
 await import("./browser-approval-marks.mjs");
 await import("./browser-approval-draft-compat.mjs");
 await import("./browser-approval-remarks-list.mjs");
+await import("./browser-approval-version-followup.mjs");

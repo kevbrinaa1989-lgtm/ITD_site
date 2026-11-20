@@ -1308,9 +1308,6 @@ progress::-moz-progress-bar {
     gap: 14px;
     margin-top: 20px;
   }
-  .route-links .panel {
-    padding: 18px !important;
-  }
   .route-links h2 {
     font-size: 16px !important;
   }
@@ -1834,10 +1831,10 @@ progress::-moz-progress-bar {
 }
 .album-topline {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 20px;
+  gap: 4px 20px;
   font-size: var(--text-caption);
-  letter-spacing: 0.08em;
   color: #c6c1b6;
   margin-bottom: 16px;
 }
@@ -1849,6 +1846,9 @@ progress::-moz-progress-bar {
 }
 .album-hero-media {
   min-width: 0;
+}
+.album-hero-media:only-child {
+  grid-column: 1 / -1;
 }
 .album-hero-media .gallery-open {
   background: none;
@@ -2993,6 +2993,8 @@ progress::-moz-progress-bar {
 #app-view .album-filename {
   color: #c6c1b6;
   margin: 6px 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 #app-view .stage-actions {
   display: flex;
@@ -3362,8 +3364,7 @@ progress::-moz-progress-bar {
   #app-view .upload-document-state { margin-left: 0; }
 }
 
-/* Project overview: stage artwork left, album and documents right.
-   The two shortcuts belong to the stage feature, never to a full-width row. */
+/* Shortcuts belong to the selected stage card, alongside its illustration. */
 #app-view .route-feature {
   min-width: 0;
   overflow: hidden;
@@ -3396,8 +3397,8 @@ progress::-moz-progress-bar {
 #app-view .route-feature-body > .route-links {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-auto-rows: 1fr;
+  gap: 8px;
   margin: 0;
   padding: 12px;
   align-content: stretch;
@@ -3405,32 +3406,50 @@ progress::-moz-progress-bar {
   min-height: 0;
 }
 #app-view .route-feature-body > .route-links > .panel {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
+  display: grid;
   min-width: 0;
   margin: 0;
-  padding: 17px 24px;
+  padding: 0;
   overflow-wrap: anywhere;
 }
 #app-view .route-feature-body > .route-links > .panel h2 {
-  margin: 0 0 10px;
+  display: grid;
+  margin: 0;
   font-size: 17px !important;
   line-height: 1.35;
 }
-#app-view .route-feature-body > .route-links > .panel p {
-  margin: 0 0 8px;
-  font-size: var(--text-small);
-  line-height: 1.5;
-}
-#app-view .route-feature-body > .route-links > .panel button {
+#app-view .route-feature-body .route-shortcut {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: center;
+  align-items: center;
+  gap: 4px 12px;
+  width: 100%;
+  min-height: 64px;
   margin: 0;
-  padding: 8px 0;
-  min-height: 38px;
-  align-self: flex-start;
-  font-size: var(--text-small);
+  padding: 12px 18px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
   text-align: left;
+}
+#app-view .route-feature-body .route-shortcut small {
+  grid-row: 2;
+  color: var(--muted);
+  font-size: var(--text-small);
+  font-weight: 400;
+}
+#app-view .route-shortcut-arrow {
+  grid-area: 1 / 2 / span 2;
+  color: var(--copper);
+  font-size: 20px;
+}
+#app-view .route-shortcut:is(:hover, :focus-visible) {
+  background: var(--paper);
+  color: var(--copper);
 }
 #app-view .route-feature-details {
   min-width: 0;
@@ -3473,23 +3492,20 @@ progress::-moz-progress-bar {
   #app-view .route-feature-body {
     grid-template-columns: minmax(0, 1fr);
   }
-  #app-view .route-feature-body > .route-links {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: auto;
+  #app-view .route-feature-body > .route-feature-placeholder {
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 2 / 1;
   }
-  #app-view .route-feature-body > .route-links > .panel {
-    min-height: 145px;
+  #app-view .route-feature-body > .route-links {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
 }
 @media (max-width: 560px) {
   #app-view .route-feature-body > .route-links {
     grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
+    gap: 6px;
     padding: 10px;
-  }
-  #app-view .route-feature-body > .route-links > .panel {
-    min-height: 124px;
-    padding: 17px 18px;
   }
   #app-view .route-feature-details .route-feature-copy {
     padding: 18px;

@@ -3,8 +3,8 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { ownershipFixture } from "./ownership-fixture.mjs";
 import { drawing } from "./approval-demo.mjs";
-import { openGlobal, openProject } from "./browser-navigation.mjs";
-import { button, editDraftRemark, notes, saved, summary } from "./approval-navigation.mjs";
+import { openFiles, openGlobal, openProject } from "./browser-navigation.mjs";
+import { action, button, editDraftRemark, notes, saved, summary } from "./approval-navigation.mjs";
 
 const { chromium } = await import(process.env.ITD_PLAYWRIGHT_MODULE || "playwright");
 const f = await ownershipFixture();
@@ -149,8 +149,6 @@ try {
     await button(reply, "Сохранить в истории").click();
     await reply.waitFor({ state: "hidden" });
   }
-  await studio.context().close();
-
   const phone = await enter(false, true);
   await notes(phone);
   for (const note of returned.materials[0].notes) {
@@ -176,6 +174,13 @@ try {
   await saved(phone);
   await shot(phone, "marks-ready-mobile");
   assert.equal((await state()).materials[0].currentVersion.status, "changes_requested");
+  const awaitingClient = "Ожидает согласования клиента";
+  await action(studio, "Обновить данные");
+  await studio.locator(".ac-material.is-selected").getByText(awaitingClient, { exact: true }).waitFor();
+  await studio.locator(".ac-footer").getByText(awaitingClient, { exact: true }).waitFor();
+  await openFiles(studio, "result", { stageIndex: 0 });
+  await studio.locator(".library-status").getByText(awaitingClient, { exact: true }).waitFor();
+  await studio.context().close();
   await openGlobal(phone, "client-home");
   const next = phone.locator("#client-home-panel .client-next-decision");
   await next.getByRole("heading", { name: "План перегородок", exact: true }).waitFor();

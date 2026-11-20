@@ -82,9 +82,10 @@
       b.setAttribute("aria-label", label);
       return b;
     };
+    const imageFile = window.ITDViewer.image(version.file);
     const previous = toolButton("Предыдущая страница", "‹", () => go(page - 1)),
       next = toolButton("Следующая страница", "›", () => go(page + 1)),
-      pageLabel = el("span", "Документ", "ac-page-label"),
+      pageLabel = el("span", imageFile ? "Изображение" : "Документ", "ac-page-label"),
       pageControl = el("label", undefined, "ac-page-jump"),
       pagePicker = el("select"),
       seen = el("span", "", "ac-seen"),
@@ -100,7 +101,7 @@
     seen.hidden = !showProgress;
     function controls() {
       const count = pdf?.numPages || 1;
-      pageLabel.textContent = pdf ? `Страница ${page} из ${count}` : "Документ";
+      if (pdf) pageLabel.textContent = `Страница ${page} из ${count}`;
       pagePicker.value = String(page);
       previous.disabled = !pdf || !media || page <= 1;
       next.disabled = !pdf || !media || page >= count;
@@ -147,7 +148,8 @@
       }
     });
     document.addEventListener("fullscreenchange", fullState);
-    pages.append(previous, pageControl, next);
+    if (imageFile) pages.append(pageControl);
+    else pages.append(previous, pageControl, next);
     scale.append(
       toolButton("Уменьшить масштаб", "−", () => setZoom(zoom - 0.25)),
       zoomButton,
