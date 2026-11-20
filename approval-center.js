@@ -1418,6 +1418,7 @@
     const v = version(),
       generation = epoch;
     busy = true;
+    confirmationError = null;
     updateFooter();
     try {
       if (decision === "approved") {
@@ -2030,11 +2031,16 @@
     footer.replaceChildren();
     appendViewFeedback();
     const state = el("div", undefined, "ac-save");
-    state.dataset.state = saveError
+    const reviewSaveFailed = confirmationError !== null && confirmationError === vid;
+    state.dataset.state = saveError || reviewSaveFailed
       ? "error"
-      : dirty === saved
+      : !busy && dirty === saved
         ? "saved"
         : "saving";
+    if (!admin() && !saveError) {
+      saveStatus.textContent = reviewSaveFailed ? "Решение не сохранено"
+        : state.dataset.state === "saving" ? "Сохраняем" : "Сохранено";
+    }
     state.append(saveStatus);
     if (!admin())
       state.append(

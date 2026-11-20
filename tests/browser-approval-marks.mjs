@@ -181,8 +181,37 @@ try {
   await next.getByRole("heading", { name: "План перегородок", exact: true }).waitFor();
   await button(next, "Перейти к согласованию").tap();
   await phone.locator(".ac-sheet canvas").waitFor();
-  await approval.click();
   await saved(phone);
+  const confirmPath = "**/api/approval-center/versions/*/view";
+  const confirmation = Promise.withResolvers();
+  let rejectFirstConfirmation = true;
+  await phone.route(confirmPath, async route => {
+    if (route.request().postDataJSON()?.confirm) {
+      if (rejectFirstConfirmation) {
+        rejectFirstConfirmation = false;
+        await route.fulfill({ status: 503, json: { error: "Соединение прервано" } });
+        return;
+      }
+      await confirmation.promise;
+    }
+    await route.continue();
+  });
+  await approval.click();
+  await phone.locator('.ac-save[data-state="error"]').getByText("Решение не сохранено", { exact: true }).waitFor();
+  assert.equal((await state()).draft.entries.length, 0);
+  try {
+    await Promise.all([
+      phone.waitForRequest(request => request.url().endsWith("/view") &&
+        request.method() === "POST" && request.postDataJSON()?.confirm === true),
+      button(phone, "Повторить сохранение просмотра").click(),
+    ]);
+    await phone.locator('.ac-save[data-state="saving"]').getByText("Сохраняем", { exact: true }).waitFor();
+  } finally {
+    confirmation.resolve();
+  }
+  await button(phone, "К отправке · 1").waitFor();
+  await saved(phone);
+  await phone.unroute(confirmPath);
   const prepared = await state();
   assert.equal(prepared.materials[0].currentVersion.status, "changes_requested");
   assert.equal(prepared.draft.entries[0].decision, "approved");
