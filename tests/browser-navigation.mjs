@@ -9,7 +9,12 @@ export async function dismissWelcome(page) {
   }
 }
 
+export async function leaveApproval(page) {
+  const back = page.locator("#approval-center .ac-brand");
+  if (await back.isVisible()) await back.click();
+}
 export async function openGlobal(page, key) {
+  await leaveApproval(page);
   await page.locator("#app-view").waitFor({ state: "visible" });
   await dismissWelcome(page);
   if (!(await closeUpload(page))) return false;
@@ -66,6 +71,7 @@ export async function openFiles(
   { album = false, stageIndex = null } = {},
 ) {
   await closeUpload(page);
+  await leaveApproval(page);
   if (stageIndex === null) await page.locator("#tab-files").click();
   else {
     await page.locator("#tab-overview").click();

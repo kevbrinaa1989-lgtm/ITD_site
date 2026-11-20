@@ -10,7 +10,7 @@
     planned: "Не начат",
     in_progress: "В работе",
     pending_approval: "Нужно решение",
-    changes_requested: "На доработке",
+    changes_requested: "На доработку",
     approved: "Согласован",
     completed: "Завершён",
   };
@@ -83,32 +83,24 @@
   }
   function journey(project, actions, selectedStageId = null) {
     const root = node("div", undefined, "project-journey"),
-      stages = project.stages || [],
-      files = project.files || [];
+      stages = project.stages || [];
     const underway = stages.filter((s) =>
       ["in_progress", "pending_approval", "changes_requested"].includes(
         s.status,
       ),
     );
-    const waiting = active(project)
-      ? files.filter(
-          (f) => f.review?.isCurrent && f.review.status === "pending_approval",
-        )
-      : [];
     // Selecting a card is a view-only action, not a workflow state change.
     const currentStage = window.ITDProjectState.currentStage(stages);
-    const stage = stages.find((item) => item.id === selectedStageId) || currentStage;
+    const stage = window.ITDProjectState.selectedStage(stages, selectedStageId);
     const isPreview = !!stage && stage.id !== currentStage?.id;
-    const stageFiles = files.filter(
-      (f) =>
-        f.category === "result" &&
-        stage &&
-        f.stageId === stage.id &&
-        (!f.review || f.review.isCurrent),
-    );
-    const chosen =
-      stageFiles.find((f) => f.review?.status === "pending_approval") ||
-      stageFiles.at(-1);
+    const stageFiles = window.ITDProjectFiles.select(window.ITDProjectFiles.entries(project),
+      { stage: stage ? String(stage.id) : "unassigned", sort: "oldest" });
+    const stageMaterials = stageFiles.filter((entry) => entry.file.category === "result");
+    const waiting = active(project) ? stageMaterials.filter((m) => m.status === "pending_approval") : [];
+    const suggested = waiting[0] || stageMaterials.at(-1);
+    const alreadyFeatured = actions.featuredMaterialId != null &&
+      suggested?.file.review?.materialId === actions.featuredMaterialId;
+    const chosen = alreadyFeatured ? null : suggested?.file;
     const needsDecision =
       chosen?.review?.status === "pending_approval" && active(project);
     const state = window.ITDProjectState.progress(stages);
@@ -165,7 +157,7 @@
       node(
         "span",
         waiting.length
-          ? `Решений от вас: ${waiting.length}`
+          ? `${actions.admin ? "Ожидают решения клиента" : "Ждут вашего решения"} · ${waiting.length}`
           : active(project)
             ? "Решений не требуется"
             : project.status,
@@ -175,33 +167,37 @@
     card.append(head);
     const body = node("div", undefined, "route-feature-body");
     const artwork = stageArtwork(stage);
+    const visual = node("div");
+    const showPlaceholder = () => {
+      visual.classList.add("route-feature-placeholder");
+      visual.append(
+        node("span", stage ? String(stages.indexOf(stage) + 1).padStart(2, "0") : "ITD"),
+        node("p", "От идеи — к пространству"),
+      );
+    };
     if (artwork) {
-      const visual = node("div", undefined, "route-feature-image route-stage-artwork");
+      visual.className = "route-feature-image route-stage-artwork";
       const image = node("img");
+      image.addEventListener("error", () => {
+        image.hidden = true;
+        showPlaceholder();
+      }, { once: true });
       image.src = `/assets/stages/${artwork}.webp`;
       image.alt = `Условная иллюстрация этапа «${stage.title}»`;
       image.decoding = "async";
       image.loading = "lazy";
       visual.append(image);
-      body.append(visual);
     } else {
-      const placeholder = node("div", undefined, "route-feature-placeholder");
-      placeholder.append(
-        node(
-          "span",
-          stage ? String(stages.indexOf(stage) + 1).padStart(2, "0") : "ITD",
-        ),
-        node("p", "От идеи — к пространству"),
-      );
-      body.append(placeholder);
+      showPlaceholder();
     }
+    body.append(visual);
     const copy = node("div", undefined, "route-feature-copy");
     copy.append(
       node("p", needsDecision ? "Следующий шаг" : "Ваш проект", "eyebrow"),
       node(
         "h3",
         chosen
-          ? window.ITDProjectState.materialLabel({ file: chosen, stage })
+          ? suggested.title
           : stage?.title ||
               (state.approved
                 ? "Ожидается завершение этапов студией"
@@ -212,7 +208,7 @@
       node(
         "p",
         needsDecision
-          ? "Посмотрите текущую версию и сообщите, всё ли вам подходит."
+          ? (actions.admin ? "Текущая версия ожидает решения клиента." : "Посмотрите текущую версию и сообщите, всё ли вам подходит.")
           : (!stage && state.approved
               ? "Согласование зафиксировано. Студия отметит завершение этапов после выполнения всех работ."
               : stage?.description) ||
@@ -231,7 +227,7 @@
     if (chosen?.review)
       copy.append(
         button(
-          needsDecision ? "Посмотреть и решить →" : "Открыть материал →",
+          needsDecision && !actions.admin ? "Посмотреть и решить →" : "Открыть материал →",
           () => actions.openMaterial(chosen),
           "primary",
         ),
@@ -244,7 +240,7 @@
     else
       copy.append(
         button(
-          chosen ? "Смотреть материалы →" : "Смотреть файлы проекта →",
+          stage ? "Материалы этапа →" : "Материалы без этапа →",
           () => actions.openTab("results", { stageId: stage?.id ?? null }),
           "primary",
         ),
@@ -253,19 +249,25 @@
       copy.append(node("p", chosen.name, "file-meta"));
     copy.querySelector("h3").title = copy.querySelector("h3").textContent;
     copy.querySelector(".file-meta")?.setAttribute("title", chosen?.name || "");
-    // Keep the image and the two shortcuts in one responsive composition.
-    // Detailed stage actions remain available, but do not crowd empty stages.
     const links = node("div", undefined, "route-links");
-    for (const [title, description, tab] of [
-      ["Альбом проекта", "Визуализации, ракурсы и детали интерьера", "results"],
-      ["Документы", "Договоры и файлы вашего проекта", "documents"],
-    ]) {
+    const scope = stage ? "этапа" : "без этапа";
+    const imageCount = stageMaterials.filter((entry) => window.ITDViewer.image(entry.file)).length;
+    const shortcuts = [
+      [`Материалы ${scope}`, `Все форматы · ${stageMaterials.length}`, "results"],
+      [`Документы ${scope}`, `Документов · ${stageFiles.filter((entry) => entry.document).length}`, "documents"],
+    ];
+    if (imageCount) shortcuts.push([`Альбом ${scope}`, `Только изображения · ${imageCount}`, "results", true]);
+    for (const [title, description, tab, album = false] of shortcuts) {
       const item = node("section", undefined, "panel");
-      item.append(
-        node("h2", title),
-        node("p", description, "muted"),
-        button("Открыть →", () => actions.openTab(tab, { stageId: stage?.id ?? null })),
-      );
+      const heading = node("h2");
+      const open = button("", () => actions.openTab(tab, { stageId: stage?.id ?? null, album }), "route-shortcut");
+      open.setAttribute("aria-label", `Открыть: ${title}`);
+      open.setAttribute("aria-description", description);
+      const arrow = node("span", "→", "route-shortcut-arrow");
+      arrow.setAttribute("aria-hidden", "true");
+      open.append(node("span", title), node("small", description), arrow);
+      heading.append(open);
+      item.append(heading);
       links.append(item);
     }
     body.append(links);

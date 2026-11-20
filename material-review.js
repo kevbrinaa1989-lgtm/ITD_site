@@ -11,7 +11,7 @@
     planned: "Не начат",
     in_progress: "В работе",
     pending_approval: "Ожидает согласования",
-    changes_requested: "Нужны изменения",
+    changes_requested: "На доработку",
     approved: "Согласован",
     completed: "Завершён",
   };
@@ -25,7 +25,19 @@
     admin_reply: "Ответ студии",
     approval_cancelled: "Согласование отменено",
     first_viewed: "Материал впервые просмотрен клиентом",
+    package_published: "Студия направила пакет материалов",
+    package_submitted: "Клиент отправил пакет решений",
+    corrections_ready: "Исправления готовы к проверке",
+    annotation: "Замечание к материалу",
+    annotation_reply: "Ответ на замечание",
+    annotation_fixed: "Дизайнер отметил исправление",
+    annotation_confirmed: "Клиент подтвердил исправление",
+    annotation_reopened: "Клиент запросил повторную доработку",
+    annotation_open: "Замечание оставлено открытым",
+    metadata_changed: "Свойства материала изменены",
+    stage_approved: "Клиент отдельно согласовал этап",
   };
+  const eventName = (type, fallback = "Событие материала") => eventsNames[type] || fallback;
   const date = (value) =>
     value ? new Date(value).toLocaleString("ru-RU") : "Не указана";
   let h,
@@ -66,6 +78,7 @@
     return n;
   }
   function reset() {
+    window.ITDApprovalCenter?.reset();
     returnToLibrary = null;
     document.body.classList.remove("review-from-library");
     closeSheet();
@@ -118,7 +131,7 @@
     window.ITDUI.materialLabel({
       title: material.title,
       file: {
-        ...material.currentVersion.file,
+        ...(material.versions?.[0]?.file || material.currentVersion.file),
         review: { materialId: material.id },
       },
       stage: project?.stages.find((s) => s.id === material.stageId),
@@ -163,6 +176,8 @@
     dialog.showModal();
   }
   function openDiscussion() {
+    if (window.ITDApprovalCenter)
+      return window.ITDApprovalCenter.openDiscussion();
     showSheet(
       $("review-comment-form")?.closest(".review-comments-pane"),
       "Обсуждение версии",
@@ -301,6 +316,7 @@
     }
   }
   function setProject(next) {
+    window.ITDApprovalCenter?.setProject(next);
     if (project?.id !== next?.id) {
       returnToLibrary = null;
       closeDetail();
@@ -323,7 +339,9 @@
     project = next || null;
     if (project) loadList();
   }
-  async function open(id, requestedVersion, back) {
+  async function open(id, requestedVersion, back, options) {
+    if (window.ITDApprovalCenter)
+      return window.ITDApprovalCenter.open(id, requestedVersion, back, options);
     if (back) returnToLibrary = back;
     document.body.classList.toggle("review-from-library", !!returnToLibrary);
     if (!project) return false;
@@ -477,7 +495,7 @@
     description.querySelector("h2").title = materialTitle(material);
     summary.append(fileTile(v.file), description);
     const back = button(
-      returnToLibrary ? "← Файлы проекта" : "← Материалы проекта",
+      returnToLibrary ? (window.ITDLibrary?.stageId() ? "← Файлы этапа" : "← Файлы проекта") : "← Материалы проекта",
       () => {
         const back = returnToLibrary;
         returnToLibrary = null;
@@ -740,7 +758,7 @@
       item.append(
         el(
           "strong",
-          `Версия ${event.versionNumber} · ${eventsNames[event.type] || "Событие материала"}`,
+          `Версия ${event.versionNumber} · ${eventName(event.type)}`,
         ),
         el(
           "span",
@@ -753,11 +771,11 @@
     history.append(list);
     rail.append(history);
   }
-  function reviewControl(file) {
+  function reviewControl(file, openFile = (f) => open(f.review.materialId, f.review.versionId)) {
     return file.review
       ? button(
           `Версия ${file.review.versionNumber} · ${labels[file.review.status] || file.review.status} · Обсудить`,
-          () => open(file.review.materialId, file.review.versionId),
+          async () => { if (await openFile(file)) openDiscussion(); },
         )
       : document.createDocumentFragment();
   }
@@ -805,7 +823,7 @@
       );
       card.append(
         el("p", `${n.projectTitle} · ${date(n.createdAt)}`, "file-meta"),
-        el("h3", eventsNames[n.type] || "Обновление материала"),
+        el("h3", eventName(n.type, "Обновление материала")),
         el(
           "p",
           `${window.ITDUI.materialTitle(n.materialTitle)} · Версия ${n.versionNumber} · ${n.actorName || "Студия"}`,
@@ -820,10 +838,13 @@
             !opened ||
             h.getUser() !== requestUser ||
             project?.id !== n.projectId ||
-            selection !== n.materialId ||
-            versionId !== n.versionId
+            (!window.ITDApprovalCenter &&
+              (selection !== n.materialId || versionId !== n.versionId))
           )
             return;
+          const packageMatch = n.body?.match(/^Ведомость №(\d+)/);
+          if (packageMatch && window.ITDApprovalCenter)
+            await window.ITDApprovalCenter.showPackage(Number(packageMatch[1]));
           await h.api(`/api/notifications/${n.id}/read`, "POST", {});
           if (h.getUser() === requestUser) await loadNotifications();
         }),
@@ -878,6 +899,7 @@
   }
   function init(hooks) {
     h = hooks;
+    window.ITDApprovalCenter?.init(hooks);
     $("review-search").addEventListener("input", renderList);
     $("review-filter").addEventListener("change", renderList);
     $("notifications-refresh").addEventListener("click", loadNotifications);
@@ -886,7 +908,8 @@
       if (!document.hidden && h.getUser()) loadNotifications();
     });
   }
-  function onTab(tab) {
+  function onTab(tab, stageId) {
+    const centerReady = window.ITDApprovalCenter?.onTab(tab, stageId).catch((e) => notice(e.message));
     if (tab !== "review") {
       returnToLibrary = null;
       document.body.classList.remove("review-from-library");
@@ -898,9 +921,11 @@
     );
     if (tab === "review" && project) loadList();
     if (tab === "notifications") loadNotifications();
+    return centerReady;
   }
   window.ITDReview = {
     init,
+    eventName,
     reset,
     start,
     setProject,

@@ -156,3 +156,7 @@ ITD_PLAYWRIGHT_MODULE=file:///tmp/itd-browser/node_modules/playwright/index.mjs 
 ```
 
 По умолчанию Chromium берётся из `/usr/bin/chromium`; другой путь задаётся через `ITD_CHROMIUM`. Для самого приложения эти инструменты не нужны.
+
+## Новый Центр согласования
+
+Описание, API, миграция и ограничения: [docs/approval-center/README.md](docs/approval-center/README.md). Актуальные браузерные сценарии: `tests/browser-approval-center.mjs` и `tests/browser-approval-pdf.mjs`. Точные результаты и незавершённая проверка реальных мобильных браузеров: [TESTING.md](docs/approval-center/TESTING.md). Публикация не выполнялась.

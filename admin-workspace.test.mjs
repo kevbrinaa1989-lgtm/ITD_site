@@ -1,3 +1,4 @@
+import { confirmFixtureReview } from "./tests/approval-fixture.mjs";
 import { prepareFixtureUpload } from "./tests/upload-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -364,6 +365,11 @@ test("admin working center uses actual actionable material threads, tasks, dates
           `/api/material-versions/${v1.id}/comments`,
           { text: "Уточнение предыдущей версии" },
           "POST",
+        );
+        await confirmFixtureReview(
+          (path, body) =>
+            f.json(path, { cookie: owner.cookie, method: "POST", body }),
+          v2.id,
         );
         await f.json(`/api/material-versions/${v2.id}/decision`, {
           cookie: owner.cookie,

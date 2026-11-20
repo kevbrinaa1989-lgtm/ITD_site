@@ -452,7 +452,7 @@
       const statusLabel =
         {
           pending_approval: "Ожидает согласования",
-          changes_requested: "Нужны изменения",
+          changes_requested: "На доработку",
           approved: "Согласован",
         }[material.status] || material.status;
       card.append(

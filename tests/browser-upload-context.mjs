@@ -4,6 +4,7 @@ import {
   openFiles,
   closeUpload,
 } from "./browser-navigation.mjs";
+import { notes, queue } from "./approval-navigation.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -510,22 +511,30 @@ try {
     await fileBytes(retry, b, 403);
     async function versionForm() {
       await closeUpload(page);
-      await page.locator("#tab-review").click();
-      if (await page.locator(".review-library-back").isVisible())
-        await page.locator(".review-library-back").click();
+      if (await page.locator("#tab-review").getAttribute("aria-selected") !== "true") await page.locator("#tab-review").click();
+      await page.locator("#approval-center").waitFor();
+      await page
+        .locator("#approval-center")
+        .getByLabel("Этап", { exact: true })
+        .selectOption(String(sa.id));
+      await queue(page);
       await page
         .locator(
-          `#review-material-list [data-material-id="${seed.review.materialId}"]`,
+          `.ac-material[data-material-id="${seed.review.materialId}"] .ac-material-open`,
         )
+        .click();
+      await notes(page);
+      await page
         .getByRole("button", {
-          name: "Открыть согласование и комментарии",
+          name: "Загрузить исправленную версию",
           exact: true,
         })
         .click();
-      await page.locator("#review-version-select").waitFor();
-      const box = page.locator("#review-version-upload").locator("..");
-      await box.locator("summary").click();
-      return page.locator("#review-version-upload");
+      const dialog = page.getByRole("dialog");
+      await dialog
+        .getByLabel("Что изменено", { exact: true })
+        .fill("Проверена привязка версии к проекту и клиенту");
+      return dialog.locator("form");
     }
     let version = await versionForm();
     await choose(
@@ -543,17 +552,12 @@ try {
         a.email,
       ),
     );
-    await openProject(page, pb.id, { wait: false });
-    await page.locator("#upload-switch-dialog[open]").waitFor();
-    await page.locator("#upload-stay").click();
-    assert.equal(
-      await version
-        .locator("input[type=file]")
-        .evaluate((el) => el.files.length),
-      1,
-    );
-    await openProject(page, pb.id, { wait: false });
-    await page.locator("#upload-discard").click();
+    // Closing the version dialog discards this form; it never sends to a newly selected project.
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Закрыть", exact: true })
+      .click();
+    await openProject(page, pb.id);
     assert.equal(
       (
         await api(`/api/materials/${seed.review.materialId}`, {
@@ -570,85 +574,115 @@ try {
       version,
     );
     await shot("version-receiver");
-    const versionResponse = page.waitForResponse(
+    let response = page.waitForResponse(
       (r) =>
         r.url().endsWith(`/api/projects/${pa.id}/files`) &&
         r.request().method() === "POST",
     );
-    await version.locator("button[type=submit]").click();
-    const uploadedVersion = await (await versionResponse).json();
+    await version
+      .getByRole("button", { name: "Отправить новую версию", exact: true })
+      .click();
+    let result = await response;
+    assert.equal(result.status(), 201);
+    const uploadedVersion = await result.json();
     assert.equal(uploadedVersion.review.materialId, seed.review.materialId);
-    const detail = await api(`/api/materials/${seed.review.materialId}`, {
-      cookie: adminCookie,
-    });
-    assert.equal(detail.versions.length, 2);
-    assert.equal(detail.material.currentVersion.file.id, uploadedVersion.id);
+    assert.equal(uploadedVersion.review.versionNumber, 2);
     assert.deepEqual(await fileBytes(uploadedVersion, a), pdf);
     await fileBytes(uploadedVersion, b, 403);
-    await page.waitForFunction(() =>
-      document
-        .querySelector("#review-message")
-        .textContent.includes("Новая версия отправлена"),
-    );
-    // A project can be reassigned in another administrator tab. Both prepared
-    // forms must be cleared and show the actual recipient after refreshing.
+    await page
+      .getByText(new RegExp(`Версия ${uploadedVersion.review.versionNumber} отправлена клиенту\\.`))
+      .waitFor();
     version = await versionForm();
     await choose(
       { name: "После-переназначения.pdf", mimeType: pdfType, buffer: pdf },
       pa,
       version,
     );
-    await select(pa);
-    await choose({
-      name: "Не-отправленный-документ.txt",
-      mimeType: "text/plain",
-      buffer: Buffer.from("temporary upload context test"),
-    });
     const beforeAssignment = posts.length;
     await api(`/api/admin/projects/${pa.id}/assign`, {
       cookie: adminCookie,
       body: { clientId: b.id, expectedClientId: a.id, confirm: true },
     });
-    await closeUpload(page);
+    response = page.waitForResponse(
+      (r) =>
+        r.url().endsWith(`/api/projects/${pa.id}/files`) &&
+        r.request().method() === "POST",
+    );
+    await version
+      .getByRole("button", { name: "Отправить новую версию", exact: true })
+      .click();
+    result = await response;
+    assert.equal(
+      result.status(),
+      409,
+      "old upload intent must reject reassigned owner",
+    );
+    assert.equal(
+      (
+        await api(`/api/materials/${seed.review.materialId}`, {
+          cookie: adminCookie,
+        })
+      ).versions.length,
+      2,
+    );
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Закрыть", exact: true })
+      .click();
+    await page.locator(".ac-brand").click();
     await page.locator("#refresh-button").click();
-    await page.waitForFunction(
-      (email) =>
-        document
-          .querySelector("#upload-client-name")
-          .textContent.includes(email),
-      b.email,
-    );
-    assert.equal(
-      await form.locator("input[type=file]").evaluate((el) => el.files.length),
-      0,
-    );
-    assert.equal(
-      await version
-        .locator("input[type=file]")
-        .evaluate((el) => el.files.length),
-      0,
+    await select(pa);
+    if (viewport.width === 430) {
+      const comment = "Проверено после смены ответственного клиента";
+      await api(`/api/material-versions/${uploadedVersion.review.versionId}/comments`, {
+        cookie: adminCookie, body: { text: comment },
+      });
+      await closeUpload(page);
+      const detail = `**/api/materials/${seed.review.materialId}`;
+      const release = Promise.withResolvers();
+      await page.route(detail, async route => {
+        await release.promise;
+        await route.continue();
+      }, { times: 1 });
+      const started = page.waitForRequest(detail);
+      try {
+        await page.locator("#tab-review").click();
+        await started;
+        await queue(page);
+      } finally {
+        release.resolve();
+      }
+      await page.locator(".ac-history").getByText(comment, { exact: true }).waitFor({ state: "attached" });
+      assert.equal(await page.locator(".ac-list-pane").isVisible(), true,
+        "Loading history must preserve the queue opened by the user");
+    }
+    version = await versionForm();
+    await choose(
+      { name: "После-переназначения.pdf", mimeType: pdfType, buffer: pdf },
+      pa,
+      version,
     );
     assert.ok(
       (await version.locator(".upload-recipient").textContent()).includes(
         b.email,
       ),
     );
-    assert.equal(posts.length, beforeAssignment);
-    await page.locator("#tab-review").click();
-    await choose(
-      { name: "После-переназначения.pdf", mimeType: pdfType, buffer: pdf },
-      pa,
-      version,
-    );
-    const reassignedResponse = page.waitForResponse(
+    response = page.waitForResponse(
       (r) =>
         r.url().endsWith(`/api/projects/${pa.id}/files`) &&
         r.request().method() === "POST",
     );
-    await version.locator("button[type=submit]").click();
-    const reassigned = await (await reassignedResponse).json();
+    await version
+      .getByRole("button", { name: "Отправить новую версию", exact: true })
+      .click();
+    result = await response;
+    assert.equal(result.status(), 201);
+    const reassigned = await result.json();
     assert.deepEqual(await fileBytes(reassigned, b), pdf);
     await fileBytes(reassigned, a, 403);
+    await page
+      .getByText(new RegExp(`Версия ${reassigned.review.versionNumber} отправлена клиенту\\.`))
+      .waitFor();
     // Bulk results also work; each item retains the selected stage and recipient.
     await select(pa, 0);
     await choose(

@@ -1,4 +1,7 @@
 :root {
+  --text-caption: 0.8125rem;
+  --text-small: 0.875rem;
+  --text-medium: 0.9375rem;
   --ivory: #f6f4ef;
   --paper: #fffefa;
   --ink: #292c29;
@@ -114,16 +117,16 @@ a {
 }
 .brand span {
   letter-spacing: 3px;
-  font-size: 9px;
+  font-size: var(--text-caption);
   font-weight: 500;
 }
 .back-link {
-  font-size: 12px;
+  font-size: var(--text-small);
   text-decoration: none;
   color: var(--muted);
 }
 .eyebrow {
-  font-size: 10px;
+  font-size: var(--text-caption);
   letter-spacing: 2px;
   text-transform: uppercase;
   font-weight: 600;
@@ -158,7 +161,7 @@ a {
   font-weight: 400;
 }
 .intro-copy {
-  font-size: 15px;
+  font-size: 1rem;
   line-height: 1.8;
   color: var(--muted);
   max-width: 330px;
@@ -245,9 +248,9 @@ a {
   position: absolute;
   bottom: 10px;
   left: 14px;
-  font-size: 7px;
+  font-size: var(--text-caption);
   letter-spacing: 2px;
-  color: #716657;
+  color: #51483e;
 }
 .login-panel {
   padding: 42px;
@@ -260,7 +263,7 @@ a {
   margin-bottom: 10px;
 }
 .login-panel > .muted {
-  font-size: 12px;
+  font-size: var(--text-small);
   max-width: 320px;
   margin-bottom: 22px;
 }
@@ -274,7 +277,7 @@ a {
   padding: 0 0 13px;
   background: none;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-small);
   border-bottom: 2px solid transparent;
 }
 .auth-tab[aria-pressed="true"] {
@@ -286,7 +289,7 @@ form {
   gap: 9px;
 }
 form label {
-  font-size: 11px;
+  font-size: var(--text-caption);
   font-weight: 600;
   margin-top: 10px;
   letter-spacing: 0.2px;
@@ -303,20 +306,20 @@ textarea {
   color: var(--ink);
   padding: 12px 13px;
   min-height: 45px;
-  font-size: 13px;
+  font-size: 1rem;
 }
 textarea {
   resize: vertical;
 }
 input[type="file"] {
   padding: 10px;
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 .primary {
   background: var(--dark);
   color: #fff;
   padding: 14px 22px;
-  font-size: 12px;
+  font-size: var(--text-small);
   letter-spacing: 0.4px;
   border-radius: 3px;
   margin-top: 17px;
@@ -330,7 +333,7 @@ input[type="file"] {
   text-decoration: none;
 }
 .login-help {
-  font-size: 11px;
+  font-size: var(--text-caption);
   color: var(--muted);
   line-height: 1.8;
   margin: 24px 0 0;
@@ -339,12 +342,12 @@ input[type="file"] {
   color: var(--copper);
 }
 small {
-  font-size: 11px;
+  font-size: var(--text-caption);
   color: var(--muted);
 }
 .error {
   color: #a13b2c;
-  font-size: 12px;
+  font-size: var(--text-small);
   margin: 5px 0;
 }
 .error:empty {
@@ -553,7 +556,7 @@ body:has(#app-view:not([hidden])) > footer {
   color: var(--copper);
   background: none;
   padding: 5px 0;
-  font-size: 11px;
+  font-size: var(--text-caption);
   min-height: 34px;
   white-space: nowrap;
 }
@@ -858,7 +861,7 @@ progress::-moz-progress-bar {
   color: #a14b3a;
 }
 .empty-note {
-  font-size: 12px;
+  font-size: var(--text-small);
   color: var(--muted);
   padding: 25px;
   border: 1px dashed #d9dbd0;
@@ -906,7 +909,7 @@ progress::-moz-progress-bar {
   padding: 22px 26px;
 }
 .admin-details summary {
-  font-size: 13px;
+  font-size: var(--text-medium);
   font-weight: 500;
   padding: 3px 0;
   list-style: none;
@@ -942,7 +945,7 @@ progress::-moz-progress-bar {
   padding-top: 12px;
 }
 .stage-edit > summary {
-  font-size: 10px;
+  font-size: var(--text-caption);
   color: var(--copper);
 }
 .stage-edit-form {
@@ -953,7 +956,7 @@ progress::-moz-progress-bar {
   background: var(--dark);
   color: white;
   padding: 11px;
-  font-size: 11px;
+  font-size: var(--text-caption);
   border-radius: 3px;
   margin-top: 10px;
 }
@@ -976,7 +979,7 @@ progress::-moz-progress-bar {
   color: white;
   padding: 14px 22px;
   border-radius: 5px;
-  font-size: 12px;
+  font-size: var(--text-small);
   box-shadow: 0 8px 25px #0002;
   overflow-wrap: anywhere;
 }
@@ -989,7 +992,7 @@ progress::-moz-progress-bar {
 body > footer {
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: var(--text-caption);
   color: var(--muted);
   padding: 20px 60px;
   border-top: 1px solid var(--line);
@@ -1292,7 +1295,7 @@ body > footer {
     padding: 20px;
   }
   .admin-details summary {
-    font-size: 12px;
+    font-size: var(--text-small);
   }
   .site-header {
     width: calc(100% - 44px);
@@ -1340,7 +1343,7 @@ body > footer {
     right: 68px;
   }
   .intro .eyebrow {
-    font-size: 8px;
+    font-size: var(--text-caption);
     margin-bottom: 10px;
   }
   .intro h1 {
@@ -1351,7 +1354,7 @@ body > footer {
     display: none;
   }
   .intro-copy {
-    font-size: 12px;
+    font-size: var(--text-small);
     max-width: 100%;
     margin-bottom: 0;
   }
@@ -1364,14 +1367,14 @@ body > footer {
     font-size: 29px;
   }
   .login-panel > .muted {
-    font-size: 11px;
+    font-size: var(--text-caption);
   }
   .auth-tabs {
     margin-bottom: 25px;
   }
   body > footer {
     padding: 20px 22px;
-    font-size: 9px;
+    font-size: var(--text-caption);
     gap: 20px;
   }
 }
@@ -1568,7 +1571,7 @@ body > footer {
  .file-viewer { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; margin:0; border:0; }
  .viewer-toolbar { padding:12px; }.viewer-controls { padding:0 12px 8px; gap:6px; }.viewer-controls button,.viewer-download { padding:10px; font-size:12px; }.viewer-status { padding:0 12px 8px; }
  .material-gallery { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }.gallery-open img { height:150px; }
- .file-item { flex-wrap:wrap; }.file-preview { font-size:12px; }
+ .file-item { flex-wrap:wrap; }.file-preview { font-size:var(--text-small); }
 }
 .gallery-actions { display:flex; flex:1; flex-wrap:wrap; justify-content:space-between; gap:8px; padding:8px 12px; border:1px solid var(--line,#d8d5ce); border-top:0; }
 .gallery-actions a,.gallery-actions button { min-height:44px; display:inline-flex; align-items:center; }
@@ -1614,17 +1617,17 @@ body > footer {
   box-shadow: inset 3px 0 var(--copper);
 }
 .recovery-request strong {
-  font-size: 12px;
+  font-size: var(--text-small);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 .recovery-email {
-  font-size: 12px;
+  font-size: var(--text-small);
   overflow-wrap: anywhere;
   margin-bottom: 0;
 }
 .recovery-meta {
-  font-size: 10px;
+  font-size: var(--text-caption);
   color: var(--muted);
 }
 .recovery-detail {
@@ -1637,14 +1640,14 @@ body > footer {
   overflow-wrap: anywhere;
 }
 .recovery-detail h4 {
-  font-size: 12px;
+  font-size: var(--text-small);
   margin: 28px 0 14px;
 }
 .recovery-fields {
   display: grid;
   grid-template-columns: 1fr 1.25fr;
   gap: 10px 16px;
-  font-size: 11px;
+  font-size: var(--text-caption);
   margin: 24px 0;
 }
 .recovery-fields dt {
@@ -1665,7 +1668,7 @@ body > footer {
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  font-size: 12px;
+  font-size: var(--text-small);
   line-height: 1.7;
 }
 .recovery-identity input {
@@ -1684,20 +1687,20 @@ body > footer {
   min-width: 0;
 }
 .recovery-link-box .muted {
-  font-size: 11px;
+  font-size: var(--text-caption);
   margin: 0;
 }
 .recovery-link-box label {
-  font-size: 11px;
+  font-size: var(--text-caption);
 }
 .recovery-link-box input {
   min-width: 0;
-  font-size: 11px;
+  font-size: var(--text-caption);
 }
 .recovery-history {
   padding-left: 17px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-caption);
   line-height: 1.8;
 }
 .recovery-history li {
@@ -1720,7 +1723,7 @@ body > footer {
   font-size: 38px;
 }
 .reset-panel .muted {
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 .reset-panel .button-link {
   text-align: center;
@@ -1828,15 +1831,15 @@ body > footer {
   box-shadow: inset 3px 0 var(--copper);
 }
 .admin-record strong {
-  font-size: 13px;
+  font-size: var(--text-medium);
   font-weight: 600;
 }
 .admin-record > span {
-  font-size: 11px;
+  font-size: var(--text-caption);
   color: var(--muted);
 }
 .admin-record small {
-  font-size: 10px;
+  font-size: var(--text-caption);
 }
 .admin-detail {
   min-width: 0;
@@ -1848,7 +1851,7 @@ body > footer {
   overflow-wrap: anywhere;
 }
 .admin-detail > h4 {
-  font-size: 13px;
+  font-size: var(--text-medium);
   margin: 25px 0 14px;
 }
 .admin-editor,
@@ -1859,7 +1862,7 @@ body > footer {
 }
 .admin-editor > summary,
 .admin-history > summary {
-  font-size: 12px;
+  font-size: var(--text-small);
   color: var(--copper);
   line-height: 1.7;
 }
@@ -1869,7 +1872,7 @@ body > footer {
 .admin-danger {
   background: none;
   color: #9d4f37;
-  font-size: 11px;
+  font-size: var(--text-caption);
   padding: 14px 0;
   text-align: left;
   display: block;
@@ -1886,7 +1889,7 @@ body > footer {
   overflow-wrap: anywhere;
 }
 .admin-warning {
-  font-size: 12px;
+  font-size: var(--text-small);
   line-height: 1.8;
   color: #875739;
   border: 1px solid #dfcdb7;
@@ -2150,7 +2153,7 @@ body > footer {
   min-width: 19px !important;
   height: 19px;
   border-radius: 12px;
-  font-size: 10px !important;
+  font-size: var(--text-caption) !important;
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -2170,7 +2173,7 @@ body > footer {
   border-left: 3px solid var(--copper);
 }
 .notification-card h3 {
-  font-size: 14px;
+  font-size: 1rem;
   font-weight: 500;
   overflow-wrap: anywhere;
 }
@@ -2286,7 +2289,7 @@ body > footer {
 .workspace-attention-filters label {
   display: grid;
   gap: 8px;
-  font-size: 11px;
+  font-size: var(--text-caption);
   flex: 1;
 }
 .workspace-sections {
@@ -2386,7 +2389,7 @@ body > footer {
 .task-filters label {
   display: grid;
   gap: 8px;
-  font-size: 11px;
+  font-size: var(--text-caption);
   min-width: 0;
 }
 .task-filters .primary {
@@ -2421,21 +2424,21 @@ body > footer {
 .workspace-task-form label {
   display: grid;
   gap: 8px;
-  font-size: 11px;
+  font-size: var(--text-caption);
 }
 .workspace-task-form .text-button {
   min-height: 44px;
 }
 .stage-dates {
   color: var(--muted);
-  font-size: 10px !important;
+  font-size: var(--text-caption) !important;
   line-height: 1.8;
   margin: 13px 0;
 }
 .stage-edit-form label {
   display: grid;
   gap: 7px;
-  font-size: 11px;
+  font-size: var(--text-caption);
   flex: 1;
   min-width: 150px;
 }
@@ -2670,16 +2673,16 @@ body > footer {
 #app-view .studio-contact {
   color: #655d50;
   border-color: #d9d5cb;
-  font-size: 12px;
+  font-size: var(--text-small);
   white-space: normal;
   gap: 10px;
 }
 #app-view .account-person strong {
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 #app-view .account-person span {
   color: #777a73;
-  font-size: 11px;
+  font-size: var(--text-caption);
 }
 #app-view .account-avatar {
   color: #68634f;
@@ -2718,7 +2721,7 @@ body > footer {
 #app-view .workspace-footer {
   margin-inline: 32px;
   color: #777a73;
-  font-size: 11px;
+  font-size: var(--text-caption);
 }
 #project-heading {
   display: grid;
@@ -2858,7 +2861,7 @@ body > footer {
 #app-view .review-status,
 #app-view .stage-status,
 #app-view .recovery-meta {
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 #app-view .stage-card h3 {
   font-size: 16px;
@@ -2901,10 +2904,10 @@ body > footer {
   font-size: 16px;
 }
 #app-view .admin-record > span {
-  font-size: 13px;
+  font-size: var(--text-medium);
 }
 #app-view .admin-record small {
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 #app-view .client-home,
 #client-home-panel,
@@ -2934,7 +2937,7 @@ body > footer {
   margin: 12px 0;
 }
 .project-card p {
-  font-size: 13px;
+  font-size: var(--text-medium);
   color: #767970;
   line-height: 1.7;
 }
@@ -2960,7 +2963,7 @@ body > footer {
 }
 .client-attention p,
 .client-notice p {
-  font-size: 14px;
+  font-size: 1rem;
   line-height: 1.7;
 }
 .profile-card {
@@ -2981,7 +2984,7 @@ body > footer {
   min-width: 0;
 }
 .create-project-stages legend {
-  font-size: 14px;
+  font-size: 1rem;
   padding: 0 6px;
 }
 .create-project-stages .stage-template-option {
@@ -2989,7 +2992,7 @@ body > footer {
   align-items: flex-start;
   gap: 11px;
   line-height: 1.7;
-  font-size: 13px;
+  font-size: var(--text-medium);
   margin-top: 12px;
 }
 #app-view .stage-template-option input {
@@ -3015,10 +3018,10 @@ body > footer {
 }
 #app-view .review-history,
 #app-view .recovery-history {
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 #app-view .notification-count {
-  background: #b19b78;
+  background: var(--copper);
   color: #fff;
 }
 @media (max-width: 1000px) {
@@ -3075,10 +3078,10 @@ body > footer {
     padding: 15px 7px 0;
   }
   #app-view .account-person strong {
-    font-size: 13px;
+    font-size: var(--text-medium);
   }
   #app-view .account-person span {
-    font-size: 12px;
+    font-size: var(--text-small);
   }
   #app-view .studio-contact {
     padding: 12px 7px;
@@ -3124,7 +3127,7 @@ body > footer {
   }
   #app-view .workspace-footer {
     margin-inline: 15px;
-    font-size: 11px;
+    font-size: var(--text-caption);
   }
   #app-view h1,
   #project-heading h1 {
@@ -3191,7 +3194,7 @@ body > footer {
     padding: 14px;
   }
   .create-project-stages .stage-template-option {
-    font-size: 14px;
+    font-size: 1rem;
   }
 }
 @media (max-width: 390px) {
@@ -3283,7 +3286,7 @@ body > footer {
 
 /* Invitation registration reuses the established forms and protected account flow. */
 .invitations-panel > summary {
-  font-size: 15px;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   min-height: 44px;
@@ -3312,11 +3315,11 @@ body > footer {
   min-width: 0;
 }
 .invitation-card strong {
-  font-size: 14px;
+  font-size: 1rem;
   overflow-wrap: anywhere;
 }
 .invitation-card .muted {
-  font-size: 12px;
+  font-size: var(--text-small);
   line-height: 1.8;
   margin: 10px 0;
 }
@@ -3337,7 +3340,7 @@ body > footer {
 .invitation-link input {
   min-width: 0;
   width: 100%;
-  font-size: 12px !important;
+  font-size: var(--text-small) !important;
 }
 .invitation-page .reset-panel h1 {
   font-family: Arial, system-ui, sans-serif;
@@ -3526,7 +3529,7 @@ body > footer {
 #app-view .review-file-actions .file-preview {
   background: #fff;
   color: #2c302b;
-  font-size: 12px;
+  font-size: var(--text-small);
   font-weight: 500;
   min-height: 40px;
   border: 1px solid #d6d1c9;
@@ -3540,7 +3543,7 @@ body > footer {
   gap: 7px;
   box-shadow: none;
 }
-#app-view .review-file-actions .file-preview::before { content: "◉"; font-size: 15px; }
+#app-view .review-file-actions .file-preview::before { content: "◉"; font-size: 1rem; }
 #app-view .review-file-actions .file-download::before { content: "↓"; font-size: 18px; }
 #app-view .review-file-actions .file-download:hover,
 #app-view .review-file-actions .file-preview:hover { background: #f7f5f1; border-color: #a99b8b; }

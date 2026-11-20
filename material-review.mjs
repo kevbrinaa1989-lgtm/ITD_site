@@ -2,13 +2,60 @@ const iso = (value) => (value == null ? null : new Date(value).toISOString());
 export function decorateReviewFiles(db, files) {
   const query =
     db.prepare(`SELECT v.materialId,m.title,v.id AS versionId,v.versionNumber,v.status,v.revision,
+    (SELECT original.name FROM review_versions first JOIN files original ON original.id=first.fileId
+      WHERE first.materialId=v.materialId ORDER BY first.versionNumber LIMIT 1) AS originalName,
     NOT EXISTS(SELECT 1 FROM review_versions n WHERE n.materialId=v.materialId AND n.versionNumber>v.versionNumber) AS isCurrent
     FROM review_versions v JOIN review_materials m ON m.id=v.materialId WHERE v.fileId=?`);
+  const decisionEvents = db.prepare(`SELECT id,actorId,projectId,stageId,type,createdAt FROM review_events WHERE materialId=? AND versionId=?
+    AND type IN ('approved','changes_requested','approval_cancelled') ORDER BY id`);
+  function confirmedReturnRevision(review, lastEvent) {
+    if (!review.isCurrent || review.status !== "changes_requested" || lastEvent?.type !== "changes_requested") return null;
+    const project = db.prepare(`SELECT m.projectId,p.clientId FROM review_materials m
+      JOIN projects p ON p.id=m.projectId JOIN users u ON u.id=p.clientId
+      WHERE m.id=? AND u.role='client' AND u.isActive=1 AND p.status<>'Архив'`).get(review.materialId);
+    if (!project || project.projectId !== lastEvent.projectId || project.clientId !== lastEvent.actorId) return null;
+
+    // Each submitted package and its closing history event are committed together, in the same order.
+    // A direct return outside a package must not reuse markers from an older submission.
+    const receipt = db.prepare(`SELECT id,userId,snapshot FROM approval_packages
+      WHERE projectId=:projectId AND scope=coalesce(:stageId,0) ORDER BY id LIMIT 1 OFFSET (
+        SELECT COUNT(*) FROM review_events WHERE projectId=:projectId AND stageId IS :stageId
+        AND type='package_submitted' AND id<:returnId)`).get({
+      projectId: project.projectId, stageId: lastEvent.stageId, returnId: lastEvent.id,
+    });
+    if (receipt?.userId !== project.clientId) return null;
+    const returned = JSON.parse(receipt.snapshot).materials.find((entry) =>
+      entry.materialId === review.materialId && entry.versionId === review.versionId &&
+      entry.decision === "changes_requested");
+    if (!returned?.markers?.length) return null;
+    const events = db.prepare(`SELECT n.id AS noteId,n.status,n.authorId,e.id,e.type,e.actorId,e.versionId,u.role
+      FROM approval_notes n LEFT JOIN approval_note_events e ON e.noteId=n.id AND e.type<>'reply'
+      LEFT JOIN users u ON u.id=e.actorId WHERE n.packageId=? AND n.materialId=? AND n.versionId=?
+      ORDER BY n.id,e.id DESC`).all(receipt.id, review.materialId, review.versionId);
+    const notes = Map.groupBy(events, (event) => event.noteId);
+    if (notes.size !== returned.markers.length) return null;
+    let revision = null;
+    for (const history of notes.values()) {
+      const confirmation = history[0];
+      const fix = history.find((event) => event.type !== "confirmed");
+      if (confirmation.status !== "confirmed" || confirmation.authorId !== project.clientId ||
+          confirmation.type !== "confirmed" || confirmation.actorId !== project.clientId ||
+          confirmation.versionId !== review.versionId || fix?.type !== "fixed" ||
+          fix.role !== "admin" || fix.versionId !== review.versionId) return null;
+      revision = Math.max(revision ?? 0, confirmation.id);
+    }
+    return revision;
+  }
   return files.map((file) => {
     const review = query.get(file.id);
-    return review
-      ? { ...file, review: { ...review, isCurrent: !!review.isCurrent } }
-      : file;
+    if (!review) return file;
+    const history = decisionEvents.all(review.materialId, review.versionId);
+    const lastDecision = history.findLast(e => e.type !== "approval_cancelled")?.type ??
+      (["approved", "changes_requested"].includes(review.status) ? review.status : null);
+    const correctionApprovalRevision = confirmedReturnRevision(review, history.at(-1));
+    return { ...file, review: { ...review, isCurrent: !!review.isCurrent, lastDecision,
+      decisionHistory: history.map(({ type, createdAt }) => ({ type, createdAt })),
+      canApproveAfterCorrection: correctionApprovalRevision !== null, correctionApprovalRevision } };
   });
 }
 export function initMaterialReview({ db, now = Date.now, validatePreview }) {
@@ -198,7 +245,7 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
   function deriveStage(stageId) {
     if (stageId == null) return;
     const statuses = all(
-      `SELECT v.status FROM review_versions v JOIN review_materials m ON m.id=v.materialId WHERE m.stageId=? AND NOT EXISTS(SELECT 1 FROM review_versions n WHERE n.materialId=v.materialId AND n.versionNumber>v.versionNumber)`,
+      `SELECT v.status FROM review_versions v JOIN review_materials m ON m.id=v.materialId LEFT JOIN approval_metadata a ON a.materialId=m.id WHERE m.stageId=? AND COALESCE(a.required,1)=1 AND NOT EXISTS(SELECT 1 FROM review_versions n WHERE n.materialId=v.materialId AND n.versionNumber>v.versionNumber)`,
       stageId,
     ).map((row) => row.status);
     if (statuses.length)
@@ -208,7 +255,11 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
           ? "changes_requested"
           : statuses.includes("pending_approval")
             ? "pending_approval"
-            : "approved",
+            : ["approved", "completed"].includes(
+                  get("SELECT status FROM stages WHERE id=?", stageId)?.status,
+                )
+              ? get("SELECT status FROM stages WHERE id=?", stageId).status
+              : "pending_approval",
         stageId,
       );
   }
@@ -244,12 +295,13 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
     access(projectId, user, fail);
     if (
       b.category !== "result" ||
-      (b.stageId != null && (!Number.isSafeInteger(b.stageId) ||
-      !get(
-        "SELECT id FROM stages WHERE id=? AND projectId=?",
-        b.stageId,
-        projectId,
-      )))
+      (b.stageId != null &&
+        (!Number.isSafeInteger(b.stageId) ||
+          !get(
+            "SELECT id FROM stages WHERE id=? AND projectId=?",
+            b.stageId,
+            projectId,
+          )))
     )
       fail(400, "Для согласования выберите результат и этап проекта");
     if ("materialId" in b || "expectedVersionId" in b) {
@@ -268,7 +320,7 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
     }
     return { materialId: null };
   }
-  function attachFile(fileId, b, projectId, user, fail) {
+  function attachFile(fileId, b, projectId, user, fail, options = {}) {
     const plan = validateUpload(b, projectId, user, fail);
     if (!plan) return null;
     const file = get("SELECT * FROM files WHERE id=?", fileId);
@@ -314,13 +366,13 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
       user,
       previous ? "version_uploaded" : "submitted",
       "",
-      "client",
+      options.notify === false ? null : "client",
     );
     if (previous) addEvent(m, v, user, "version_replaced");
     deriveStage(m.stageId);
     return decorateReviewFiles(db, [{ id: fileId }])[0].review;
   }
-  const notificationSelect = `SELECT n.id,n.readAt,e.type,e.projectId,p.title AS projectTitle,e.stageId,e.materialId,e.versionId,m.title AS materialTitle,v.versionNumber,u.name AS actorName,e.createdAt FROM review_notifications n JOIN review_events e ON e.id=n.eventId JOIN projects p ON p.id=e.projectId JOIN review_materials m ON m.id=e.materialId JOIN review_versions v ON v.id=e.versionId JOIN users u ON u.id=e.actorId`;
+  const notificationSelect = `SELECT n.id,n.readAt,e.type,e.body,e.projectId,p.title AS projectTitle,e.stageId,e.materialId,e.versionId,m.title AS materialTitle,v.versionNumber,u.name AS actorName,e.createdAt FROM review_notifications n JOIN review_events e ON e.id=n.eventId JOIN projects p ON p.id=e.projectId JOIN review_materials m ON m.id=e.materialId JOIN review_versions v ON v.id=e.versionId JOIN users u ON u.id=e.actorId`;
   const visibleNotifications = (user) =>
     all(
       notificationSelect +
@@ -492,6 +544,18 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
             fail(409, "Решение уже сохранено");
           if (b.decision === "approved" && b.confirm !== true)
             fail(400, "Подтвердите согласование этой версии");
+          if (
+            b.decision === "approved" &&
+            !get(
+              "SELECT 1 FROM approval_view_confirmations WHERE versionId=? AND userId=?",
+              v.id,
+              user.id,
+            )
+          )
+            fail(
+              409,
+              "Подтвердите просмотр всех страниц в Центре согласования",
+            );
           if (b.decision === "changes_requested" && !validText(b.comment))
             fail(400, "Для изменений обязателен комментарий до 4000 символов");
           if ("comment" in b && b.comment !== "" && !validText(b.comment))
@@ -514,6 +578,8 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
             (b.comment || "").trim(),
             "admin",
           );
+          if (b.comment?.trim())
+            run("INSERT INTO approval_general_remarks(eventId) VALUES(?)", eventId);
         } else {
           strict(b, ["reason", "confirm", "expectedRevision"], fail);
           if (b.confirm !== true || !validText(b.reason))
@@ -547,6 +613,11 @@ export function initMaterialReview({ db, now = Date.now, validatePreview }) {
   }
   return {
     handle,
+    access,
+    material,
+    latest,
+    addEvent,
+    deriveStage,
     validateUpload,
     attachFile,
     transaction,

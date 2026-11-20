@@ -1,3 +1,4 @@
+import { confirmFixtureReview } from "./tests/approval-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -246,7 +247,9 @@ test("project reassignment after preparation invalidates the destination snapsho
 test("identical ordinary and review upload retries return original receipts and never duplicate rows", async (t) => {
   const f = await fixture(t);
   for (const review of [false, true]) {
-    const intent = await f.prepare(f.project.id, {stageId: review ? f.stage.id : null}),
+    const intent = await f.prepare(f.project.id, {
+        stageId: review ? f.stage.id : null,
+      }),
       body = {
         ...payload,
         category: review ? "result" : "document",
@@ -269,6 +272,10 @@ test("identical ordinary and review upload retries return original receipts and 
     );
     await f.upload({ ...body, name: "modified.txt" }, 409);
     if (review) {
+      await confirmFixtureReview(
+        (path, body) => f.json(path, body, f.client.cookie),
+        first.review.versionId,
+      );
       await f.json(
         `/api/material-versions/${first.review.versionId}/decision`,
         { decision: "approved", confirm: true, expectedRevision: 0 },
@@ -280,7 +287,7 @@ test("identical ordinary and review upload retries return original receipts and 
 });
 test("new-version tickets bind material current-version revision and cannot enroll another group", async (t) => {
   const f = await fixture(t),
-    initial = await f.prepare(f.project.id, {stageId:f.stage.id}),
+    initial = await f.prepare(f.project.id, { stageId: f.stage.id }),
     first = await f.upload({
       ...payload,
       category: "result",

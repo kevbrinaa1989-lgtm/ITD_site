@@ -110,11 +110,11 @@ test("category, stage and type filters combine without changing the original cat
   );
   assert.deepEqual(
     select(e, { stage: "unassigned" }).map((x) => x.file.id),
-    [4, 3],
+    [3, 4],
   );
   assert.deepEqual(
     select(e, { type: "images" }).map((x) => x.file.id),
-    [4, 2],
+    [2, 4],
   );
   assert.equal(e.length, 4);
 });
@@ -150,6 +150,16 @@ test("legacy unassigned files and missing current flag stay accessible", () => {
   assert.equal(e.length, 5);
   assert.equal(e.find((e) => e.key === "material-7").file.id, 2);
   assert.equal(e.find((e) => e.file.id === 6).title, "legacy");
+});
+test("a stage starts with its earliest material even after a replacement file arrives", () => {
+  const p = structuredClone(project);
+  p.files[1].id = 20;
+  const items = entries(p);
+  assert.deepEqual(select(items, { stage: "1" }).map(e => e.file.id), [20, 5]);
+  assert.deepEqual(select(items, { stage: "1", sort: "name" }).map(e => e.title),
+    select(items, { stage: "1" }).map(e => e.title).sort((a, b) => a.localeCompare(b, "ru")));
+  assert.deepEqual(select(items, { stage: "unassigned" }).map(e => e.file.id), [3, 4]);
+  assert.deepEqual(select(items, { stage: "unassigned", sort: "newest" }).map(e => e.file.id), [4, 3]);
 });
 test("legacy documents without requisites remain available through their displayed type filter", () => {
   const e = entries({

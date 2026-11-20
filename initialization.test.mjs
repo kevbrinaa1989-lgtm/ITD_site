@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { mkdtemp, rm, readFile, writeFile, readdir } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { DatabaseSync } from "node:sqlite";
 import { randomBytes, createHash } from "node:crypto";
@@ -76,7 +76,9 @@ test("fresh initialization creates private administrator storage that survives r
   let server;
   try {
     const initialized=await initializeData({adminEmail:" OWNER@example.test ",adminPassword:password,settingsFile,dataRoot});
-    assert.equal(initialized.counts.users,1);assert.equal(initialized.counts.projects,0);assert.equal(initialized.counts.files,0);assert.match(initialized.dataDir,new RegExp(`${dataRoot.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}/data-`));
+    assert.equal(initialized.counts.users,1);assert.equal(initialized.counts.projects,0);assert.equal(initialized.counts.files,0);
+    assert.equal(dirname(initialized.dataDir),dataRoot);
+    assert.match(basename(initialized.dataDir),/^data-/);
     assert.equal(configuredData({settingsFile}),initialized.dataDir);verifyBackup(initialized.backupDir);
     const db=new DatabaseSync(join(initialized.dataDir,"itd.sqlite"),{readOnly:true});try{const users=db.prepare("SELECT email,role,password FROM users").all();assert.equal(users.length,1);assert.equal(users[0].email,adminEmail);assert.equal(users[0].role,"admin");assert.notEqual(users[0].password,password);assert.match(users[0].password,/^[a-f0-9]{32}:[a-f0-9]{128}$/);}finally{db.close();}
     await assertSecretAbsent(root,password);

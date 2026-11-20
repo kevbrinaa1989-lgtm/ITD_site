@@ -271,15 +271,23 @@ try {
     await dashboard(admin);
     // Projects on the "Сегодня в студии" home must open the real project
     // overview directly; previously the workspace hook was not wired up.
-    const homeTile = admin.locator("#workspace-project-strip .studio-project-tile").first();
+    const homeTile = admin
+      .locator("#workspace-project-strip .studio-project-tile")
+      .first();
     // The dashboard tile is intentionally hidden at phone breakpoints.
     // Exercise its direct click only in layouts where the tile is exposed.
     if (await homeTile.isVisible()) {
       const homeProjectTitle = await homeTile.locator("strong").textContent();
       await homeTile.click();
       await admin.locator("#project-heading").waitFor({ state: "visible" });
-      assert.equal(await admin.locator("#project-title").textContent(), homeProjectTitle);
-      assert.equal(await admin.locator("#tab-overview").getAttribute("aria-selected"), "true");
+      assert.equal(
+        await admin.locator("#project-title").textContent(),
+        homeProjectTitle,
+      );
+      assert.equal(
+        await admin.locator("#tab-overview").getAttribute("aria-selected"),
+        "true",
+      );
       await dashboard(admin);
     }
     await filterProject(admin);
@@ -349,11 +357,16 @@ try {
       .click();
     await admin.waitForFunction(
       (id) =>
-        document.querySelector("#review-version-select")?.value === String(id),
+        document.querySelector('.ac-view-heading select[aria-label="Версия"]')
+          ?.value === String(id),
       v1,
     );
     assert.equal(await admin.locator("#project-title").textContent(), title);
-    await admin.locator("#review-material-detail .review-warning").waitFor();
+    assert.ok(
+      (await admin.locator(".ac-rail").textContent()).includes(
+        "Историческая версия",
+      ),
+    );
     assert.equal(
       (await api("/api/admin/workspace", { cookie: adminCookie })).counts
         .unansweredThreads,
@@ -372,15 +385,19 @@ try {
     await stageCard
       .getByRole("button", { name: "Открыть этап →", exact: true })
       .click();
-    await admin.locator("#project-route .route-stage-heading h2")
-      .getByText("Планировка со сроком").waitFor();
+    await admin
+      .locator("#project-route .route-stage-heading h2")
+      .getByText("Планировка со сроком")
+      .waitFor();
     assert.equal(await admin.locator("#tab-stages").count(), 0);
     assert.equal(
       await admin.locator("#tab-overview").getAttribute("aria-selected"),
       "true",
     );
     assert.match(
-      await admin.locator("#project-route .route-stage-heading h2").textContent(),
+      await admin
+        .locator("#project-route .route-stage-heading h2")
+        .textContent(),
       /Планировка со сроком/,
     );
     assert.equal(await admin.locator("#project-title").textContent(), title);
@@ -696,11 +713,18 @@ try {
       403,
     );
     assert.equal(await client.locator("#tab-stages").count(), 0);
-    assert.equal(await client.locator("#settings-stage-management").isVisible(), false);
-    await client.locator("#project-route .route-step")
-      .filter({ hasText: "Этап с проверенными датами" }).click();
-    await client.locator("#project-route .route-stage-heading h2")
-      .getByText("Этап с проверенными датами").waitFor();
+    assert.equal(
+      await client.locator("#settings-stage-management").isVisible(),
+      false,
+    );
+    await client
+      .locator("#project-route .route-step")
+      .filter({ hasText: "Этап с проверенными датами" })
+      .click();
+    await client
+      .locator("#project-route .route-stage-heading h2")
+      .getByText("Этап с проверенными датами")
+      .waitFor();
     assert.equal(
       (await client.locator("#app-view").textContent()).includes(
         "Внутренний текст задачи",

@@ -20,7 +20,7 @@ try {
   await new Promise((r) => app.server.listen(0, "127.0.0.1", r));
   const base = `http://127.0.0.1:${app.server.address().port}`;
   browser = await chromium.launch({
-    executablePath: "/usr/bin/chromium",
+    executablePath: process.env.ITD_CHROMIUM || "/usr/bin/chromium",
     args: ["--no-sandbox"],
   });
   const errors = [],
@@ -133,7 +133,7 @@ try {
     for (const [index, [title, tabId]] of [
       ["Главная", "tab-client-home"],
       ["Мои проекты", "tab-client-projects"],
-      ["На согласование", "tab-client-review"],
+      ["Решения", "tab-client-review"],
       ["Уведомления", "tab-notifications"],
       ["Мой профиль", "tab-profile"],
     ].entries()) {

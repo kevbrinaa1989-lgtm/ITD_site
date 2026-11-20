@@ -1,3 +1,4 @@
+import { confirmFixtureReview } from "./approval-fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -6,8 +7,10 @@ import { randomBytes } from "node:crypto";
 import { createApp } from "../server.mjs";
 import { fixtures } from "./preview-fixtures.mjs";
 import { prepareFixtureUpload } from "./upload-fixture.mjs";
+import { checkFirstUse } from "./browser-first-use.mjs";
 import {
   openProject,
+  openGlobal,
   dismissWelcome,
   openFiles,
 } from "./browser-navigation.mjs";
@@ -116,14 +119,16 @@ try {
     raw.set(f.id, data);
     return f;
   }
+  const photoIds = [];
   for (let i = 0; i < 3; i++) {
     const selectedPhoto = photos[i % photos.length];
-    await upload(
+    const photoFile = await upload(
       `render_${i}.${selectedPhoto[1] === "image/webp" ? "webp" : "jpg"}`,
       selectedPhoto[1],
       selectedPhoto[2],
       { stageId: stages[3].id },
     );
+    photoIds.push(String(photoFile.id));
   }
   const old = await upload("ARCHIVE_PLAN_V1.pdf", pdf[1], pdf[2], {
     stageId: stages[1].id,
@@ -145,6 +150,10 @@ try {
     review: true,
   });
   const d = await api(`/api/materials/${approved.review.materialId}`);
+  await confirmFixtureReview(
+    (path, body) => api(path, body, "POST", clientCookie),
+    approved.review.versionId,
+  );
   await api(
     `/api/material-versions/${approved.review.versionId}/decision`,
     {
@@ -208,6 +217,7 @@ try {
     executablePath: process.env.ITD_CHROMIUM || "/usr/bin/chromium",
     args: ["--no-sandbox"],
   });
+  if (!before) await checkFirstUse(browser);
   const reports = [];
   for (const width of [360, 390, 768, 1024, 1440]) {
     const context = await browser.newContext({
@@ -261,6 +271,43 @@ try {
         });
     }
     await signIn("client@example.test");
+    if (!before && (width === 360 || width === 1440)) {
+      const home = page.locator("#client-home-panel");
+      await home.locator(".route-step").nth(3).click();
+      await home.getByRole("button", { name: "Открыть: Альбом этапа", exact: true }).click();
+      await page.locator("#panel-files").waitFor({ state: "visible" });
+      assert.equal(await page.locator("#library-stage").inputValue(), String(stages[3].id));
+      await page.locator("#project-gallery .album-thumbnail").first().waitFor();
+      assert.equal(await page.locator("#project-gallery .album-thumbnail").count(), 3);
+      assert.match(await page.locator(".album-filename").textContent(), /render_0/);
+      await page.locator("#library-back").click();
+      assert.equal(await page.locator("#project-route .route-step").nth(3).getAttribute("aria-pressed"), "true");
+      await page.locator("#tab-review").click();
+      await page.getByText("В этом разделе ещё нет материалов для согласования.", {exact:true}).waitFor();
+      assert.equal(await page.locator(".ac-stage select").inputValue(), String(stages[3].id));
+      await openGlobal(page, "client-home");
+      await home.locator(".route-step").nth(1).click();
+      await home.getByRole("button", { name: "Открыть: Документы этапа", exact: true }).click();
+      await page.locator("#panel-files").waitFor({ state: "visible" });
+      assert.equal(await page.locator("#library-stage").inputValue(), String(stages[1].id));
+      assert.equal(await page.locator('[data-library-category="document"]').getAttribute("aria-pressed"), "true");
+      assert.equal(await page.locator("[data-library-key]").count(), 1);
+      assert.equal(await page.locator(`[data-file-id="${contract.id}"]`).count(), 0);
+      await page.locator("#tab-review").click();
+      await page.locator(".ac-view-heading").waitFor();
+      assert.equal(await page.locator(".ac-stage select").inputValue(), String(stages[1].id));
+      assert.equal(await page.locator(".ac-material").count(), 1);
+      await page.locator(".ac-brand").click();
+      assert.equal(await page.locator("#project-route .route-step").nth(1).getAttribute("aria-pressed"), "true");
+      await page.locator("#project-route .route-links").getByRole("button", {name:"Открыть: Альбом этапа"}).click();
+      await page.locator(".album-material-actions").getByRole("button", {name:/Обсудить/}).click();
+      await page.locator(".ac-rail").waitFor();
+      await page.getByRole("button", {name:"Закрыть панель",exact:true}).click();
+      await page.getByRole("button", {name:"← Файлы этапа",exact:true}).click();
+      await page.locator("#project-gallery .album-hero-media").waitFor();
+      assert.equal(await page.locator("#project-gallery .album-thumbnail, #project-gallery .album-next").count(), 0);
+      assert.equal(await page.locator("#library-stage").inputValue(), String(stages[1].id));
+    }
     await openProject(page, project.id, { client: true });
     await page.locator(before ? "#tab-results" : "#tab-files").click();
     if (!before) {
@@ -343,13 +390,12 @@ try {
         String(stages[0].id),
       );
       assert.equal(await page.locator("[data-library-key]").count(), 0);
-      // "Альбом проекта" likewise scopes photographic materials to the stage.
+      // The album contains only images from the selected stage.
       await page.locator("#tab-overview").click();
       await page.locator("#project-route .route-step").nth(3).click();
       await page
-        .locator("#project-route .route-links > .panel")
-        .nth(0)
-        .getByRole("button")
+        .locator("#project-route")
+        .getByRole("button", { name: "Открыть: Альбом этапа", exact: true })
         .click();
       assert.equal(
         await page.locator("#library-stage").inputValue(),
@@ -361,7 +407,15 @@ try {
           .getAttribute("aria-pressed"),
         "true",
       );
-      assert.equal(await page.locator("[data-library-key]").count(), 3);
+      await page.locator("#project-gallery .album-thumbnail").first().waitFor();
+      assert.equal(await page.locator(".album-thumbnail").count(), 3);
+      assert.equal(await page.locator("#library-sort").inputValue(), "oldest");
+      await page.locator("#library-album-toggle").click();
+      const visibleOrder = () => page.locator("#library-content .library-material").evaluateAll(
+        nodes => nodes.map(el => el.dataset.fileId));
+      assert.deepEqual(await visibleOrder(), photoIds);
+      await page.locator("#library-sort").selectOption("newest");
+      assert.deepEqual(await visibleOrder(), [...photoIds].reverse());
       // The global nav must not inherit the stage-04 filter.
       await page.locator("#tab-files").click();
       assert.equal(
@@ -520,14 +574,20 @@ try {
       await openFiles(page, "all", { stageIndex: 1 });
       await page.locator("#library-search").fill("ARCHIVE_PLAN_V1");
       assert.equal(await page.locator("[data-library-key]").count(), 1);
-      await page.locator(".library-material .gallery-open").click();
+      await page.locator(".library-material .library-history").click();
+      await page.waitForFunction(
+        (id) => document.querySelector('.ac-view-heading select[aria-label="Версия"]')?.value === String(id),
+        current.review.versionId,
+      );
+      await page.locator(".review-library-back").click();
+      await page.getByRole("button", { name: "Открыть архивную версию 1 · " + old.name, exact: true }).click();
       await page.waitForFunction(
         (id) =>
-          document.querySelector("#review-version-select")?.value ===
-          String(id),
+          document.querySelector('.ac-view-heading select[aria-label="Версия"]')
+            ?.value === String(id),
         old.review.versionId,
       );
-      assert.equal(await page.locator(".review-decision-actions").count(), 0);
+      assert.equal(await page.locator(".ac-decisions").count(), 0);
       await page.locator(".review-library-back").click();
       assert.equal(
         await page.locator("#library-search").inputValue(),
@@ -555,6 +615,18 @@ try {
     await page.locator("#logout-button").click();
     await signIn("studio@example.test");
     await openProject(page, project.id);
+    if (!before && width === 1440) {
+      await page.locator("#project-route .route-step").nth(1).click();
+      await page.locator("#project-route .route-links").getByRole("button", { name: "Открыть: Документы этапа" }).click();
+      assert.equal(await page.locator("#library-stage").inputValue(), String(stages[1].id));
+      await page.locator("#library-content").getByText("Смета отделочных материалов и оборудования").waitFor();
+      await page.locator("#library-back").click();
+      assert.equal(await page.locator("#project-route .route-step").nth(1).getAttribute("aria-pressed"), "true");
+      await page.locator("#tab-review").click();
+      await page.locator(".ac-view-heading").waitFor();
+      assert.equal(await page.locator(".ac-stage select").inputValue(), String(stages[1].id));
+      await page.locator(".ac-brand").click();
+    }
     await page
       .locator("#project-actions")
       .getByRole("button", { name: "Добавить документ", exact: true })

@@ -13,12 +13,13 @@
     box-sizing: border-box;
     --bg: #1d1a17;
     --ink: #f6f1ea;
-    --muted: #cfc6ba;
+    --muted: #e0d7cc;
     --accent: #d9a066;
     --accent-ink: #1d1a17;
     --card: #faf6f0;
     --card-ink: #26211c;
-    --card-muted: #6f665c;
+    --card-muted: #564d43;
+    --card-accent: #805024;
     --line: #ddd3c6;
     --field: #fff;
     padding-top: env(safe-area-inset-top,0px);
@@ -29,7 +30,8 @@
     :root:not([data-theme="light"]){
       --card: #2a2520;
       --card-ink: #f3ede4;
-      --card-muted: #b3a89a;
+      --card-muted: #cec3b4;
+      --card-accent: var(--accent);
       --line: #453d34;
       --field: #1d1a17;
     }
@@ -38,7 +40,8 @@
   :root[data-theme="dark"]{
     --card: #2a2520;
     --card-ink: #f3ede4;
-    --card-muted: #b3a89a;
+    --card-muted: #cec3b4;
+    --card-accent: var(--accent);
     --line: #453d34;
     --field: #1d1a17;
   }
@@ -66,6 +69,7 @@
     margin: 0;
     color: var(--ink);
     font-family: "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    font-size: 1.0625rem;
     line-height: 1.5;
     min-height: 100vh;
     background: radial-gradient(900px 500px at 85% 0%,#5e4630 0%,transparent 60%),linear-gradient(135deg,#3a2f25,#241d17 55%,#1d1a17) fixed,#1d1a17;
@@ -114,7 +118,7 @@
     display: flex;
     gap: 14px;
     align-items: center;
-    font-size: 15px;
+    font-size: 1rem;
     flex-wrap: wrap;
   }
 
@@ -200,7 +204,7 @@
 
   #itd .eyebrow{
     color: var(--accent);
-    font-size: 13px;
+    font-size: 0.875rem;
     letter-spacing: .16em;
     text-transform: uppercase;
     font-weight: 700;
@@ -253,7 +257,7 @@
     border-radius: 50%;
     display: inline-grid;
     place-items: center;
-    font-size: 15px;
+    font-size: 1rem;
     font-weight: 800;
     flex: none;
   }
@@ -270,7 +274,7 @@
 
   #itd label.l, #itd .q{
     display: block;
-    font-size: 13px;
+    font-size: 0.875rem;
     font-weight: 600;
     margin: 0 0 6px;
     color: var(--card-ink);
@@ -281,7 +285,7 @@
   }
 
   #itd .req{
-    color: var(--accent);
+    color: var(--card-accent);
   }
 
   #itd input[type=text], #itd input[type=tel], #itd input[type=email], #itd input[type=number], #itd select, #itd textarea{
@@ -331,7 +335,7 @@
     border-radius: 999px;
     cursor: pointer;
     background: var(--field);
-    font-size: 15px;
+    font-size: 1rem;
   }
 
   #itd .chip:hover span{
@@ -354,7 +358,7 @@
     display: flex;
     gap: 8px;
     align-items: flex-start;
-    font-size: 13px;
+    font-size: 0.875rem;
     color: var(--card-muted);
     margin: 4px 0 18px;
   }
@@ -364,12 +368,12 @@
     accent-color: var(--accent);
   }
 
-  #itd .consent a{
+  #itd .intro a, #itd .hint a, #itd .consent a{
     color: inherit;
   }
 
   #itd .hint{
-    font-size: 13px;
+    font-size: 0.875rem;
     color: var(--card-muted);
     text-align: center;
     margin: 10px 0 0;

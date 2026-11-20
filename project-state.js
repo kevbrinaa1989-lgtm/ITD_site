@@ -11,6 +11,10 @@
       null
     );
   }
+  function selectedStage(stages = [], id) {
+    if (id == null) return currentStage(stages);
+    return stages.find((stage) => stage.id === id) || null;
+  }
   function progress(stages = []) {
     const approved = stages.filter((s) => s.status === "approved").length;
     const completed = stages.filter((s) => s.status === "completed").length;
@@ -28,22 +32,25 @@
       detail: `Согласовано: ${approved} · Завершено: ${completed}`,
     };
   }
-  function materialLabel({ title, file, stage } = {}) {
-    const logical = String(title || "").trim();
-    // Legacy material titles were initialized from the first uploaded filename.
-    // Do not guess a human title by stripping a technical filename's extension.
-    if (
-      logical &&
-      logical !== file?.name &&
-      !/\.[a-z0-9]{2,8}$/i.test(logical) &&
-      !/^(?:[0-9a-f]{16,}|[0-9a-f]{8}-[0-9a-f-]{27,})$/i.test(logical)
-    )
-      return logical;
+  function readableName(value) {
+    if (!/\p{L}/u.test(value)) return false;
+    // Camera exports, storage keys and bare revision numbers are poor titles for people.
+    return !/^(?:[a-f\d]{16,}|[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}|v\d+)$/i.test(value)
+      && !/^(?:camera[_-]export(?:[_-]|$)|(?:img|dsc[f_n]?|pxl|vid|scan|screenshot|image|file)(?:$|[ _-]*\d))/i.test(value);
+  }
+  function materialLabel({ title, file, originalName } = {}) {
+    const source = String(file?.review?.originalName || originalName || file?.name || "").trim();
+    const logical = String(title || file?.review?.title || "").trim();
+    const withoutExtension = (name) => name.replace(/\.[^.\s/\\]+$/u, "").trim();
+    if (logical && logical !== source && readableName(withoutExtension(logical))) return logical;
+    const name = withoutExtension(source);
+    if (readableName(name)) return name;
     const id = file?.review?.materialId || file?.id;
-    return `${stage?.title || "Материал проекта"}${id ? ` · Материал №${id}` : ""}`;
+    return id ? "Материал №" + id : "Материал проекта";
   }
   globalThis.ITDProjectState = Object.freeze({
     currentStage,
+    selectedStage,
     progress,
     materialLabel,
   });

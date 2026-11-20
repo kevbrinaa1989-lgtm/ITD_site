@@ -52,7 +52,7 @@ test('restore revokes copied authentication only, preserves source backup and bu
     await backupData({settingsFile:settings,destination:parent});
     const latest=await backupData({settingsFile:settings,destination:parent});
     const unknown=join(parent,'ITD-2020-01-01Tunknown');mkdirSync(unknown);writeFileSync(join(unknown,'keep'),'not-a-backup');
-    const symlink=join(parent,'ITD-2020-01-02Tlink');symlinkSync(data,symlink,'dir');
+    const symlink=join(parent,'ITD-2020-01-02Tlink');symlinkSync(data,symlink,process.platform==='win32'?'junction':'dir');
     pruneLocalBackups(parent,latest,2,data);
     assert.equal(readdirSync(parent).filter(name=>name.startsWith('ITD-')&&!['ITD-2020-01-01Tunknown','ITD-2020-01-02Tlink'].includes(name)).length,2);
     assert.ok(existsSync(unknown));assert.ok(existsSync(symlink));

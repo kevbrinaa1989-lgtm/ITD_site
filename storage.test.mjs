@@ -141,7 +141,7 @@ test("pinned storage survives process restarts and restores complete verified ba
       const absent=join(root,"unavailable-drive"),brokenSettings=join(root,"broken-settings.json");await writeFile(brokenSettings,JSON.stringify({version:1,dataDir:absent}));assert.throws(()=>openConfiguredData({settingsFile:brokenSettings}));await assert.rejects(startServer({storageOptions:{settingsFile:brokenSettings}}));await assert.rejects(readdir(absent),{code:"ENOENT"});
     });
     await t.test("restore refuses destinations inside its source directly and through symlinks",async()=>{
-      const before=await fingerprint(snapshot);const link=join(root,"backup-files-link");await symlink(join(snapshot,"files"),link,"dir");
+      const before=await fingerprint(snapshot);const link=join(root,"backup-files-link");await symlink(join(snapshot,"files"),link,process.platform==="win32"?"junction":"dir");
       for(const destination of [join(snapshot,"nested-restore"),join(snapshot,"files","nested-restore"),join(link,"nested-restore")]){
         assert.throws(()=>restoreBackup(snapshot,destination),/вне.*папк/);assert.deepEqual(await fingerprint(snapshot),before);await assert.rejects(readdir(destination),{code:"ENOENT"});
       }
@@ -168,7 +168,7 @@ test("pinned storage survives process restarts and restores complete verified ba
     });
     await t.test("backups cannot be written inside data through direct or symlink destinations",async()=>{
       await assert.rejects(backupData({settingsFile,destination:join(dataDir,"backups")}),/вне.*папк/);
-      const link=join(root,"data-link");await symlink(dataDir,link,"dir");await assert.rejects(backupData({settingsFile,destination:join(link,"backups")}),/вне.*папк/);
+      const link=join(root,"data-link");await symlink(dataDir,link,process.platform==="win32"?"junction":"dir");await assert.rejects(backupData({settingsFile,destination:join(link,"backups")}),/вне.*папк/);
     });
   } finally {if(server)await server.stop();await rm(root,{recursive:true,force:true});}
 });

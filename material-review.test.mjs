@@ -1,3 +1,4 @@
+import { confirmFixtureReview } from "./tests/approval-fixture.mjs";
 import { replaceLegacyFixtureBytes } from "./tests/legacy-file-fixture.mjs";
 import { prepareFixtureUpload } from "./tests/upload-fixture.mjs";
 import test from "node:test";
@@ -477,6 +478,13 @@ test("review workflow and per-user per-version viewing retain immutable history 
       "18. version-two approval requires confirmation then records author timestamp and revision",
       async () => {
         await decide(v2, { decision: "approved" }, owner.cookie, 400);
+        await decide(
+          v2,
+          { decision: "approved", confirm: true },
+          owner.cookie,
+          409,
+        );
+        await confirmFixtureReview(post, v2.id);
         await decide(v2, { decision: "approved", confirm: true });
         const current = await latest();
         assert.equal(current.status, "approved");
@@ -584,6 +592,7 @@ test("review workflow and per-user per-version viewing retain immutable history 
     await t.test(
       "24. repeated and concurrent decisions obey compare-and-swap without duplicate acceptance",
       async () => {
+        await confirmFixtureReview(post, v3.id);
         const responses = await Promise.all(
           [1, 2].map(() =>
             f.request(`${MV}/${v3.id}/decision`, {
@@ -723,7 +732,7 @@ test("review workflow and per-user per-version viewing retain immutable history 
       },
     );
     await t.test(
-      "29. aggregate stage status prioritizes changes then pending then all current approvals",
+      "29. stage remains pending after all files are approved until explicit stage acceptance",
       async () => {
         let p = await f.json("/api/projects", { cookie: owner.cookie });
         assert.equal(p.projects[0].stages[0].status, "pending_approval");
@@ -737,6 +746,7 @@ test("review workflow and per-user per-version viewing retain immutable history 
           materialId,
           expectedVersionId: v3.id,
         });
+        await confirmFixtureReview(post, (await latest()).id);
         await decide(await latest(), { decision: "approved", confirm: true });
         const list = (
           await f.json(`/api/projects/${project.id}/materials`, {
@@ -744,13 +754,15 @@ test("review workflow and per-user per-version viewing retain immutable history 
           })
         ).materials;
         for (const m of list)
-          if (m.currentVersion.status === "pending_approval")
+          if (m.currentVersion.status === "pending_approval") {
+            await confirmFixtureReview(post, m.currentVersion.id);
             await decide(m.currentVersion, {
               decision: "approved",
               confirm: true,
             });
+          }
         p = await f.json("/api/projects", { cookie: owner.cookie });
-        assert.equal(p.projects[0].stages[0].status, "approved");
+        assert.equal(p.projects[0].stages[0].status, "pending_approval");
         const extra = await f.mutate(
           `/api/projects/${project.id}/stages`,
           { title: "Без материалов", status: "planned", description: "" },
